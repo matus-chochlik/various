@@ -1,5 +1,14 @@
-#/bin/bash
+#!/bin/bash
 # Copyright (c) 2015-2016 Matus Chochlik
+
+temp_dir="$(mktemp -d)"
+
+function cal_cleanup()
+{
+	rm -rf ${temp_dir}
+}
+
+trap cal_cleanup EXIT
 
 imgdir=${1}
 
@@ -72,10 +81,11 @@ function cal_year_image()
 function cal_page_image()
 {
 	week=${1}
+	extradays=${2}
 	week_no=$(printf "%02d" ${week})
 	week_str="${week}. $(cal_translate week)"
-	month_name1=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks -${1} days"))
-	month_name2=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks +6 days -${1} days"))
+	month_name1=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks -${extradays} days"))
+	month_name2=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks +6 days -${extradays} days"))
 
 	if [[ "${month_name1}" == "${month_name2}" ]]
 	then month_name="${month_name1^}"
@@ -99,6 +109,9 @@ function cal_page_image()
 	echo "    \\includegraphics[height=12.5cm]{${imgdir}/${week_no}.png}"
 	echo "  \\end{minipage}"
 	echo "  }"
+	echo "  \\mbox{\\large{\\textsl{"
+	cat "${imgdir}/${week_no}.txt"
+	echo "  }}}"
 	echo "\\end{minipage}"
 	echo "}"
 }
@@ -119,9 +132,9 @@ function cal_year_table()
 		m2=$((row*3+2))
 		m3=$((row*3+3))
 		mts="\\normalsize{\\textbf{\\textit{"
-		mn1=$(date +%B -d "${year}-${m1}-01")
-		mn2=$(date +%B -d "${year}-${m2}-01")
-		mn3=$(date +%B -d "${year}-${m3}-01")
+		mn1=$(cal_translate month$(printf "%02d" ${m1}))
+		mn2=$(cal_translate month$(printf "%02d" ${m2}))
+		mn3=$(cal_translate month$(printf "%02d" ${m3}))
 		mte="}}}"
 		echo -n "    \\calendar[month text=${mts}${mn1^}${mte}, "
 		echo -n "dates=${year}-${m1}-01 to ${year}-${m1}-last,week list];"
@@ -155,28 +168,47 @@ function cal_page_table()
 		day_no=$(date +%d --date "${dspec}")
 		month_no=$(date +%m --date "${dspec}")
 		monthday=$(date +%e --date "${dspec}")
-		dayname=$(date +%A --date "${dspec}")
+		dayname=$(cal_translate weekday${weekday})
 
 		holidays=0
 		weekend=0
-		names=0
+		items=0
+
+		stable_holiday_file="$(dirname $0)/holidays/${country}/stable/${month_no}.txt"
+		movable_holiday_file="$(dirname $0)/holidays/${country}/movable/${year}/${month_no}.txt"
+		holiday_file="${temp_dir}/holidays${year}${month_no}.txt"
+
+		items_file="$(dirname $0)/items/${country}/${month_no}.txt"
+
+		rm -f ${holiday_file}
 
 		if [[ ${weekday} -gt 5 ]]
 		then let weekend=1
 		fi
 
-		if [[ -f $(dirname $0)/holidays/${month_no}.txt ]]
+		if [[ -f ${stable_holiday_file} ]]
 		then
-			if [[ $(grep -c -e "^${day_no}|." < $(dirname $0)/holidays/${month_no}.txt) -ne 0 ]]
-			then let holidays=1
+			if [[ $(grep -c -e "^${day_no}|." < ${stable_holiday_file}) -ne 0 ]]
+			then
+				let holidays=1
+				cat ${stable_holiday_file} >> ${holiday_file}
 			fi
 		fi
-		if [[ -f $(dirname $0)/names/${month_no}.txt ]]
+		if [[ -f ${movable_holiday_file} ]]
 		then
-			if [[ $(grep -c -e "^${day_no}|." < $(dirname $0)/names/${month_no}.txt) -ne 0 ]]
-			then let names=1
+			if [[ $(grep -c -e "^${day_no}|." < ${movable_holiday_file}) -ne 0 ]]
+			then
+				let holidays=1
+				cat ${movable_holiday_file} >> ${holiday_file}
 			fi
 		fi
+		if [[ -f ${items_file} ]]
+		then
+			if [[ $(grep -c -e "^${day_no}|." < ${items_file}) -ne 0 ]]
+			then let items=1
+			fi
+		fi
+
 
 		if let holidays+weekend
 		then echo "  \\colorbox{GreenYellow}{"
@@ -204,14 +236,14 @@ function cal_page_table()
 		# holidays
 		if let holidays
 		then 
-			grep -e "^${day_no}|" < $(dirname $0)/holidays/${month_no}.txt | 
+			grep -e "^${day_no}|" < ${holiday_file} |
 			head -1 |
 			cut -d'|' -f2 |
 			while read line
 			do echo -n "      {\\color{BrickRed} ${line}"
 			done
 
-			grep -e "^${day_no}|" < $(dirname $0)/holidays/${month_no}.txt | 
+			grep -e "^${day_no}|" < ${holiday_file} |
 			tail -n +2 |
 			cut -d'|' -f2 |
 			while read line
@@ -219,22 +251,22 @@ function cal_page_table()
 			done
 			echo -n "}"
 
-			if let names
+			if let items
 			then echo -n "\\\\"
 			fi
 		fi
 
-		# names
-		if let names
+		# items (names, ...)
+		if let items
 		then
-			grep -e "^${day_no}|" < $(dirname $0)/names/${month_no}.txt | 
+			grep -e "^${day_no}|" < ${items_file} |
 			head -1 |
 			cut -d'|' -f2 |
 			while read line
 			do echo -n "      ${line}"
 			done
 
-			grep -e "^${day_no}|" < $(dirname $0)/names/${month_no}.txt | 
+			grep -e "^${day_no}|" < ${items_file} |
 			tail -n +2 |
 			cut -d'|' -f2 |
 			while read line
@@ -256,7 +288,7 @@ function cal_page_table()
 	done
 
 	echo "  \\vspace{0.5cm}"
-	echo "  \\includegraphics[height=0.8cm]{side_decor_h.pdf}"
+	echo "  \\includegraphics[height=0.8cm]{${imgdir}/side_decor_h.pdf}"
 	echo "\\end{minipage}"
 	echo "}"
 }
@@ -265,7 +297,7 @@ function cal_page_decor()
 {
 	echo "\\mbox{"
 	echo "\\begin{minipage}[c]{1.0cm}"
-	echo "  \\includegraphics[width=0.8cm]{side_decor_v.pdf}"
+	echo "  \\includegraphics[width=0.8cm]{${imgdir}/side_decor_v.pdf}"
 	echo "\\end{minipage}"
 	echo "}"
 }

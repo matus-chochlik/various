@@ -1,4 +1,11 @@
 week|týždeň
+weekday1|pondelok
+weekday2|utorok
+weekday3|streda
+weekday4|štvrtok
+weekday5|piatok
+weekday6|sobota
+weekday7|nedeľa
 month01|január
 month02|február
 month03|marec
