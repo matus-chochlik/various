@@ -1,0 +1,13 @@
+week|týždeň
+month01|január
+month02|február
+month03|marec
+month04|apríl
+month05|máj
+month06|jún
+month07|júl
+month08|august
+month09|september
+month10|október
+month11|november
+month12|december
