@@ -394,6 +394,8 @@ int accept_client(void)
 	return accept_client_in();
 }
 
+int get_max_fd(void);
+
 int disconnect_client(int fd)
 {
 	if(state.verbosity > 3)
@@ -417,6 +419,13 @@ int disconnect_client(int fd)
 	}
 	FD_CLR(fd, &state.active_fds);
 	FD_CLR(fd, &state.client_fds);
+	state.max_fds = get_max_fd();
+	if(state.verbosity > 4)
+	{
+		fprintf(stderr, "Checking FDs `0`..`%d`\n", state.max_fds-1);
+	}
+
+
 	return close(fd);
 }
 
@@ -497,6 +506,7 @@ int accept_client_in(void)
 			state.num_clients++;
 			FD_SET(client, &state.active_fds);
 			FD_SET(client, &state.client_fds);
+			state.max_fds = get_max_fd();
 
 			if(state.verbosity > 3)
 			{
@@ -513,6 +523,14 @@ int accept_client_in(void)
 					"Currently serving `%d` clients (`%d` max)\n",
 					state.num_clients,
 					state.max_clients
+				);
+			}
+			if(state.verbosity > 4)
+			{
+				fprintf(
+					stderr,
+					"Checking FDs `0`..`%d`\n",
+					state.max_fds-1
 				);
 			}
 		}
@@ -539,6 +557,30 @@ int accept_client_in(void)
 		}
 	}
 	return client;
+}
+
+int get_max_fd(void)
+{
+	int fd, max = 0;
+	for(fd=0; fd<FD_SETSIZE; ++fd)
+	{
+		if(FD_ISSET(fd, &state.client_fds))
+		{
+			if(state.verbosity > 6)
+			{
+				fprintf(
+					stderr,
+					"FD `%d` is a client connection FD\n",
+					fd
+				);
+			}
+			if(max < fd)
+			{
+				max = fd;
+			}
+		}
+	}
+	return max+1;
 }
 
 void print_usage(FILE* output);
