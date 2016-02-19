@@ -4,13 +4,90 @@
 
 import sys, numpy
 from math import atan2
+from math import log10
 
-def pretty_num_str(num):
-	return ("%f" % num).rstrip("0").rstrip(".")
+def get_argument_parser():
+	import argparse, time
+
+	argparser = argparse.ArgumentParser(
+		prog="voronoi-svg"
+	)
+
+	argparser.add_argument(
+		'outfile',
+		nargs='?',
+		type=argparse.FileType('w'),
+		default=sys.stdout
+	)
+
+	argparser.add_argument(
+		'--x-cells', '-X',
+		type=int,
+		action="store",
+		default=32
+	)
+
+	argparser.add_argument(
+		'--y-cells', '-Y',
+		type=int,
+		action="store",
+		default=32
+	)
+
+	argparser.add_argument(
+		'--width', '-W',
+		type=float,
+		action="store",
+		default=512
+	)
+
+	argparser.add_argument(
+		'--height', '-H',
+		type=float,
+		action="store",
+		default=512
+	)
+
+	argparser.add_argument(
+		'--units', '-U',
+		action="store",
+		default="px"
+	)
+
+	argparser.add_argument(
+		'--value-low', '-vl',
+		type=float,
+		action="store",
+		default=0.80
+	)
+
+	argparser.add_argument(
+		'--value-high', '-vh',
+		type=float,
+		action="store",
+		default=0.95
+	)
+
+	argparser.add_argument(
+		'--seed', '-s',
+		type=float,
+		action="store",
+		default=time.time()
+	)
+
+	argparser.add_argument(
+		'--verbose', '-v',
+		action="store_true",
+		default=False
+	)
+
+	return argparser
  
 class options:
 	def gen_random_data(self):
 		import random
+
+		random.seed(self.seed)
 
 		cell_data = list()
 		for y in xrange(self.ycells):
@@ -19,27 +96,45 @@ class options:
 				r.append((
 					random.random(),
 					random.random(),
-					0.5+random.random()*0.4
+					random.random()
 				))
 			cell_data.append(r)
 		return cell_data
 
 	def __init__(self):
-		self.output = sys.stdout
 
-		self.xcells = 64
-		self.ycells = 64
+		useropts = get_argument_parser().parse_args(sys.argv[1:])
 
-		self.width = 1024
-		self.height = 1024
+		self.verbose = useropts.verbose
+
+		self.output = useropts.outfile
+		self.log = sys.stderr
+
+		self.xcells = useropts.x_cells
+		self.ycells = useropts.y_cells
+
+		self.width = useropts.width
+		self.height = useropts.height
+
+		self.value_low = useropts.value_low
+		self.value_high = useropts.value_high
+
+		self.seed = useropts.seed
 
 		self.cell_data = self.gen_random_data()
 
 		self.values = dict()
-		self.values["width"] = pretty_num_str(self.width)
-		self.values["height"] = pretty_num_str(self.height)
+		self.values["width"] = self.width
+		self.values["height"] = self.height
+		self.values["wunit"] = useropts.units
+		self.values["hunit"] = useropts.units
 
-def fillcolorstr(v):
+		self.cell_fmt = "%%%dd %%%dd\n" % (
+			int(log10(self.xcells)+1),
+			int(log10(self.ycells)+1)
+		)
+
+def grayscalestr(v):
 	c = "%02x" % (255*v)
 	return "#"+3*c
 
@@ -56,6 +151,13 @@ def cell_world_coord(opts, x, y):
 
 def cell_value(opts, x, y):
 	return find_cell(opts, x, y)[2]
+
+def cell_color(opts, x, y):
+	return grayscalestr(
+		opts.value_low+
+		cell_value(opts, x, y)*
+		(opts.value_high-opts.value_low)
+	)
 
 def offs_cell_world_coord(opts, x, y, o):
 	return cell_world_coord(opts, x+o[0], y+o[1])
@@ -86,7 +188,9 @@ def line_intersect_param(l1, l2):
 
 
 def print_cell(opts, x, y):
-	sys.stderr.write("[%d|%d]\n" % (x, y))
+
+	if opts.verbose:
+		opts.log.write(opts.cell_fmt % (x, y))
 
 	owc = cell_world_coord(opts, x, y)
 
@@ -156,14 +260,14 @@ def print_cell(opts, x, y):
 
 	pathstr = "M"+" L".join(["%.3f %.3f" % (c[0], c[1]) for c in corners])+" Z"
 	opts.output.write("""
-	<path d="%s" fill="%s"/>""" % (pathstr, fillcolorstr(cell_value(opts, x, y))))
+	<path d="%s" fill="%s"/>""" % (pathstr, cell_color(opts, x, y)))
 	
 
 def print_svg(opts):
 	opts.output.write("""<?xml version="1.0" encoding="utf8"?>\n""")
 	opts.output.write("""<svg xmlns="http://www.w3.org/2000/svg"
 	xmlns:svg="http://www.w3.org/2000/svg"
-	width="%(width)spt" height="%(height)spt"
+	width="%(width)s%(wunit)s" height="%(height)s%(hunit)s"
 	viewBox="0 0 %(width)s %(height)s"
 	version="1.1"
 	contentScriptType="text/ecmascript"
