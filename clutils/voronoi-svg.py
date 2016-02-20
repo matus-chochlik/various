@@ -78,7 +78,7 @@ def get_argument_parser():
 	argparser.add_argument(
 		'--mode', '-M',
 		type=str,
-		choices="",
+		choices=["grayscale", "cell-coord"],
 		action="store",
 		default="grayscale"
 	)
@@ -154,6 +154,15 @@ class options:
 		v = self.value_low + cv*(self.value_high-self.value_low)
 		return self.grayscale_color_str(v)
 
+	def cell_coord_color(self, x, y):
+		x = (x + self.xcells) % self.xcells
+		y = (y + self.ycells) % self.ycells
+
+		r = (256*x)/self.xcells
+		g = (256*y)/self.ycells
+
+		return "#%02x%02x00" % (r, g)
+
 	def __init__(self):
 
 		useropts = get_argument_parser().parse_args(sys.argv[1:])
@@ -174,9 +183,11 @@ class options:
 		self.value_low = useropts.value_low
 		self.value_high = useropts.value_high
 
-		if self.mode in ["grayscale"]:
+		if self.mode == "grayscale":
 			self.cell_values = self.gen_random_values()
 			self.cell_color = lambda x, y: self.cell_grayscale_color(x, y)
+		elif self.mode == "cell-coord":
+			self.cell_color = lambda x, y: self.cell_coord_color(x, y)
 
 		self.cell_offsets = self.gen_random_offsets()
 
@@ -325,7 +336,7 @@ def print_svg(opts):
 	version="1.1"
 	contentScriptType="text/ecmascript"
 	contentStyleType="text/css"\n>\n""" % opts.values)
-	opts.output.write("""<g class="voronoi">\n""")
+	opts.output.write("""<g class="voronoi" stroke-width="1.0">\n""")
 
 	for y in xrange(-1, opts.ycells+1):
 		for x in xrange(-1, opts.xcells+1):
