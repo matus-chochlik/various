@@ -7,7 +7,7 @@ from math import atan2
 from math import log10
 
 def get_argument_parser():
-	import argparse, time
+	import argparse
 
 	argparser = argparse.ArgumentParser(
 		prog="voronoi-svg"
@@ -58,7 +58,7 @@ def get_argument_parser():
 		'--value-low', '-vl',
 		type=float,
 		action="store",
-		default=0.80
+		default=0.05
 	)
 
 	argparser.add_argument(
@@ -69,10 +69,18 @@ def get_argument_parser():
 	)
 
 	argparser.add_argument(
-		'--seed', '-s',
+		'--seed', '-S',
 		type=float,
 		action="store",
-		default=time.time()
+		default=None
+	)
+
+	argparser.add_argument(
+		'--mode', '-M',
+		type=str,
+		choices="",
+		action="store",
+		default="grayscale"
 	)
 
 	argparser.add_argument(
@@ -84,28 +92,75 @@ def get_argument_parser():
 	return argparser
  
 class options:
-	def gen_random_data(self):
+	def grayscale_color_str(self, v):
+		c = "%02x" % (255*v)
+		return "#"+3*c
+
+	def get_rng0(self):
+		try:
+			return self.rng0
+		except:
+			self.rng0 = random.Random(self.seed)
+			return self.rng0
+
+	def get_rng(self):
 		import random
 
-		random.seed(self.seed)
+		if self.seed is None:
+			import time
+			try: return random.SystemRandom()
+			except: return random.Random(time.time())
+		else:
+			return random.Random(get_rng0().randomint(sys.maxsize))
+
+	def gen_random_values(self):
+
+		rc = self.get_rng()
 
 		cell_data = list()
 		for y in xrange(self.ycells):
 			r = list()
 			for x in xrange(self.xcells):
-				r.append((
-					random.random(),
-					random.random(),
-					random.random()
-				))
+				r.append(rc.random())
 			cell_data.append(r)
 		return cell_data
+
+	def gen_random_offsets(self):
+
+		rx = self.get_rng()
+		ry = self.get_rng()
+
+		cell_data = list()
+		for y in xrange(self.ycells):
+			r = list()
+			for x in xrange(self.xcells):
+				r.append((rx.random(), ry.random()))
+			cell_data.append(r)
+		return cell_data
+
+	def cell_offset(self, x, y):
+		cy = (y+self.ycells)%self.ycells
+		cx = (x+self.xcells)%self.xcells
+		return self.cell_offsets[cy][cx]
+
+	def cell_value(self, x, y):
+		cy = (y+self.ycells)%self.ycells
+		cx = (x+self.xcells)%self.xcells
+		return self.cell_values[cy][cx]
+
+
+	def cell_grayscale_color(self, x, y):
+		cv = self.cell_value(x, y)
+		v = self.value_low + cv*(self.value_high-self.value_low)
+		return self.grayscale_color_str(v)
 
 	def __init__(self):
 
 		useropts = get_argument_parser().parse_args(sys.argv[1:])
 
 		self.verbose = useropts.verbose
+		self.mode = useropts.mode
+		self.seed = useropts.seed
 
 		self.output = useropts.outfile
 		self.log = sys.stderr
@@ -119,9 +174,11 @@ class options:
 		self.value_low = useropts.value_low
 		self.value_high = useropts.value_high
 
-		self.seed = useropts.seed
+		if self.mode in ["grayscale"]:
+			self.cell_values = self.gen_random_values()
+			self.cell_color = lambda x, y: self.cell_grayscale_color(x, y)
 
-		self.cell_data = self.gen_random_data()
+		self.cell_offsets = self.gen_random_offsets()
 
 		self.values = dict()
 		self.values["width"] = self.width
@@ -134,23 +191,16 @@ class options:
 			int(log10(self.ycells)+1)
 		)
 
-def grayscalestr(v):
-	c = "%02x" % (255*v)
-	return "#"+3*c
-
-def find_cell(opts, x, y):
-	return opts.cell_data[(y+opts.ycells)%opts.ycells][(x+opts.xcells)%opts.xcells]
-
 def cell_world_coord(opts, x, y):
 
-	c = find_cell(opts, x, y)
+	c = opts.cell_offset(x, y)
 	return numpy.array([
 		(x+c[0])*(opts.width/opts.xcells),
 		(y+c[1])*(opts.height/opts.ycells)
 	])
 
 def cell_value(opts, x, y):
-	return find_cell(opts, x, y)[2]
+	return opts.get_value(x, y)
 
 def cell_color(opts, x, y):
 	return grayscalestr(
@@ -260,7 +310,10 @@ def print_cell(opts, x, y):
 
 	pathstr = "M"+" L".join(["%.3f %.3f" % (c[0], c[1]) for c in corners])+" Z"
 	opts.output.write("""
-	<path d="%s" fill="%s"/>""" % (pathstr, cell_color(opts, x, y)))
+	<path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
+		"def": pathstr,
+		"color": opts.cell_color(x, y)
+	})
 	
 
 def print_svg(opts):
@@ -272,7 +325,6 @@ def print_svg(opts):
 	version="1.1"
 	contentScriptType="text/ecmascript"
 	contentStyleType="text/css"\n>\n""" % opts.values)
-	#opts.output.write("""<g class="voronoi" stroke="black" stroke-width="0.1">\n""")
 	opts.output.write("""<g class="voronoi">\n""")
 
 	for y in xrange(-1, opts.ycells+1):
