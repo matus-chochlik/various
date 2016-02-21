@@ -83,7 +83,7 @@ function cal_year_image()
 	echo "\\begin{minipage}[c]{0.55\\linewidth}"
 	echo "  \\mbox{"
 	echo "  \\begin{minipage}[c]{\\linewidth}"
-	echo "    \\includegraphics[height=12.0cm]{${imgdir}/00.png}"
+	echo "    \\includegraphics[width=16.0cm]{${imgdir}/00.png}"
 	echo "  \\end{minipage}"
 	echo "  }"
 	echo "\\end{minipage}"
@@ -229,7 +229,7 @@ function cal_page_table()
 
 		if let holidays+weekend
 		then echo "  \\colorbox{GreenYellow}{"
-		else echo "  \\mbox{"
+		else echo "  \\colorbox{White}{"
 		fi
 		echo "  \\begin{minipage}[c]{0.957\\linewidth}"
 		echo "    \\mbox{"
