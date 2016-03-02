@@ -1,0 +1,367 @@
+digraph sql_join_using_vs_join_on {
+
+label="Aggregation"
+overlap=false;
+fontName="Sans";
+splines=true;
+maxiter=10000000;
+
+edge [arrowhead="normal" style="tapered" penwidth=7];
+
+table_1 [shape="none" label=<
+	<TABLE CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="3">table1</TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>b</B></TD>
+		<TD BGCOLOR="WHEAT"><B>c</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="#D0D0D0">'XYZ'</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="#D0D0D0">'XYZ'</TD>
+		<TD BGCOLOR="WHITE"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="#D0D0D0">'XYZ'</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD BGCOLOR="WHITE">9</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD BGCOLOR="WHITE">5</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD BGCOLOR="WHITE"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD BGCOLOR="WHITE">9</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="#909090">'ZYX'</TD>
+		<TD BGCOLOR="WHITE">9</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="#909090">'ZYX'</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+	</TR>
+	</TABLE>
+>];
+
+edge [color="#80F080"];
+subgraph cluster_1 {
+
+style="invis"
+label=""
+
+select_1 [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT 1 AS x</TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1;</TD></TR>
+	</TABLE>
+>];
+
+rel_1 [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE"><I>anon. relation</I></TD></TR>
+	<TR><TD BGCOLOR="ORANGE"><B>x</B></TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	<TR><TD>1</TD></TR>
+	</TABLE>
+>];
+
+select_count_1 [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT <B>count</B>(1) AS cx</TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1;</TD></TR>
+	</TABLE>
+>];
+
+rel_count_1 [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE"><I>anon. relation</I></TD></TR>
+	<TR><TD BGCOLOR="ORANGE"><B>cx</B></TD></TR>
+	<TR><TD>10</TD></TR>
+	</TABLE>
+>];
+
+select_1 -> rel_1 [color="#4040C0"];
+select_count_1 -> rel_count_1;
+select_1 -> select_count_1 [color="ORANGE"];
+
+}
+
+table_1 -> select_1 [color="#4040C0" constraint=false];
+table_1 -> select_count_1 [constraint=false];
+rel_1 -> rel_count_1 [color="YELLOW" constraint=false];
+
+edge [color="#60D060"];
+subgraph sg_a_c {
+
+select_a_c [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT a, c</TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1;</TD></TR>
+	</TABLE>
+>];
+
+rel_a_c [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="2"><I>anon. relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>a</B></TD>
+		<TD BGCOLOR="WHEAT"><B>c</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="WHITE"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="WHITE">9</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD BGCOLOR="WHITE">5</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD BGCOLOR="WHITE"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="WHITE">9</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="WHITE">9</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+	</TR>
+	</TABLE>
+>];
+
+select_count_a_c [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(a) AS ca,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cc </TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1;</TD></TR>
+	</TABLE>
+>];
+
+rel_count_a_c [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="2"><I>anon. relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>ca</B></TD>
+		<TD BGCOLOR="ORANGE"><B>cc</B></TD>
+	</TR>
+	<TR><TD>10</TD><TD>8</TD></TR>
+	</TABLE>
+>];
+
+select_a_c -> rel_a_c [color="#2020A0"];
+select_count_a_c -> rel_count_a_c;
+select_a_c -> select_count_a_c [color="BROWN"];
+}
+table_1 -> select_a_c [color="#2020A0" constraint=false];
+table_1 -> select_count_a_c [constraint=false];
+rel_a_c -> rel_count_a_c [color="YELLOW" constraint=false];
+
+
+edge [color="#40B040"];
+select_a_count_b_c_gb_a [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT a,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(b) AS cb,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cc </TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
+	<TR><TD ALIGN="LEFT" BGCOLOR="YELLOW">GROUP BY a;</TD></TR>
+	</TABLE>
+>];
+
+rel_a_count_b_c_gb_a [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="3"><I>anon. relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>cb</B></TD>
+		<TD BGCOLOR="ORANGE"><B>cc</B></TD>
+	</TR>
+	<TR><TD BGCOLOR="#E0E0E0">'AAA'</TD><TD>4</TD><TD>3</TD></TR>
+	<TR><TD BGCOLOR="#C0C0C0">'BBB'</TD><TD>3</TD><TD>2</TD></TR>
+	<TR><TD BGCOLOR="#A0A0A0">'CCC'</TD><TD>3</TD><TD>3</TD></TR>
+	</TABLE>
+>];
+
+table_1 -> select_a_count_b_c_gb_a;
+select_a_count_b_c_gb_a -> rel_a_count_b_c_gb_a;
+
+edge [color="#209020"];
+select_b_count_a_c_gb_b [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT b,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(a) AS ca,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cc </TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
+	<TR><TD ALIGN="LEFT" BGCOLOR="YELLOW">GROUP BY b;</TD></TR>
+	</TABLE>
+>];
+
+rel_b_count_a_c_gb_b [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="3"><I>anon. relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>ca</B></TD>
+		<TD BGCOLOR="ORANGE"><B>cc</B></TD>
+	</TR>
+	<TR><TD BGCOLOR="#D0D0D0">'XYZ'</TD><TD>3</TD><TD>2</TD></TR>
+	<TR><TD BGCOLOR="#B0B0B0">'WXY'</TD><TD>5</TD><TD>4</TD></TR>
+	<TR><TD BGCOLOR="#909090">'ZYX'</TD><TD>2</TD><TD>2</TD></TR>
+	</TABLE>
+>];
+table_1 -> select_b_count_a_c_gb_b;
+select_b_count_a_c_gb_b -> rel_b_count_a_c_gb_b;
+
+edge [color="#007000"];
+select_a_b_count_1_c_gb_a_b [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT a, b,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(1) AS c1,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cc </TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
+	<TR><TD ALIGN="LEFT" BGCOLOR="YELLOW">GROUP BY a, b;</TD></TR>
+	</TABLE>
+>];
+
+rel_a_b_count_1_c_gb_a_b [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="4"><I>anon. relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>c1</B></TD>
+		<TD BGCOLOR="ORANGE"><B>cc</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="#D0D0D0">'XYZ'</TD>
+		<TD>3</TD><TD>2</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD>1</TD><TD>1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD>3</TD><TD>2</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="#B0B0B0">'WXY'</TD>
+		<TD>1</TD><TD>1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD BGCOLOR="#909090">'ZYX'</TD>
+		<TD>2</TD><TD>2</TD>
+	</TR>
+	</TABLE>
+>];
+
+table_1 -> select_a_b_count_1_c_gb_a_b;
+select_a_b_count_1_c_gb_a_b -> rel_a_b_count_1_c_gb_a_b;
+
+edge [color="#005000"];
+select_a_count_1_c_gb_a_b [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT a, </TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cb,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cc </TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
+	<TR><TD ALIGN="LEFT" BGCOLOR="YELLOW">GROUP BY a, b;</TD></TR>
+	</TABLE>
+>];
+
+rel_a_count_1_c_gb_a_b [shape="none" label=<
+	<TABLE BGCOLOR="WHITE" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="3"><I>anon. relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>cb</B></TD>
+		<TD BGCOLOR="ORANGE"><B>cc</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD>3</TD><TD>2</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'AAA'</TD>
+		<TD>1</TD><TD>1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'BBB'</TD>
+		<TD>3</TD><TD>2</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD>1</TD><TD>1</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#A0A0A0">'CCC'</TD>
+		<TD>2</TD><TD>2</TD>
+	</TR>
+	</TABLE>
+>];
+
+table_1 -> select_a_count_1_c_gb_a_b;
+select_a_count_1_c_gb_a_b -> rel_a_count_1_c_gb_a_b;
+
+}

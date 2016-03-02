@@ -1,0 +1,388 @@
+digraph sql_join_using_vs_join_on {
+
+label="JOIN USING vs. JOIN ON"
+overlap=false;
+fontName="Sans";
+splines=true;
+maxiter=10000000;
+
+table_1 [shape="none" label=<
+	<TABLE CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="3">table1</TD></TR>
+	<TR>
+		<TD BGCOLOR="WHEAT"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>c</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'bar'</TD>
+		<TD BGCOLOR="#D0D0D0">234</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'baz'</TD>
+		<TD BGCOLOR="#C0C0C0">345</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">4</TD>
+		<TD BGCOLOR="#B0B0B0">'qux'</TD>
+		<TD BGCOLOR="#B0B0B0">456</TD>
+	</TR>
+	</TABLE>
+>];
+
+table_2 [shape="none" label=<
+	<TABLE CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="4">table2</TD></TR>
+	<TR>
+		<TD BGCOLOR="WHEAT"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>z</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'AA'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-01-14</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'BB'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-02-21</TD>
+		<TD BGCOLOR="#E0E0E0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'CC'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-03-23</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'DD'</TD>
+		<TD BGCOLOR="#D0D0D0">2016-01-11</TD>
+		<TD BGCOLOR="#D0D0D0">bleh</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'EE'</TD>
+		<TD BGCOLOR="#D0D0D0">2016-11-06</TD>
+		<TD BGCOLOR="#D0D0D0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'FF'</TD>
+		<TD BGCOLOR="#C0C0C0">2016-07-29</TD>
+		<TD BGCOLOR="#C0C0C0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'GG'</TD>
+		<TD BGCOLOR="#C0C0C0">2016-03-31</TD>
+		<TD BGCOLOR="#C0C0C0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">5</TD>
+		<TD BGCOLOR="#A0A0A0">'HH'</TD>
+		<TD BGCOLOR="#A0A0A0">2016-06-24</TD>
+		<TD BGCOLOR="#A0A0A0"></TD>
+	</TR>
+	</TABLE>
+>];
+
+{rank=same; table_1, table_2}
+
+select_join_using [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT *</TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
+	<TR><TD ALIGN="LEFT">JOIN table2 t2</TD></TR>
+	<TR><TD ALIGN="LEFT" BGCOLOR="YELLOW"><B>USING (a) ...</B></TD></TR>
+	</TABLE>
+>];
+
+select_join_on [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT *</TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
+	<TR><TD ALIGN="LEFT">JOIN table2 t2</TD></TR>
+	<TR><TD ALIGN="LEFT" BGCOLOR="YELLOW"><B>ON (t1.a = t2.a) ...</B></TD></TR>
+	</TABLE>
+>];
+
+{rank=same; select_join_using, select_join_on}
+
+rel_join_using [shape="none" label=<
+	<TABLE CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="6"><I>anonymous relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>t1.b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.c</B></TD>
+		<TD BGCOLOR="WHEAT"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.z</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'AA'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-01-14</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'BB'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-02-21</TD>
+		<TD BGCOLOR="#E0E0E0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'CC'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-03-23</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#D0D0D0">'bar'</TD>
+		<TD BGCOLOR="#D0D0D0">234</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'DD'</TD>
+		<TD BGCOLOR="#D0D0D0">2016-01-11</TD>
+		<TD BGCOLOR="#D0D0D0">bleh</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#D0D0D0">'bar'</TD>
+		<TD BGCOLOR="#D0D0D0">234</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'EE'</TD>
+		<TD BGCOLOR="#D0D0D0">2016-11-06</TD>
+		<TD BGCOLOR="#D0D0D0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'baz'</TD>
+		<TD BGCOLOR="#C0C0C0">345</TD>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'FF'</TD>
+		<TD BGCOLOR="#C0C0C0">2016-07-29</TD>
+		<TD BGCOLOR="#C0C0C0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#C0C0C0">'baz'</TD>
+		<TD BGCOLOR="#C0C0C0">345</TD>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'GG'</TD>
+		<TD BGCOLOR="#C0C0C0">2016-03-31</TD>
+		<TD BGCOLOR="#C0C0C0"></TD>
+	</TR>
+	</TABLE>
+>];
+
+rel_join_on [shape="none" label=<
+	<TABLE CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="7"><I>anonymous relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="WHEAT"><B>t1.a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.c</B></TD>
+		<TD BGCOLOR="WHEAT"><B>t2.a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.z</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'AA'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-01-14</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'BB'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-02-21</TD>
+		<TD BGCOLOR="#E0E0E0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'CC'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-03-23</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'bar'</TD>
+		<TD BGCOLOR="#D0D0D0">234</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'DD'</TD>
+		<TD BGCOLOR="#D0D0D0">2016-01-11</TD>
+		<TD BGCOLOR="#D0D0D0">bleh</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'bar'</TD>
+		<TD BGCOLOR="#D0D0D0">234</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="#D0D0D0">'EE'</TD>
+		<TD BGCOLOR="#D0D0D0">2016-11-06</TD>
+		<TD BGCOLOR="#D0D0D0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'baz'</TD>
+		<TD BGCOLOR="#C0C0C0">345</TD>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'FF'</TD>
+		<TD BGCOLOR="#C0C0C0">2016-07-29</TD>
+		<TD BGCOLOR="#C0C0C0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'baz'</TD>
+		<TD BGCOLOR="#C0C0C0">345</TD>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="#C0C0C0">'GG'</TD>
+		<TD BGCOLOR="#C0C0C0">2016-03-31</TD>
+		<TD BGCOLOR="#C0C0C0"></TD>
+	</TR>
+	</TABLE>
+>];
+
+where_using [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">WHERE a = 1;</TD></TR>
+	</TABLE>
+>];
+
+where_on_1 [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">WHERE <B>t1</B>.a = 1;</TD></TR>
+	</TABLE>
+>];
+
+where_on_2 [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">WHERE <B>t2</B>.a = 1;</TD></TR>
+	</TABLE>
+>];
+
+rel_join_using_where [shape="none" label=<
+	<TABLE CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="6"><I>anonymous relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>t1.b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.c</B></TD>
+		<TD BGCOLOR="WHEAT"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.z</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'AA'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-01-14</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'BB'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-02-21</TD>
+		<TD BGCOLOR="#E0E0E0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'CC'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-03-23</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	</TABLE>
+>];
+
+rel_join_on_where [shape="none" label=<
+	<TABLE CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="7"><I>anonymous relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="WHEAT"><B>t1.a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.c</B></TD>
+		<TD BGCOLOR="WHEAT"><B>t2.a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.z</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'AA'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-01-14</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'BB'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-02-21</TD>
+		<TD BGCOLOR="#E0E0E0">blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'foo'</TD>
+		<TD BGCOLOR="#E0E0E0">123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="#E0E0E0">'CC'</TD>
+		<TD BGCOLOR="#E0E0E0">2016-03-23</TD>
+		<TD BGCOLOR="#E0E0E0"></TD>
+	</TR>
+	</TABLE>
+>];
+
+{rank=same; rel_join_using, rel_join_on}
+
+edge [arrowhead="normal" style="tapered" penwidth=7 color="GREEN"];
+
+table_1 -> select_join_using;
+table_2 -> select_join_using;
+select_join_using -> rel_join_using;
+rel_join_using -> where_using;
+where_using -> rel_join_using_where;
+
+edge [arrowhead="normal" style="tapered" penwidth=7 color="BLUE"];
+
+table_1 -> select_join_on;
+table_2 -> select_join_on;
+select_join_on -> rel_join_on;
+rel_join_on -> where_on_1;
+rel_join_on -> where_on_2;
+where_on_1 -> rel_join_on_where;
+where_on_2 -> rel_join_on_where;
+
+}

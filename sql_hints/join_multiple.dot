@@ -1,0 +1,282 @@
+digraph sql_join_using_vs_join_on {
+
+label="JOIN multiple relations"
+overlap=false;
+fontName="Sans";
+splines=true;
+maxiter=10000000;
+
+table_1 [shape="none" label=<
+	<TABLE BGCOLOR="#D0D0D0" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="3">table1</TD></TR>
+	<TR>
+		<TD BGCOLOR="WHEAT"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>c</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD>'foo'</TD>
+		<TD>123</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD>'bar'</TD>
+		<TD>234</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD>'baz'</TD>
+		<TD>345</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">4</TD>
+		<TD>'qux'</TD>
+		<TD>456</TD>
+	</TR>
+	</TABLE>
+>];
+
+table_2 [shape="none" label=<
+	<TABLE BGCOLOR="#D0D0D0" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="4">table2</TD></TR>
+	<TR>
+		<TD BGCOLOR="WHEAT"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>z</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD>'AA'</TD>
+		<TD>2016-01-14</TD>
+		<TD></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD>'BB'</TD>
+		<TD>2016-02-21</TD>
+		<TD>blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD>'CC'</TD>
+		<TD>2016-03-23</TD>
+		<TD></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD>'DD'</TD>
+		<TD>2016-01-11</TD>
+		<TD>bleh</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD>'EE'</TD>
+		<TD>2016-11-06</TD>
+		<TD></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD>'FF'</TD>
+		<TD>2016-07-29</TD>
+		<TD>blah</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD>'GG'</TD>
+		<TD>2016-03-31</TD>
+		<TD></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">5</TD>
+		<TD>'HH'</TD>
+		<TD>2016-06-24</TD>
+		<TD></TD>
+	</TR>
+	</TABLE>
+>];
+
+table_3 [shape="none" label=<
+	<TABLE BGCOLOR="#D0D0D0" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="3">table3</TD></TR>
+	<TR>
+		<TD BGCOLOR="WHEAT"><B>x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>v</B></TD>
+		<TD BGCOLOR="ORANGE"><B>w</B></TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">'AA'</TD>
+		<TD>12.34</TD>
+		<TD>'WW'</TD></TR>
+	<TR>
+		<TD BGCOLOR="WHITE">'AA'</TD>
+		<TD>23.45</TD>
+		<TD>'XX'</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">'CC'</TD>
+		<TD>34.56</TD>
+		<TD>'YY'</TD>
+	</TR>
+	<TR>
+		<TD BGCOLOR="WHITE">'EE'</TD>
+		<TD>45.67</TD>
+		<TD>'ZZ'</TD>
+	</TR>
+	</TABLE>
+>];
+
+select_join_1_2 [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT">SELECT *</TD></TR>
+	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
+	<TR><TD ALIGN="LEFT">JOIN table2 t2</TD></TR>
+	<TR><TD ALIGN="LEFT"><B>USING (a) ... </B></TD></TR>
+	</TABLE>
+>];
+
+rel_join_1_2 [shape="none" label=<
+	<TABLE BGCOLOR="#D0D0D0" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="6"><I>anonymous relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>t1.b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.c</B></TD>
+		<TD BGCOLOR="WHEAT"><B>a</B></TD>
+		<TD BGCOLOR="WHEAT"><B>t2.x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.z</B></TD>
+	</TR>
+	<TR>
+		<TD>'foo'</TD>
+		<TD>123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="WHITE">'AA'</TD>
+		<TD>2016-01-14</TD>
+		<TD></TD>
+	</TR>
+	<TR>
+		<TD>'foo'</TD>
+		<TD>123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="WHITE">'BB'</TD>
+		<TD>2016-02-21</TD>
+		<TD>blah</TD>
+	</TR>
+	<TR>
+		<TD>'foo'</TD>
+		<TD>123</TD>
+		<TD BGCOLOR="WHITE">1</TD>
+		<TD BGCOLOR="WHITE">'CC'</TD>
+		<TD>2016-03-23</TD>
+		<TD></TD>
+	</TR>
+	<TR>
+		<TD>'bar'</TD>
+		<TD>234</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="WHITE">'DD'</TD>
+		<TD>2016-01-11</TD>
+		<TD>bleh</TD>
+	</TR>
+	<TR>
+		<TD>'bar'</TD>
+		<TD>234</TD>
+		<TD BGCOLOR="WHITE">2</TD>
+		<TD BGCOLOR="WHITE">'EE'</TD>
+		<TD>2016-11-06</TD>
+		<TD></TD>
+	</TR>
+	<TR>
+		<TD>'baz'</TD>
+		<TD>345</TD>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="WHITE">'FF'</TD>
+		<TD>2016-07-29</TD>
+		<TD>blah</TD>
+	</TR>
+	<TR>
+		<TD>'baz'</TD>
+		<TD>345</TD>
+		<TD BGCOLOR="WHITE">3</TD>
+		<TD BGCOLOR="WHITE">'GG'</TD>
+		<TD>2016-03-31</TD>
+		<TD></TD>
+	</TR>
+	</TABLE>
+>];
+
+join_1_2_3 [shape="note" style="filled" color="WHEAT" label=<
+	<TABLE BORDER="0" CELLSPACING="0">
+	<TR><TD ALIGN="LEFT"></TD></TR>
+	<TR><TD ALIGN="LEFT">JOIN table3 t3</TD></TR>
+	<TR><TD ALIGN="LEFT"><B>USING (x);</B></TD></TR>
+	</TABLE>
+>];
+
+rel_join_1_2_3 [shape="none" label=<
+	<TABLE BGCOLOR="#D0D0D0" CELLSPACING="0">
+	<TR><TD BGCOLOR="ORANGE" COLSPAN="8"><I>anonymous relation</I></TD></TR>
+	<TR>
+		<TD BGCOLOR="ORANGE"><B>t1.b</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t1.c</B></TD>
+		<TD BGCOLOR="ORANGE"><B>a</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.y</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t2.z</B></TD>
+		<TD BGCOLOR="WHEAT"><B>x</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t3.v</B></TD>
+		<TD BGCOLOR="ORANGE"><B>t3.w</B></TD>
+	</TR>
+	<TR>
+		<TD>'foo'</TD>
+		<TD>123</TD>
+		<TD>1</TD>
+		<TD>2016-01-14</TD>
+		<TD></TD>
+		<TD BGCOLOR="WHITE">'AA'</TD>
+		<TD>12.34</TD>
+		<TD>'WW'</TD>
+	</TR>
+	<TR>
+		<TD>'foo'</TD>
+		<TD>123</TD>
+		<TD>1</TD>
+		<TD>2016-01-14</TD>
+		<TD></TD>
+		<TD BGCOLOR="WHITE">'AA'</TD>
+		<TD>23.45</TD>
+		<TD>'XX'</TD>
+	</TR>
+	<TR>
+		<TD>'foo'</TD>
+		<TD>123</TD>
+		<TD>1</TD>
+		<TD>2016-03-23</TD>
+		<TD></TD>
+		<TD BGCOLOR="WHITE">'CC'</TD>
+		<TD>34.56</TD>
+		<TD>'YY'</TD>
+	</TR>
+	<TR>
+		<TD>'bar'</TD>
+		<TD>234</TD>
+		<TD>2</TD>
+		<TD>2016-11-06</TD>
+		<TD></TD>
+		<TD BGCOLOR="WHITE">'EE'</TD>
+		<TD>45.67</TD>
+		<TD>'ZZ'</TD>
+	</TR>
+	</TABLE>
+>];
+
+edge [arrowhead="normal" style="tapered" penwidth=7 color="GREEN"];
+
+table_1 -> select_join_1_2;
+table_2 -> select_join_1_2;
+select_join_1_2 -> rel_join_1_2;
+rel_join_1_2 -> join_1_2_3;
+table_3 -> join_1_2_3;
+join_1_2_3 ->rel_join_1_2_3;
+
+}
