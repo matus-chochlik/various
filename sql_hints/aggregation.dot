@@ -323,7 +323,7 @@ edge [color="#005000"];
 select_a_count_1_c_gb_a_b [shape="note" style="filled" color="WHEAT" label=<
 	<TABLE BORDER="0" CELLSPACING="0">
 	<TR><TD ALIGN="LEFT">SELECT a, </TD></TR>
-	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cb,</TD></TR>
+	<TR><TD ALIGN="RIGHT"><B>count</B>(b) AS cb,</TD></TR>
 	<TR><TD ALIGN="RIGHT"><B>count</B>(c) AS cc </TD></TR>
 	<TR><TD ALIGN="LEFT">FROM table1 t1</TD></TR>
 	<TR><TD ALIGN="LEFT" BGCOLOR="YELLOW">GROUP BY a, b;</TD></TR>
