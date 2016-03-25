@@ -5,6 +5,37 @@
 import sys, numpy
 from math import atan2
 from math import log10
+from itertools import izip
+
+def perpendicular(v1):
+	v2 = numpy.empty_like(v1)
+	v2[0] = -v1[1]
+	v2[1] =  v1[0]
+	return v2
+
+def set_center(points):
+	return sum(points)/len(points)
+
+def segment_point(p1, p2, c):
+	return (1-c)*p1 + c*p2;
+
+def segment_midpoint(p1, p2):
+	return (p1+p2)*0.5
+
+def segment_normal(p1, p2):
+	return perpendicular(p2-p1)
+
+def line_intersect_param(l1, l2):
+	d1 = l1[1]
+	d2 = l2[1]
+	dp = l2[0]-l1[0]
+	d2p = perpendicular(d2)
+
+	num = numpy.dot(d2p, dp)
+	den = numpy.dot(d2p, d1)
+
+	if abs(den) > 0.00001: return num / den
+	else: return None
 
 def get_argument_parser():
 	import argparse
@@ -69,18 +100,40 @@ def get_argument_parser():
 	)
 
 	argparser.add_argument(
-		'--seed', '-S',
+		'--cell-z-coord', '-cz',
+		type=float,
+		action="store",
+		default=0.0
+	)
+
+	argparser.add_argument(
+		'--scale', '-S',
+		type=float,
+		action="store",
+		default=0.9
+	)
+
+	argparser.add_argument(
+		'--seed', '-rs',
 		type=float,
 		action="store",
 		default=None
 	)
 
 	argparser.add_argument(
-		'--mode', '-M',
+		'--color-mode', '-M',
 		type=str,
 		choices=["grayscale", "cell-coord"],
 		action="store",
 		default="grayscale"
+	)
+
+	argparser.add_argument(
+		'--cell-mode', '-C',
+		type=str,
+		choices=["full", "scaled", "flagstone","pebble"],
+		action="store",
+		default="full"
 	)
 
 	argparser.add_argument(
@@ -160,15 +213,59 @@ class options:
 
 		r = (256*x)/self.xcells
 		g = (256*y)/self.ycells
+		b = (256*self.cell_z_coord)
 
-		return "#%02x%02x00" % (r, g)
+		return "#%02x%02x%02x" % (r, g, b)
+
+	def full_cell_element_str(self, x, y, unused, corners):
+		clist = ["%.3f %.3f" % (c[0], c[1]) for c in corners]
+		pathstr = "M"+" L".join(clist)+" Z"
+		return """
+		<path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
+			"def": pathstr,
+			"color": self.cell_color(x, y)
+		}
+
+	def scaled_cell_element_str(self, x, y, center, corners):
+		m = set_center(corners)
+		newcorners = [segment_point(m, c, self.scale) for c in corners]
+		return self.full_cell_element_str(x, y, center, newcorners);
+
+	def flagstone_cell_element_str(self, x, y, center, corners):
+		zcorners = izip(corners, corners[1:] + [corners[0]])
+		c = self.cell_value(x, y)
+		newcorners = [segment_point(a, b, c) for (a, b) in zcorners]
+		return self.scaled_cell_element_str(x, y, center, newcorners);
+
+	def pebble_cell_element_str(self, x, y, center, corners):
+		m = set_center(corners)
+		apoints = [segment_point(m, c, self.scale) for c in corners]
+		bpoints = apoints[1:] + [apoints[0]]
+		c = self.cell_value(x, y)
+		zpoints = izip(apoints, bpoints)
+		cpoints = [segment_point(a, b, c) for (a, b) in zpoints]
+		dpoints = cpoints[1:] + [cpoints[0]]
+
+		zpoints = izip(bpoints, dpoints)
+
+		cfmt = lambda c : "%.3f %.3f" % (c[0], c[1])
+
+		clist = ["%s, %s" % (cfmt(b), cfmt(d)) for (b, d) in zpoints]
+		pathstr = "M%s Q" % cfmt(cpoints[0])+" Q".join(clist)+" Z"
+		return """
+		<path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
+			"def": pathstr,
+			"color": self.cell_color(x, y)
+		}
+
 
 	def __init__(self):
 
 		useropts = get_argument_parser().parse_args(sys.argv[1:])
 
 		self.verbose = useropts.verbose
-		self.mode = useropts.mode
+		self.cell_mode = useropts.cell_mode
+		self.color_mode = useropts.color_mode
 		self.seed = useropts.seed
 
 		self.output = useropts.outfile
@@ -182,12 +279,25 @@ class options:
 
 		self.value_low = useropts.value_low
 		self.value_high = useropts.value_high
+		self.cell_z_coord = useropts.cell_z_coord
 
-		if self.mode == "grayscale":
-			self.cell_values = self.gen_random_values()
+		self.scale = useropts.scale
+
+		self.cell_values = self.gen_random_values()
+
+		if self.color_mode == "grayscale":
 			self.cell_color = lambda x, y: self.cell_grayscale_color(x, y)
-		elif self.mode == "cell-coord":
+		elif self.color_mode == "cell-coord":
 			self.cell_color = lambda x, y: self.cell_coord_color(x, y)
+
+		if self.cell_mode == "full":
+			self.cell_element_str = self.full_cell_element_str
+		elif self.cell_mode == "scaled":
+			self.cell_element_str = self.scaled_cell_element_str
+		elif self.cell_mode == "flagstone":
+			self.cell_element_str = self.flagstone_cell_element_str
+		elif self.cell_mode == "pebble":
+			self.cell_element_str = self.pebble_cell_element_str
 
 		self.cell_offsets = self.gen_random_offsets()
 
@@ -223,32 +333,10 @@ def cell_color(opts, x, y):
 def offs_cell_world_coord(opts, x, y, o):
 	return cell_world_coord(opts, x+o[0], y+o[1])
 
-def perpendicular(v1):
-	v2 = numpy.empty_like(v1)
-	v2[0] = -v1[1]
-	v2[1] =  v1[0]
-	return v2
+def print_cell(opts, x, y, center, corners):
+	opts.output.write(opts.cell_element_str(x, y, center, corners))
 
-def segment_midpoint(p1, p2):
-	return (p1+p2)*0.5
-
-def segment_normal(p1, p2):
-	return perpendicular(p2-p1)
-
-def line_intersect_param(l1, l2):
-	d1 = l1[1]
-	d2 = l2[1]
-	dp = l2[0]-l1[0]
-	d2p = perpendicular(d2)
-
-	num = numpy.dot(d2p, dp)
-	den = numpy.dot(d2p, d1)
-
-	if abs(den) > 0.00001: return num / den
-	else: return None
-
-
-def print_cell(opts, x, y):
+def make_cell(opts, x, y):
 
 	if opts.verbose:
 		opts.log.write(opts.cell_fmt % (x, y))
@@ -317,14 +405,8 @@ def print_cell(opts, x, y):
 		return atan2(v[1], v[0])
 		
 
-	corners = sorted(corners, key=corner_angle)
+	print_cell(opts, x,y, owc, sorted(corners, key=corner_angle))
 
-	pathstr = "M"+" L".join(["%.3f %.3f" % (c[0], c[1]) for c in corners])+" Z"
-	opts.output.write("""
-	<path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
-		"def": pathstr,
-		"color": opts.cell_color(x, y)
-	})
 	
 
 def print_svg(opts):
@@ -340,7 +422,7 @@ def print_svg(opts):
 
 	for y in xrange(-1, opts.ycells+1):
 		for x in xrange(-1, opts.xcells+1):
-			print_cell(opts, x, y)
+			make_cell(opts, x, y)
 
 	opts.output.write("""\n""")
 
