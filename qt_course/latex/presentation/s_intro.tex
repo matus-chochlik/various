@@ -1,0 +1,343 @@
+\section{Introduction}
+
+\begin{frame}
+  \frametitle{What is Qt?}
+  \small
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+    \begin{itemize} 
+      \item Cross-platform application development framework for desktop,
+        embedded, mobile and web:
+        \begin{itemize}
+        \item Linux,
+        \item OS X,
+        \item Windows,
+        \item VxWorks,
+        \item QNX,
+        \item Android,
+        \item iOS,
+        \item BlackBerry,
+        \item Sailfish OS,
+        \item Symbian,
+        \item others.
+        \end{itemize}
+    \end{itemize}
+    \end{column}
+    \begin{column}{0.5\textwidth}
+      \footnotesize
+      \begin{itemize}
+      \item Has modular architecture.
+      \item Not a programming language by its own, but uses extended C++.
+      \item Available under various licenses, both commercial and free software.
+      \item Implements its own build system, but it's also usable with
+      third-party build tools.
+      \item Comes with its own IDE -- called {\em Qt Creator}.
+      \item Provides a simple unit-testing framework.
+      \item More info at \url{https://wiki.qt.io/About_Qt}.
+      \end{itemize} 
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\subsection{History}
+\begin{frame}
+  \frametitle{Qt's history (1988 - 2000)}
+  \scriptsize
+  \begin{itemize}
+    \item {\em 1988} -- Haavard Nord\footnote{\tiny Later the first CEO of Trolltech}
+      commissioned by a Swedish company to develop a C++ GUI framework.
+    \item {\em 1990} -- The first version of Qt concieved by Haavard Nord and
+      Eirik Chambe-Eng\footnote{\tiny Later the first president of Trolltech} as the
+      library for developing a database application for ultrasound images.
+    \item {\em 1991} -- Beginning of development of the initial, proprietary version.
+    \item {\em 1994} -- The {\em Quasar Technologies} company was founded, later
+      renamed to {\em Troll Tech} and finally to {\em Trolltech}.
+    \item {\em 1995} -- Troll Tech publicly released Qt version 0.90 for X11/Linux.
+      The first commercial contract from Metis - a Norwegian company.
+    \item {\em 1996} -- The European Space Agency became the second Qt customer.
+    \item {\em 1997} -- Qt 1.2 and 1.3 released.
+    \item {\em 1998} -- Matthias Ettrich, joins Trolltech. Qt 1.4 released.
+    \item {\em 1999} -- Qt won the LinuxWorld award for best library/tool.
+      Qt 2.0 released.
+    \item {\em 2000} -- New Qt windowing system, Qt/Embedded released.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Qt's history (2001 - 2012)}
+  \scriptsize
+  \begin{itemize}
+    \item {\em 2001} -- Qt 3.0 with support for multiple database environments,
+      multiple languages, multiple monitors and support for Mac OS X and a new
+      Qt Designer GUI builder released.
+    \item {\em 2005} -- Qt 4.0 with fully made-over API, released
+      under commercial and GPL 2.0 licenses for all major platforms.
+    \item {\em 2006} -- Trolltech IPO\footnote{\tiny Initial public offering --
+      \say{stock market launch}}. 
+      Qt used in millions of devices worldwide from Sharp to Motorola.
+    \item {\em 2008} -- Acquisition of Trolltech by  Nokia, renamed to
+      \say{Qt Software at Nokia}.
+    \item {\em 2009} -- Qt Creator released. Qt version 4.5 released under LGPL v2.1.
+    \item {\em 2010} -- Qt Quick launched, integration with WebKit. Qt 4.7 released
+      with support for the Symbian OS.
+    \item {\em 2011} -- Qt commercial licensing business acquired by
+      Digia\footnote{\tiny\url{https://digia.fi/}}.
+    \item {\em 2012} -- Digia acquires all rights to Qt as \say{Digia, Qt}.
+      Qt 5.0 released with new modularized codebase, consolidation of QPA\footnote
+      {\tiny Qt Platform Abstraction}, Qt Quick 2, and more support for mobile
+      platforms.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Qt's history (recent)}
+  \scriptsize
+  \begin{itemize}
+    \item {\em 2012} -- Framework development of Qt 5 moved to open governance
+      at \url{https://qt-project.org}.
+    \item {\em 2013} -- Launch of the Qt pre-built software stack. Launch of
+      Qt WebEngine, integrating {\em Chromium}'s web capabilities into Qt.
+    \item {\em 2014} -- Digia transferred the Qt business and copyrights to their
+      wholly owned subsidiary; \say{The Qt Company}.
+    \item {\em 2015} -- 20\textsuperscript{th} anniversary of Qt's first
+      public release.
+      \say{One Qt} site unification completed -- \url{https://www.qt.io/}.
+      More than 800K Qt developers worldwide.
+    \item {\em 2016} -- Latest version: Qt 5.8.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Modules -- Qt essentials\footnote
+  {\tiny Source: \url{https://doc.qt.io/qt-5/qtmodules.html}}}
+
+  \small
+  \begin{itemize}
+  \item Fundamental Qt modules, available on all supported development and
+    testing platforms.
+  \item Generic and useful for the majority of Qt applications.
+  \end{itemize}
+
+  \tiny
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+      \begin{tabular}{|p{0.28\textwidth}|p{0.65\textwidth}|}
+      \hline
+      \textbf{Module} & \textbf{Purpose} \\
+      \hline
+      {\em Qt Core} & Core non-graphical classes used by other modules. \\
+      \hline
+      {\em Qt GUI} & Base classes for graphical user interface (GUI) components.
+        Includes OpenGL. \\
+      \hline
+      {\em Qt Multimedia} & Classes for audio, video, radio and camera functionality. \\
+      \hline
+      {\em Qt Multimedia Widgets} & Widget-based classes for implementing
+        multimedia functionality. \\
+      \hline
+      {\em Qt Network} & Classes to make network programming easier and more portable. \\
+      \hline
+      {\em Qt QML} & Classes for QML and JavaScript languages. \\
+      \hline
+      {\em Qt Quick} & A declarative framework for building highly dynamic
+        applications with custom user interfaces. \\
+      \hline
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+      \begin{tabular}{|p{0.34\textwidth}|p{0.56\textwidth}|}
+      \hline
+      \textbf{Module} & \textbf{Purpose} \\
+      \hline
+      {\em  Qt Quick Controls} & Reusable Qt Quick based UI controls to create
+        classic desktop-style user interfaces. \\
+      \hline
+      {\em  Qt Quick Dialogs} & Types for creating and interacting with system
+        dialogs from a Qt Quick application. \\
+      \hline
+      {\em  Qt Quick Layouts} & Layouts are items that are used to arrange
+        Qt Quick 2 based items in the user interface. \\
+      \hline
+      {\em  Qt SQL} & Classes for database integration using SQL. \\
+      \hline
+      {\em  Qt Test} & Classes for unit testing Qt applications and libraries. \\
+      \hline
+      {\em  Qt Widgets} & Classes to extend Qt GUI with C++ widgets. \\
+      \hline
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Modules -- Qt add-ons (MP, IPC, IO, sensors)\footnote
+  {\tiny Source: \url{https://doc.qt.io/qt-5/qtmodules.html}}}
+
+  \small
+  \begin{itemize}
+  \item Modules bringing additional value for specific purposes.
+  \item May be available only on certain platforms.
+  \end{itemize}
+
+  \tiny
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+      \begin{tabular}{|p{0.38\textwidth}|p{0.56\textwidth}|}
+      \hline
+      \textbf{Module} & \textbf{Purpose} \\
+      \hline
+      Qt Concurrent & Classes for writing multi-threaded programs without using low-level threading primitives. \\
+      \hline
+      Qt D-Bus & Classes for inter-process communication over the D-Bus protocol. \\
+      \hline
+      Qt Location & Displays map, navigation, and place content in a QML application. \\
+      \hline
+      Qt Positioning & Provides access to position, satellite and area monitoring classes.\\
+      \hline
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+      \begin{tabular}{|p{0.35\textwidth}|p{0.56\textwidth}|}
+      \hline
+      \textbf{Module} & \textbf{Purpose} \\
+      \hline
+      Qt Sensors & Provides access to sensor hardware and motion gesture recognition. \\
+      \hline
+      Qt Serial Port & Provides access to hardware and virtual serial ports. \\
+      \hline
+      Qt Bluetooth & Provides access to Bluetooth hardware. \\
+      \hline
+      Qt NFC & Provides access to Near-Field communication (NFC) hardware. \\
+      \hline
+      Qt Print Support & Classes to make printing easier and more portable.\\
+      \hline
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Modules -- Qt add-ons (platform-specific, graphics, XML)\footnote
+  {\tiny Source: \url{https://doc.qt.io/qt-5/qtmodules.html}}}
+
+  \tiny
+  \begin{columns}
+    \begin{column}{0.48\textwidth}
+      \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+      \begin{tabular}{|p{0.38\textwidth}|p{0.56\textwidth}|}
+      \hline
+      \textbf{Module} & \textbf{Purpose} \\
+      \hline
+      Active Qt & Classes for applications which use ActiveX and COM \\
+      \hline
+      Qt Windows Extras & Provides platform-specific APIs for Windows. \\
+      \hline
+      Qt X11 Extras & Provides platform-specific APIs for X11. \\
+      \hline
+      Qt Mac Extras & Provides platform-specific APIs for OS X. \\
+      \hline
+      Qt Android Extras & Provides platform-specific APIs for Android. \\
+      \hline
+      Qt Quick Extras & Provides a specialized set of controls that can be
+      used to build interfaces in Qt Quick.\\
+      \hline
+      Qt Quick widgets & Provides a C++ widget class for displaying a Qt Quick
+      user interface. \\
+      \hline
+      \end{tabular}
+    \end{column}
+    \begin{column}{0.48\textwidth}
+      \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+      \begin{tabular}{|p{0.38\textwidth}|p{0.55\textwidth}|}
+      \hline
+      \textbf{Module} & \textbf{Purpose} \\
+      \hline
+      Qt Image Formats & Plugins for additional image formats: TIFF, MNG, TGA, WBMP. \\
+      \hline
+      Qt Canvas 3D & Enables OpenGL-like 3D drawing calls from Qt Quick applications using JavaScript. \\
+      \hline
+      Qt Graphical Effects & Graphical effects for use with Qt Quick 2. \\
+      \hline
+      Qt Image Formats & Plugins for additional image formats: TIFF, MNG, TGA, WBMP. \\
+      \hline
+      Qt XML & C++ implementations of SAX and DOM.\\
+      \hline
+      Qt XML Patterns & Support for XPath, XQuery, XSLT and XML schema validation. \\
+      \hline
+      \end{tabular}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Modules -- Qt add-ons (web)\footnote
+  {\tiny Source: \url{https://doc.qt.io/qt-5/qtmodules.html}}}
+
+  \scriptsize
+      \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+      \begin{tabular}{|p{0.27\textwidth}|p{0.65\textwidth}|}
+      \hline
+      \textbf{Module} & \textbf{Purpose} \\
+      \hline
+      Qt WebChannel & Provides access to QObject or QML objects from HTML clients
+      for seamless integration of Qt applications with HTML/JavaScript clients.\\
+      \hline
+      Qt WebEngine & Provides a QML API to run web applications using the Chromium
+      browser project.\\
+      \hline
+      Qt WebEngine Widgets & Provides a C++ API to run web applications using
+      the Chromium browser project.\\
+      \hline
+      Qt WebEngine Core	& Provides a public API shared by both Qt WebEngine and
+      Qt WebEngine Widgets.\\
+      \hline
+      Qt WebSockets & Provides WebSocket communication compliant with RFC 6455.\\
+      \hline
+      Qt WebView & Displays web content in a QML application by using APIs native
+      to the platform, without the need to include a full web browser stack.\\
+      \hline
+      Qt SVG & Classes for displaying the contents of SVG files. Supports a subset
+      of the SVG 1.2 Tiny standard.\\
+      \hline
+      \end{tabular}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Qt official training resources}
+  \begin{itemize}
+    \item {\em Website root} -- \url{https://www.qt.io/}
+    \item {\em Documentation} -- \url{http://doc.qt.io/}
+    \item {\em API reference} -- \url{http://doc.qt.io/qt-5.6/reference-overview.html}
+    \item {\em Training and events} -- \url{https://www.qt.io/events/}
+    \item {\em YouTube channel} -- \url{https://www.youtube.com/user/QtStudios/}
+    \item {\em Wiki} -- \url{https://wiki.qt.io/}
+  \end{itemize}
+\end{frame}
+
+\subsection{This training course}
+
+\begin{frame}
+  \frametitle{Accompanying source files}
+  \begin{itemize}
+  \item \texttt{examples/} -- complete suite of working Qt projects
+    \begin{itemize}
+    \item \textbf{\texttt{01\_trivial/}} -- Trivial examples like
+	    \say{hello world} on the
+	    console, with minimal GUI and with XML-defined GUI, and
+	    examples showing the use of Qt's basic utility classes.
+    \item \textbf{\texttt{02\_basic/}} -- Examples showing the fundamental
+	    basics of GUI programming in Qt, like the signal/slot mechanism,
+	    basic widgets, layouts, etc.
+    \item \textbf{\texttt{03\_qml/}} -- Examples showing the QML and Qt Quick
+	    programming basics.
+    \item \textbf{\texttt{build\_all.sh}} -- Shell script building the examples
+	    in a separate directory tree in directory \texttt{\_build}.
+
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+

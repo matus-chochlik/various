@@ -1,0 +1,50 @@
+digraph ClassTree {
+
+ranksep=0.4
+
+node [shape="rect",fontname="monospace"]
+
+QObject [style="filled",fillcolor="yellow"]
+QThread
+QWidget
+QObject_other [label="..."]
+QAbstractButton
+QFrame
+QProgressBar
+QWidget_other [label="..."]
+QCheckBox
+QPushButton
+QRadioButton
+QAbstractScrollArea [label="QAbstract\nScrollArea"]
+QLabel
+QGraphicsView [label="QGraphics\nView"]
+QTextEdit
+
+edge [dir="both",arrowhead="none",arrowtail="normal"]
+
+QObject -> QThread
+QObject -> QWidget [label="is a"]
+QObject -> QObject_other
+QWidget -> QFrame [label="is a"]
+QWidget -> QProgressBar
+QWidget -> QAbstractButton
+QWidget -> QWidget_other
+QAbstractButton -> QCheckBox
+QAbstractButton -> QPushButton
+QAbstractButton -> QRadioButton
+QFrame -> QAbstractScrollArea
+QFrame -> QLabel
+QAbstractScrollArea -> QGraphicsView
+QAbstractScrollArea -> QTextEdit
+
+
+edge [style="invis"]
+
+QThread -> QWidget
+QCheckBox -> QPushButton
+QPushButton -> QRadioButton
+QCheckBox -> QFrame
+QLabel -> QAbstractScrollArea
+QProgressBar -> QAbstractButton
+
+}

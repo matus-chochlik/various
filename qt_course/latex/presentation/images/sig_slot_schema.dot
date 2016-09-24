@@ -1,0 +1,49 @@
+digraph SigSlot {
+
+node [fontname="monospace"]
+
+node [shape="record",penwidth=2]
+
+QObject [label="{QObject|...|connect}"]
+MyObject1 [label="{MyObject1|...|valueChanged}"]
+MyObject2 [label="{MyObject2|...|setValue}"]
+
+{rank=same MyObject1,MyObject2}
+
+node [shape="Mrecord",penwidth=2]
+
+instancea1 [label="{MyObject1|a1|...|<sig>valueChanged}"]
+instanceb1 [label="{MyObject1|b1|...|<sig>valueChanged}"]
+instancec1 [label="{MyObject1|c1|...|<sig>valueChanged}"]
+instancex2 [label="{MyObject2|x2|...|<slot>setValue}"]
+instancey2 [label="{MyObject2|y2|...|<slot>setValue}"]
+
+node [shape="rect",penwidth=1]
+
+edge [dir="both",penwidth=2,arrowsize=2,arrowhead="none",arrowtail="normal"]
+
+QObject -> MyObject1
+QObject -> MyObject2
+
+edge [dir="fwd",arrowsize=1,arrowhead="vee",style="dashed"]
+
+MyObject1 -> instancea1
+MyObject1 -> instanceb1
+MyObject1 -> instancec1
+MyObject2 -> instancex2
+MyObject2 -> instancey2
+
+edge [penwidth=7,arrowhead="normal",style="tapered",constraint=false]
+
+instancea1 -> instancex2
+instancea1 -> instancey2
+instanceb1 -> instancex2
+instancec1 -> instancey2
+
+edge [style="invis",constraint=true]
+
+instancea1 -> instanceb1
+instanceb1 -> instancec1
+instancex2 -> instancey2
+
+}

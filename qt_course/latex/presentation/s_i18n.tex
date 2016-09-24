@@ -1,0 +1,227 @@
+\subsection{Translations and internationalization}
+
+\begin{frame}
+  \frametitle{Localization overview\footnote
+    {\url{https://wiki.qt.io/QtInternationalization}}}
+  \begin{itemize}
+    \item Translation of user interface texts to user language
+    \begin{itemize}
+      \item Left-to-right, right-to-left scripts.
+      \item Plural forms.
+    \end{itemize}
+    \item Displaying information in region-specific format.
+    \begin{itemize}
+      \item date and time,
+      \item numbers and currency,
+      \item \ldots
+    \end{itemize}
+    \item Other considerations
+    \begin{itemize}
+      \item time-zones,
+      \item color sensitivities,
+      \item cultural references and habits,
+      \item \ldots
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Basic workflow}
+  \small
+  \begin{itemize}
+    \item Mark all text literals which are to be translated in the source.
+    \item Update the project files.
+    \item Invoke the \texttt{lupdate} tool to generate the \texttt{.ts} files.
+    \item Update the \texttt{.ts} translation XML files -- translate the texts
+      into a particular language.
+    \item Invoke the \texttt{lrelease} tool to generate the \texttt{.qm} binary
+      translation files.
+    \item Update the application source to load and apply the translations.
+    \item Use the \texttt{QLocale} class to convert between numbers and strings
+      in locale-specific formats.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Marking texts in source}
+  \begin{itemize}
+    \item All text literals which should be translated into user's language
+     should be wrapped in the \texttt{tr()}\footnote{in C++} or the
+      \texttt{qsTr()}\footnote{in QML} macros.
+    \item Basic variant
+    \begin{itemize}
+      \item \verb@tr("&Application")@
+      \item \verb@qsTr("&File")@
+    \end{itemize}
+    \item Disambiguation
+    \begin{itemize}
+      \item \verb@tr("&Open", "file")@
+      \item \verb@tr("&Open", "window")@
+      \item \verb@tr("&Open", "network connection")@
+    \end{itemize}
+    \item Plurals
+    \begin{itemize}
+      \item \verb@tr("%1 items(s) loaded", "", n)@
+      \item \verb@tr("%1 file(s) remaining", "progress", n)@
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Updating project files}
+  \begin{itemize}
+    \item The \texttt{TRANSLATIONS} variable in the project files should
+     be updated to contain the names of the translation XML files.
+     \begin{lstlisting}
+	TRANSLATIONS += myapp_sk.ts
+	TRANSLATIONS += myapp_de.ts
+	TRANSLATIONS += myapp_fr.ts
+     \end{lstlisting}
+    \item The \texttt{SOURCES} variable determines which source files should
+     be scanned.
+    \item It is possible to add sources only for the \texttt{lupdate} tool:
+     \begin{lstlisting}
+	lupdate_only {
+	    SOURCES += gui.qml
+	    SOURCES += helper.qml
+	}
+     \end{lstlisting}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{lupdate}\footnote
+   {\url{http://doc.qt.io/qt-5.6/linguist-manager.html\#lupdate}}}
+  \begin{itemize}
+    \item The \texttt{lupdate} tool scans the source files and searches for
+      marked string literals.
+    \item Generates the \texttt{.ts}, XML-based translation files.
+    \item Basic usage
+    \begin{itemize}
+      \item \verb@lupdate project.pro@
+      \item \verb@lupdate src.cpp src.qml ... -ts output.ts@
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Translating the \texttt{.ts} files}
+  \small
+  \begin{itemize}
+    \item The generated \texttt{.ts} files contain the original strings extracted
+      from the source files.
+    \item Each \texttt{.ts} file contains the translation of the interface
+      to a single language.
+    \item These files should be translated by the translators to the target
+      language.
+  \end{itemize}
+  \begin{lstlisting}[basicstyle=\tiny\ttfamily]
+<!DOCTYPE TS>
+<TS version="2.1">
+<context>
+    <name>primes</name>
+    <message>
+        <location filename="primes.qml" line="16"/>
+        <source>Quit</source>
+        <comment>application</comment>
+        <translation>Ukoncit</translation>
+    </message>
+    <message>
+        <location filename="primes.qml" line="23"/>
+        <source>Start</source>
+        <translation>Spustit</translation>
+    </message>
+</context>
+</TS>
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{lrelease}\footnote
+   {\url{http://doc.qt.io/qt-5.6/linguist-manager.html\#lrelease}}}
+  \begin{itemize}
+    \item The \texttt{lrelease} tool converts the XML-based \texttt{.ts} files
+      into a more efficient binary representation which is loaded by the
+      application.
+    \item Basic usage
+    \begin{itemize}
+      \item \verb@lrelease project.pro@
+      \item \verb@lrelease file_sk.ts  ... -qm output.qm@
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Loading translation in a QML/C++ application}
+  \small
+  \begin{itemize}
+   \item The binary translation files can be embedded as resources:
+   \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+	<!DOCTYPE RCC><RCC version="1.0">
+	<qresource>
+	    <file>primes.qml</file>
+	    <file>primes_sk.qm</file>
+	</qresource>
+	</RCC>
+   \end{lstlisting}
+   \item The \texttt{QTranslator}\footnote
+     {\url{http://doc.qt.io/qt-5.6/qtranslator.html}} class can be used to load
+     a translation and register it with the application
+   \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+	QGuiApplication app(argc, argv);
+
+	QTranslator translator;
+	if(translator.load(":/primes_sk.qm")) {
+	    app.installTranslator(&translator);
+	}
+   \end{lstlisting}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{QLocale}\footnote
+   {\url{http://doc.qt.io/qt-5.6/qlocale.html}}}
+  \begin{itemize}
+    \item Converts data like numbers, date and time, currency, etc. between
+      their numeric value and string representation in a specified language.
+   \item Enumerations
+   \begin{itemize}
+     \small
+     \item \texttt{QLocale::Language}
+     \item \texttt{QLocale::Script}
+     \item \texttt{QLocale::Country}
+     \item \texttt{QLocale::MeasurementSystem}
+     \item \ldots
+   \end{itemize}
+   \item Construction:
+   \begin{itemize}
+     \small
+     \item \verb@QLocale::system()@ -- system locale
+     \item \verb@QLocale(const QString& name)@ -- \verb@sk_SK@, \verb@en_US@,
+       \verb@de_DE@, etc.
+     \item \verb@QLocale(Language, Country)@
+     \item \verb@QLocale(Language, Script, Country)@
+   \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\texttt{QLocale} -- functions}
+  \small
+  \begin{itemize}
+    \item \texttt{country}, \texttt{language}, \texttt{script}, \texttt{name}
+    \item \texttt{nativeCountryName}, \texttt{nativeLanguageName}
+    \item \texttt{textDirection},
+    \item \texttt{dateFormat}, \texttt{timeFormat}, \texttt{dateTimeFormat}
+    \item \texttt{currencySymbol}, \texttt{percent}, \texttt{zeroDigit},
+      \texttt{exponential}
+    \item \texttt{positiveSign}, \texttt{negativeSign}, \texttt{decimalPoint},
+      \texttt{groupSeparator}
+    \item \texttt{toString}, \texttt{toCurrencyString}
+    \item \texttt{toInt}, \texttt{toFloat}, \texttt{toDouble},
+      \texttt{toDate}, \texttt{toTime}, etc.
+    \item \texttt{toUpper}, \texttt{toLower}
+      
+  \end{itemize}
+\end{frame}
+

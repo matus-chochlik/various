@@ -1,0 +1,126 @@
+\begin{frame}[fragile]
+  \frametitle{Basic examples -- \texttt{QCoreApplication}}
+  Located in \texttt{examples/02\_basic/06\_core\_app/}.\\
+  File \texttt{fib\_calc.hpp}:
+  \begin{lstlisting}
+	#include <QtCore>
+
+	class MyFibCalc
+ 	 : public QObject
+	{
+	private:
+	    Q_OBJECT
+	    int n;
+	    static int _dumbFib(int k);
+	public:
+	    MyFibCalc(QObject* parent, int i);
+	public slots:
+	    void calculate(void);
+	signals:
+	    void done(void);
+	};
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  File \texttt{fib\_calc.cpp}:
+  \begin{lstlisting}
+	MyFibCalc::MyFibCalc(QObject* parent, int i)
+ 	 : QObject(parent)
+ 	 , n(i)
+	{ }
+
+	int MyFibCalc::_dumbFib(int k)
+	{
+	    if(k < 2) return 1;
+	    return _dumbFib(k-2) + _dumbFib(k-1);
+	}
+
+	void MyFibCalc::calculate(void)
+	{
+	    qDebug() << "fib(" << n << ") = " << _dumbFib(n);
+	    emit done();
+	}
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  File \texttt{main.cpp}:
+  \begin{lstlisting}
+	int main(int argc, char *argv[])
+	{
+	    QCoreApplication app(argc, argv);
+
+	    MyFibCalc* calc = new MyFibCalc(&app(*@\footnotemark@*), 43);
+
+	    QObject::connect(
+	        calc, SIGNAL(done()),
+	        &app, SLOT(quit())
+	    );
+
+	    QTimer::singleShot(0, calc, SLOT(calculate()));
+
+	    return app.exec();
+	}
+  \end{lstlisting}
+  \footnotetext{\texttt{app} becomes parent and owner of \texttt{calc}}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Basic examples -- \texttt{QCommandLineParser}}
+  Located in \texttt{examples/02\_basic/07\_clarg\_parser/}.\\
+  \small
+  Extends the previous example with a command line parser.\\
+  Fragment of file \texttt{main.hpp}:
+  \begin{lstlisting}[basicstyle=\tiny\ttfamily]
+	QCoreApplication app(argc, argv);
+	QCoreApplication::setApplicationName("MyFib");
+	QCoreApplication::setApplicationVersion("1.1");
+	
+	QCommandLineParser clap;
+	clap.setApplicationDescription("Calculates fibonacci numbers, slowly!");
+	clap.addHelpOption();
+	clap.addVersionOption();
+
+	const int def_n = 42;
+
+	QCommandLineOption numopt(QStringList() << "n", "number", "Number", "N");
+	numopt.setDefaultValue(QString::number(def_n, 10));
+	clap.addOption(numopt);
+	clap.process(app);
+
+	bool n_ok = true;
+	int n = clap.value(numopt).toInt(&n_ok);
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Basic examples -- \texttt{QSettings}}
+  Located in \texttt{examples/02\_basic/08\_settings/}.\\
+  \small
+  Extends the previous example with persistent settings.\\
+  Fragment of file \texttt{main.hpp}:
+  \begin{lstlisting}[basicstyle=\tiny\ttfamily]
+	QCoreApplication app(argc, argv);
+	QCoreApplication::setOrganizationName("FRI");
+	// ...
+	QCommandLineParser clap;
+	// ...
+
+	bool n_ok = true;
+	int n = clap.value(numopt).toInt(&n_ok);
+	if(!n_ok)
+	{
+	    QSettings settings;
+	    n = settings.value("parameters/n", def_n).toInt(&n_ok);
+	}
+	else
+	{
+	    QSettings settings;
+	    settings.beginGroup("parameters");
+	    settings.setValue("n", n);
+	    settings.endGroup();
+	}
+  \end{lstlisting}
+\end{frame}
+

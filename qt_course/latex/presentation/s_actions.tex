@@ -1,0 +1,34 @@
+\section{Actions}
+
+\begin{frame}
+  \frametitle{Actions -- \texttt{QAction}\footnote
+    {\url{http://doc.qt.io/qt-5.6/qaction.html}}}
+  \footnotesize
+  \begin{itemize}
+    \item Abstraction for user interface actions which can be assigned to,
+      shared among and invoked by several widgets:
+      \begin{itemize}
+        \scriptsize
+        \item \texttt{QMenuItem}
+        \item \texttt{QToolButton}
+        \item \texttt{QPushButton}
+        \item Keyboard shortcuts
+        \item \ldots
+      \end{itemize}
+    \item Can be created independently from the user interface widgets 
+      which invoke them.
+    \item Contain attributes which are then shared among the items to which the
+      action is assigned:
+      \begin{itemize}
+        \scriptsize
+        \item Title text
+        \item Icon image
+        \item Keyboard shortcut
+        \item Tooltip text
+        \item Help text
+        \item Visibility and enable state
+        \item \ldots
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x><y>0</y><width>200</width><height>100</height>
+   </rect>
+  </property>
+  <property name="windowTitle"><string>Hello</string></property>
+  <widget class="QWidget" name="centralWidget">
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>40</x><y>40</y><width>120</width><height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>&lt;I&gt;Hello&lt;/I&gt;, &lt;B&gt;GUI&lt;/B&gt; World!</string>
+    </property>
+    <property name="alignment"><set>Qt::AlignCenter</set></property>
+   </widget>
+  </widget>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+</ui>

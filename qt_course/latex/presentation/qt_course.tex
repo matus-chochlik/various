@@ -1,0 +1,88 @@
+\documentclass[compress,table,xcolor=table]{beamer}
+\mode<presentation>
+\usetheme{Montpellier}
+\hypersetup{pdfstartview={Fit}}
+
+\usecolortheme{spruce}
+\useoutertheme{smoothbars}
+
+\setbeamertemplate{bibliography item}[text]
+\usepackage[utf8]{inputenc}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{dirtytalk}
+\usepackage{multirow}
+
+\definecolor{light-gray}{gray}{0.95}
+
+\usepackage{listings}
+\lstset{
+backgroundcolor = \color{light-gray},
+basicstyle=\footnotesize\ttfamily,
+language=C++,
+breaklines=true,
+tabsize=2,
+%numbers=left,
+%firstnumber=1,
+escapeinside={(*@}{@*)}
+}
+
+\usepackage{url}
+
+\setlist[itemize,1]{label=$\bullet$}
+\setlist[itemize,2]{label=$\bullet$}
+\setlist[itemize,3]{label=$\bullet$}
+
+\begin{document}
+
+\title{Qt training course}
+
+\frame{\titlepage}
+
+% Intro %
+\input{s_intro.tex}
+
+% Qt development %
+\section{Getting started}
+% Build process %
+\input{s_build.tex}
+\input{s_qt_creator.tex}
+
+% Examples %
+\section{Hello Qt}
+\input{s_trivial_ex_hello.tex}
+
+% Fundamentals
+\section{Core}
+\input{s_core_utils.tex}
+\input{s_algorithms.tex}
+
+\section{Objects}
+\input{s_objects.tex}
+\input{s_metaobjects.tex}
+\input{s_properties.tex}
+
+\section{Interaction}
+\input{s_events.tex}
+\input{s_signals_slots.tex}
+\input{s_basic_ex_core_app.tex}
+\input{s_actions.tex}
+
+\section{Widgets}
+\input{s_widgets.tex}
+\input{s_layouts.tex}
+\input{s_basic_ex_layouts.tex}
+
+\section{Qt Quick}
+\input{s_qt_quick.tex}
+
+% Internationalization % 
+\section{Localization}
+\input{s_i18n.tex}
+
+\input{s_qml_examples.tex}
+
+% Outro %
+\input{s_outro.tex}
+
+\end{document}

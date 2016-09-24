@@ -1,0 +1,459 @@
+\subsection{Qt's build process and tools}
+\begin{frame}
+  \frametitle{Qt's build process and tools}
+  \begin{itemize}
+    \item The process of building Qt applications is fairly complex.
+    \item Qt provides tools which greatly simplify the build process.
+    \item Command line tools:
+      \begin{itemize}
+        \item \texttt{qmake} -- build script generator,
+        \item \texttt{moc} -- metaobject compiler,
+        \item \texttt{rcc} -- resource compiler, 
+        \item \texttt{uic} -- user interface compiler.
+      \end{itemize}
+    \item Qt Creator -- cross-platform Qt-specific IDE / RAD tool.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\texttt{qmake} -- build script generator}
+  \begin{itemize}
+    \item \texttt{qmake} is a platform-independent generator of platform-specific
+      build scripts, similar to \texttt{cmake}\footnote{\url{https://cmake.org/}}.
+      \begin{itemize}
+        \item Unix Makefiles,
+        \item NMake Makefiles,
+        \item MS Visual Studio project files,
+        \item XCode,
+        \item etc.
+      \end{itemize}
+    \item The generated build scripts invoke the compiler and the other
+      command-line tools (\texttt{moc}, \texttt{rcc}, \texttt{uic}, etc.)
+      in a platform-specific way.
+    \item The project files used by \texttt{qmake} are however,
+      platform-independent.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{{\texttt .pro} -- \texttt{qmake} project files}
+  \small
+  \begin{itemize}
+    \item The project files are structured text files containing all information
+      required by \texttt{qmake} to build an application, library, or plugin.
+    \item The source files and other resources are usually specified declaratively
+      by assigning values to predefined variables:
+      \begin{itemize}
+        \item \begin{verbatim}
+VARIABLE  = list "of values"
+\end{verbatim}
+        \item \begin{verbatim}
+VARIABLE += additional values
+\end{verbatim}
+        \item \begin{verbatim}
+VARIABLE -= values "to be" \
+            removed
+\end{verbatim}
+      \end{itemize}
+    \item Values containing white-spaces must be enclosed in double quotes.
+    \item Value initialization can span multiple lines if the newline is escaped.
+    \item Variables can be dereferenced by prepending \verb@$$@ before the
+      identifier:
+      \begin{itemize}
+      \item \verb@MY_VAR = $$VARIABLE@
+      \end{itemize}
+    \item Comments start with a hash sign \verb@#@
+      \begin{itemize}
+      \item \verb@# This comment spans to the end of the line@
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{{\texttt .pro} -- common variables}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.2\textwidth}|p{0.7\textwidth}|}
+    \hline
+    \textbf{Variable} & \textbf{Purpose} \\
+    \hline
+    \texttt{CONFIG} & General project configuration options \\
+    \hline
+    \texttt{FORMS} & A list of UI files to be processed by uic. \\
+    \hline
+    \texttt{HEADERS} & A list of filenames of header files used when building the project. \\
+    \hline
+    \texttt{QT} & Qt-specific configuration options. \\
+    \hline
+    \texttt{RESOURCES} & A list of resource files to be included in the final project. \\
+    \hline
+    \texttt{SOURCES} & A list of source code files to be used when building the project. \\
+    \hline
+    \texttt{TEMPLATE} & The template to use for the project. This determines whether the output of the build process will be an application, a library, or a plugin. \\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{{\texttt .pro} -- additional variables}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.2\textwidth}|p{0.7\textwidth}|}
+    \hline
+    \textbf{Variable} & \textbf{Purpose} \\
+    \hline
+    \texttt{DESTDIR} & The directory in which the executable or binary file will be placed. \\
+    \hline
+    \texttt{SUBDIRS} & List of subdirectories containing sub-projects. Used
+    with the \texttt{subdir} \texttt{TEMPLATE}.\\
+    \hline
+    \texttt{LIBS} & List of paths to link library files or a list of Unix-style
+      link \texttt{-llibname} or \texttt{-Llibdir} options. \\
+    \hline
+    \texttt{INCLUDEPATH} & List of paths containing third-party include files. \\
+    \hline
+    \texttt{DEFINES} & List of preprocessor symbols which should be defined. \\
+    \hline
+    \texttt{PKGCONFIG} & List names of third-party packages registered with
+    the \texttt{pkg-config} utility\footnote
+    {\tiny\url{http://www.freedesktop.org/wiki/Software/pkg-config}}. \\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{{\texttt .pro} -- values for \texttt{CONFIG} -- build types}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.2\textwidth}|p{0.7\textwidth}|}
+    \hline
+    \textbf{Value} & \textbf{Meaning} \\
+    \hline
+    \texttt{qt\footnote{defined by default}} & The target is a Qt application
+    or library and requires the Qt library and header files.\\
+    \hline
+    \texttt{x11} & The target is a X11 application or library.\\
+    \hline
+    \texttt{console} & The target is a console application. \\
+    \hline
+    \texttt{windows} & The target is a Windows application. \\
+    \hline
+    \texttt{testcase} & The target is an automated test. Only relevant when
+    generating makefiles. \\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{{\texttt .pro} -- values for \texttt{CONFIG} -- library-related}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.22\textwidth}|p{0.68\textwidth}|}
+    \hline
+    \textbf{Value} & \textbf{Meaning} \\
+    \hline
+    \texttt{shared} & The target is a shared library.\\
+    \texttt{dll} & \\
+    \hline
+    \texttt{static} & The target is a static library.\\
+    \texttt{staticlib} & \\
+    \hline
+    \texttt{plugin} & The target is a plug-in\footnote{implies \texttt{shared}}.\\
+    \hline
+    \texttt{designer} & The target is a plug-in for {\em Qt Designer}.\\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{{\texttt .pro} -- values for \texttt{CONFIG} -- build configurations}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.3\textwidth}|p{0.6\textwidth}|}
+    \hline
+    \textbf{Value} & \textbf{Meaning} \\
+    \hline
+    \texttt{release} & The project is built in the release mode. \\
+    \hline
+    \texttt{debug} & The project is built in the debug mode. If both
+    \texttt{release} and \texttt{debug} are specified, then the last one takes
+    effect.\\
+    \hline
+    \texttt{debug\_and\_release} & The project is built in the both the release 
+    and the debug mode.
+    If the (default) \texttt{debug\_and\_release\_target} option is specified,
+    then the debug and release files are built into separate subdirectories.
+    \\
+    \hline
+    \texttt{build\_all} & If \texttt{debug\_and\_release} is specified,
+    the project is built in both debug and release modes by default.  \\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{{\texttt .pro} -- values for \texttt{CONFIG} -- C++ features}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.25\textwidth}|p{0.65\textwidth}|}
+    \hline
+    \textbf{Value} & \textbf{Meaning} \\
+    \hline
+    \texttt{exceptions} & Exceptions should be enabled\footnote{are enabled
+    by default}.  Otherwise the compiler's default behavior is used.\\
+    \hline
+    \texttt{exceptions\_off} & Exceptions should be disabled.
+    Otherwise the compiler's default behavior is used.\\
+    \hline
+    \texttt{thread} & Support for threads should be enabled.
+    This option is implied when \texttt{CONFIG} also includes \texttt{qt}\footnote
+    {which is set by default}.\\
+    \hline
+    \texttt{c++11} & Support for the C++11 standard is explicitly enabled, if
+    the compiler allows it. \\
+    \hline
+    \texttt{c++14} & Support for the C++14 standard is explicitly enabled, if
+    the compiler allows it. \\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+\frametitle{{\texttt .pro} -- values for \texttt{CONFIG} -- other}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.20\textwidth}|p{0.70\textwidth}|}
+    \hline
+    \textbf{Value} & \textbf{Meaning} \\
+    \hline
+    \texttt{ordered} & If the \texttt{subdirs} project template is used,
+    then the subdirectories listed in the \texttt{SUBDIRS} variable are
+    built in the same order in which they are listed. \\
+    \hline
+    \texttt{warn\_on} & The compiler should output as many warnings as possible. \\
+    \hline
+    \texttt{warn\_off} & The compiler should output as few warnings as possible.
+    If both \texttt{warn\_on} and \texttt{warn\_off} values are specified, then
+    the last one takes effect.\\
+    \hline
+    \texttt{rtti} & RTTI should be enabled. Otherwise the compiler's default
+    behavior is used.\\
+    \hline
+    \texttt{rtti\_off} & RTTI should be disabled. Otherwise the compiler's default
+    behavior is used.\\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}
+  \frametitle{{\texttt .pro} -- project templates}
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.2\textwidth}|p{0.7\textwidth}|}
+    \hline
+    \textbf{\texttt{TEMPLATE =}} & \textbf{Generated output} \\
+    \hline
+    \texttt{app}\footnote{the default} & Makefile building an application executable \\
+    \hline
+    \texttt{lib} & Makefile building a link library \\
+    \hline
+    \texttt{subdirs} & Makefile containing rules for building sub-projects \\
+    \hline
+    \texttt{aux\footnote{only in Qt 5}} & Makefile for builds where the compiler
+      does not need to be invoked. \\
+    \hline
+    \texttt{vcapp} & MSVC project for building an application executable \\
+    \hline
+    \texttt{vclib} & MSVC project for building a link library \\
+    \hline
+    \texttt{vcsubdirs} & MSVC solution containing several sub-projects \\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{{\texttt .pro} -- \texttt{qmake} built-ins and flow control}
+  \small
+  \begin{itemize}
+    \item Support for simple programming constructs allow to describe different
+      build processes for different platforms and environments:
+      \begin{itemize}
+      \item Contents of other \texttt{.pro} files can be included:
+\begin{verbatim}
+include(another.pro)
+\end{verbatim}
+      \item Conditional structures:
+\begin{verbatim}
+<condition> {
+    <conditionally-executed-commands>
+}
+\end{verbatim} for example:
+\begin{verbatim}
+win32 { SOURCES += win32_utils.cpp }
+\end{verbatim}
+      \item For-each loops:
+\begin{verbatim}
+LIST = list of values
+for(ITEM, LIST) {
+    MY_VAR = $$ITEM
+}
+\end{verbatim}
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Building on the command line with \texttt{qmake}}
+  \begin{columns}
+    \begin{column}[t]{0.47\textwidth}
+      Building in the source tree:
+      \begin{verbatim}
+$> cd ${PROJECT_ROOT}
+$> qmake project_name.pro
+$> make
+      \end{verbatim}
+      Cleanup in the source tree:
+      \begin{verbatim}
+$> make distclean
+      \end{verbatim}
+    \end{column}
+    \begin{column}[t]{0.53\textwidth}
+      Building in a separate directory tree:
+      \begin{verbatim}
+$> cd ${PROJECT_ROOT}
+$> mkdir _build_dir
+$> cd _build_dir
+$> qmake ../project_name.pro
+$> make
+      \end{verbatim}
+      Cleanup in a separate directory tree:
+      \begin{verbatim}
+$> rm -rf _build_dir
+      \end{verbatim}
+    \end{column}
+  \end{columns}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\texttt{moc}\footnote
+    {\url{http://doc.qt.io/qt-5.6/moc.html}} -- metaobject compiler}
+  \begin{itemize}
+    \item \texttt{moc} -- abbreviation for {\em metaobject compiler},
+      is an external metaprogramming tool which implements Qt's extensions to
+      C++
+      \begin{itemize}
+        \item the signal and slot mechanism,
+        \item dynamic properties,
+        \item special type-casts,
+        \item extended type-info and reflection.
+      \end{itemize}
+    \item During a build it pre-processes the C++ source files and generates
+      new temporary, intermediate C++ files, which are compiled into the final
+      executable.
+    \item Triggered for example by the \texttt{Q\_OBJECT}, \texttt{Q\_PROPERTY},
+      \texttt{Q\_CLASSINFO} and several other macros in the C++ source code.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\texttt{rcc}\footnote
+    {\url{http://doc.qt.io/qt-5.6/rcc.html}} -- resource compiler}
+  \begin{itemize}
+    \item \texttt{rcc} or {\em resource compiler}, is an external tool which
+      compiles and embeds external resource files into the built executable.
+    \item It allows to distribute the executable together with frequently
+      used resources and data bundled into a single file.
+    \item Common resource types:
+      \begin{itemize}
+        \item bitmaps,
+        \item icons,
+        \item sounds,
+        \item scripts or programs in other languages (GLSL),
+        \item translations,
+        \item etc.
+      \end{itemize}
+    \item The resource files are specified in \texttt{.rc} or \texttt{.qrc} format.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Qt resource system\footnote
+    {\url{http://doc.qt.io/qt-5.6/resources.html}} -- \texttt{.qrc} file}
+  \small
+  \begin{itemize}
+    \item XML-based format
+    \item Specifies the external files which should be compiled into the
+      executable or into an external resource file.
+    \item Example
+    \begin{lstlisting}
+	<!DOCTYPE RCC>
+	<RCC version="1.0">
+	  <qresource>
+    	    <file>icons/copy.png</file>
+    	    <file>icons/cut.png</file>
+    	    <file>icons/new.png</file>
+    	    <file>icons/open.png</file>
+    	    <file>icons/paste.png</file>
+    	    <file>icons/save.png</file>
+	  </qresource>
+	</RCC>
+    \end{lstlisting}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Qt resource system -- \texttt{.qrc} file (cont.)}
+  \begin{itemize}
+    \footnotesize
+    \item Resources compiled into the executable can be accessed from the same
+      executable by using special paths or \texttt{QUrl}s\footnote
+       {\url{http://doc.qt.io/qt-5.6/qurl.html}}:
+      \begin{itemize}
+        \item \verb@:/path/to/dir/filename.ext@
+        \item \verb@qrc:///path/to/dir/filename.ext@
+      \end{itemize}
+    \item The embedded resource filename can be changed with the \verb@alias@
+      attribute:
+      \begin{itemize}
+        \item Declaration:
+        \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+	<file alias="icon-cut.png">icons/cut.png</file>
+        \end{lstlisting}
+        \item Accessed as: \verb@:/icon-cut.png@
+      \end{itemize}
+    \item The path to the resource can be changed with the \verb@prefix@
+      attribute:
+      \begin{itemize}
+        \item Declaration:
+        \begin{lstlisting}[basicstyle=\scriptsize\ttfamily]
+	<qresource prefix="/res/img">
+	  <file alias="icon-cut.png">icons/cut.png</file>
+	</qresource>
+        \end{lstlisting}
+        \item Accessed as: \verb@:/res/img/icon-cut.png@
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\texttt{uic}\footnote
+    {\url{doc.qt.io/qt-5.6/uic.html}} -- user interface compiler}
+  \begin{itemize}
+    \item \texttt{uic} or {\em user interface compiler}, reads the user interface
+      definition files (\texttt{.ui}) and generates corresponding C++ source files.
+    \item The \texttt{.ui} files are specified in the XML language and can be
+      either generated by a GUI designer, for example the one integrated into
+      Qt Creator, or written manually.
+
+  \end{itemize}
+\end{frame}
+
+

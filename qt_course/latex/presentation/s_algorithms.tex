@@ -1,0 +1,48 @@
+\subsection{Algorithms}
+
+\begin{frame}[fragile]
+  \frametitle{Generic algorithms\footnote
+    {\url{http://doc.qt.io/qt-5.6/qtalgorithms.html}}}
+  \small
+  \begin{itemize}
+  \item Qt provides a set of global template functions implementing several
+    well known algorithms.
+  \begin{columns}
+    \scriptsize
+    \begin{column}{0.26\textwidth}
+    \begin{itemize}
+      \item \texttt{qCopy}
+      \item \texttt{qCopyBackward}
+      \item \texttt{qFind}
+      \item \texttt{qBinaryFind}
+      \item \texttt{qSort}
+      \item \texttt{qStableSort}
+    \end{itemize}
+    \end{column}
+    \begin{column}{0.29\textheight}
+    \begin{itemize}
+      \item \texttt{qFill}
+      \item \texttt{qLowerBound}
+      \item \texttt{qUpperBound}
+      \item \texttt{qEqual}
+      \item \texttt{qLess}
+      \item \texttt{qGreater}
+    \end{itemize}
+    \end{column}
+    \begin{column}{0.46\textheight}
+    \begin{itemize}
+      \item \texttt{qCount}
+      \item \texttt{qDeleteAll}
+      \item \texttt{qCountLeadingZeroBits}
+      \item \texttt{qPopulationCount}
+      \item \ldots
+    \end{itemize}
+    \end{column}
+  \end{columns}
+
+  \item Header \verb@#include <QtAlgorithms>@
+  \item Since Qt 5, users are encouraged to use STL algorithms instead, if
+    standard replacements are available
+  \end{itemize}
+\end{frame}
+

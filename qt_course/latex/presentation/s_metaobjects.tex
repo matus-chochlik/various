@@ -1,0 +1,123 @@
+\section{The metaobject system}
+
+\begin{frame}
+  \frametitle{The metaobject system\footnote
+    {\url{http://doc.qt.io/qt-5.6/metaobjects.html}}}
+  \begin{itemize}
+    \item Simplified run-time reflection mechanism for all types descending
+      from \texttt{QObject}.
+    \item Provides basic metadata describing classes, their properties,
+      member functions, constructors, etc.
+    \item Also helps to implement
+    \begin{itemize}
+      \item the signals and slots mechanism,
+      \item the dynamic object properties,
+      \item the class-info metadata,
+      \item the \texttt{qobject\_cast}.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{QMetaObject}\footnote
+    {\url{http://doc.qt.io/qt-5.6/qmetaobject.html}}}
+  \begin{itemize}
+    \item Provides meta-information about the actual class of an instance
+      of \texttt{QObject}:
+      \begin{itemize}
+        \item class name,
+        \item base class -- \texttt{QMetaClass},
+        \item class infos -- \texttt{QMetaClassInfo},
+        \item properties -- \texttt{QMetaProperty},
+        \item enumerations -- \texttt{QMetaEnum},
+        \item methods -- \texttt{QMetaMethod},
+        \item constructors -- \texttt{QMetaMethod}.
+      \end{itemize}
+    \item Obtained by calling \verb@QObject::metaObject@.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{QMetaClassInfo}\footnote
+    {\url{http://doc.qt.io/qt-5.6/qmetaclassinfo.html}}}
+  \begin{itemize}
+    \item Provides additional constant name and value string pair describing
+      arbitrary aspect of the class.
+    \item Each \texttt{QObject} can have an arbitrary number of class infos.
+    \item Defined by the \verb@Q_CLASSINFO@ macro:
+    \begin{verbatim}
+	class MyClass
+	{
+	    Q_OBJECT
+	    Q_CLASSINFO("autor", "Name Surname")
+	    Q_CLASSINFO("url", "http://example.com")
+	    Q_CLASSINFO("email", "name@example.com")
+	};
+    \end{verbatim}
+    \item Obtained by calling \verb@QMetaObject::classInfo@.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{QMetaProperty}\footnote
+    {\url{http://doc.qt.io/qt-5.6/qmetaproperty.html}}}
+  \begin{itemize}
+    \item Provides metadata describing a single property of a class descending
+     from \texttt{QObject}
+     \begin{itemize}
+       \item \texttt{name}
+       \item \texttt{type}
+       \item \texttt{typeName}
+       \item \texttt{isReadable}
+       \item \texttt{isWritable}
+       \item \texttt{isResetable}
+       \item \texttt{isEnumType}
+       \item \texttt{isFinal}
+       \item \ldots
+     \end{itemize}
+    \item Each \texttt{QObject} can have an arbitrary number of properties.
+    \item Obtained by calling \verb@QMetaObject::property@.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{QMetaEnum}\footnote
+    {\url{http://doc.qt.io/qt-5.6/qmetaenum.html}}}
+  \begin{itemize}
+    \item Provides metadata describing an enumeration type defined in a descendant
+     of \texttt{QObject}
+     \begin{itemize}
+       \item \texttt{name}
+       \item \texttt{scope}
+       \item \texttt{keyCount} -- number of enumeration values
+       \item \texttt{value} -- int
+       \item \texttt{key} -- string
+       \item value to key conversion
+       \item key to value conversion
+       \item \ldots
+     \end{itemize}
+    \item Each \texttt{QObject} can have an arbitrary number of enumerations.
+    \item Obtained by calling \verb@QMetaObject::enumerator@.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\texttt{QMetaMethod}\footnote
+    {\url{http://doc.qt.io/qt-5.6/qmetamethod.html}}}
+  \begin{itemize}
+    \item Provides metadata describing method defined in a descendant of
+      \texttt{QObject}.
+      \begin{itemize}
+        \item \texttt{name}
+        \item \texttt{access} -- private, protected, public
+        \item \texttt{parameterCount}
+        \item \texttt{parameterNames}
+        \item \texttt{parameterTypes}
+        \item \texttt{returnType}
+        \item \ldots
+        \item \texttt{invoke} -- call the method
+      \end{itemize}
+    \item Obtained by calling \verb@QMetaObject::method@.
+  \end{itemize}
+\end{frame}
+

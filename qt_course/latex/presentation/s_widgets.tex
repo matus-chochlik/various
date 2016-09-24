@@ -1,0 +1,51 @@
+\subsection{Qt's Widget model}
+
+\begin{frame}
+  \frametitle{Qt's widget model -- \texttt{QWidget}\footnote
+    {http://doc.qt.io/qt-5.6/qwidget.html}}
+  \begin{itemize}
+    \item Specialization of \texttt{QObject} for visual components.
+    \begin{itemize}
+      \item Inherits the memory management functionality, etc.
+      \item Adds basic functionality for visual representation.
+    \end{itemize}
+    \item Base class of graphical user interface components.
+    \item Event reception and handling functionality.
+    \begin{itemize}
+      \item keyboard,
+      \item mouse,
+      \item window system,
+      \item etc.
+    \end{itemize}
+    \item Responsible for painting the widget on the screen.
+    \begin{itemize}
+      \item Only draws a gray rectangle.
+      \item Overridden in the derived classes.
+      \item Can use platform's native components.
+      \item Use styles.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Qt's widget model -- \texttt{QWidget}}
+  \begin{itemize}
+    \item Similar to \texttt{QObject}, instances of \texttt{QWidget} form an
+    N-way tree hierarchy.
+    \begin{itemize}
+      \item This hierarchy represents widget {\em containment}.
+      \item A {\em parent} widget can contain several {\em child} widgets.
+      \item Child widget coordinate system is relative to the parent's
+        coordinate system.
+      \item Child widgets are clipped by parents boundaries.
+      \item Most state changes on the parent propagate to the children
+      \begin{itemize}
+        \item visible / invisible,
+        \item enabled / disabled,
+        \item etc.
+      \end{itemize}
+    \end{itemize}
+    \item Widgets with no explicitly-assigned parent automatically become desktop windows.
+  \end{itemize}
+\end{frame}
+

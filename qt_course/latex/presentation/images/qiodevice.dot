@@ -1,0 +1,47 @@
+digraph QIODevice {
+
+ranksep=0.4
+
+node [shape="rect",fontname="monospace"]
+
+QObject
+QIODevice [style="filled",fillcolor="yellow"]
+QAbstractSocket
+QTcpSocket
+QUdpSocket
+QSslSocket
+QLocalSocket
+QBluetoothSocket [label="QBluetooth\nSocket"]
+QSerialPort
+QBuffer
+QFileDevice
+QFile
+QIODevice_other [label="..."]
+
+edge [dir="both",arrowhead="none",arrowtail="normal"]
+
+QObject -> QIODevice
+QIODevice -> QAbstractSocket
+QAbstractSocket -> QTcpSocket
+QAbstractSocket -> QUdpSocket
+QTcpSocket -> QSslSocket
+QIODevice -> QLocalSocket
+QIODevice -> QBluetoothSocket
+QIODevice -> QSerialPort
+QIODevice -> QBuffer
+QIODevice -> QFileDevice
+QFileDevice -> QFile
+QIODevice -> QIODevice_other
+
+edge [style="invis"]
+
+QLocalSocket -> QBluetoothSocket
+QBluetoothSocket -> QAbstractSocket
+QSerialPort -> QBuffer
+QSerialPort -> QLocalSocket
+QBuffer -> QUdpSocket
+QBuffer -> QIODevice_other
+QUdpSocket -> QFileDevice
+
+
+}

@@ -1,0 +1,45 @@
+digraph SignalsSlots {
+
+rankdir="LR"
+overlap=false
+splines=true
+
+node [fontname="monospace"]
+
+ScrollBar25 [shape="none",image="scrollbar_25.png",label=""]
+ScrollBar75 [shape="none",image="scrollbar_75.png",label=""]
+ScrollBarChange [shape="none",label="User\ninteraction"]
+
+{rank=same ScrollBar25 ScrollBar75 ScrollBarChange}
+
+ProgressBar25 [shape="none",image="progressbar_25.png",label=""]
+ProgressBar75 [shape="none",image="progressbar_75.png",label=""]
+ProgressBarChange [shape="none",label="Change"]
+
+{rank=same ProgressBar25 ProgressBar75 ProgressBarChange}
+
+edge [style="tapered",penwidth=4]
+
+ScrollBar25 -> ScrollBarChange
+ScrollBarChange -> ScrollBar75 
+
+ProgressBar25 -> ProgressBarChange
+ProgressBarChange -> ProgressBar75 
+
+EmitSignal [shape="none",label="emit valueChanged(75)"]
+Connection [shape="parallelogram",label="Connection"]
+TriggerSlot [shape="none",label="setValue(75)"]
+
+{rank=same EmitSignal Connection TriggerSlot}
+
+ScrollBarChange -> EmitSignal [constraint=false]
+EmitSignal -> Connection
+Connection -> TriggerSlot
+TriggerSlot -> ProgressBarChange [constraint=false]
+
+edge [style="invis"]
+
+ScrollBarChange -> Connection
+Connection -> ProgressBarChange
+
+}

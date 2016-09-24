@@ -1,0 +1,47 @@
+digraph QObjectTree {
+
+ranksep=0.1
+
+node [fontname="monospace"]
+
+node [shape="Mrecord"]
+
+QMainWindow [label="{QObject|...|QMainWindow}"]
+QToolBox [label="{QObject|...|QToolBox}"]
+QPushButton1 [label="{QObject|...|QPushButton}"]
+QPushButton2 [label="{QObject|...|QPushButton}"]
+QPushButton3 [label="{QObject|...|QPushButton}"]
+QCheckBox1[label="{QObject|...|QCheckBox}"]
+QCheckBox2[label="{QObject|...|QCheckBox}"]
+QTextEdit [label="{QObject|...|QTextEdit}"]
+QStatusBar [label="{QObject|...|QStatusBar}"]
+QProgressBar [label="{QObject|...|QProgressBar}"]
+QLabel [label="{QObject|...|QLabel}"]
+
+edge [arrowhead="vee"]
+
+QMainWindow -> QToolBox
+QToolBox -> QPushButton1
+QToolBox -> QPushButton2
+QToolBox -> QPushButton3
+QToolBox -> QCheckBox1
+QToolBox -> QCheckBox2
+QMainWindow -> QTextEdit
+QMainWindow -> QStatusBar [label="has a"]
+QStatusBar -> QProgressBar
+QStatusBar -> QLabel [label="has a"]
+
+edge [style="invis"]
+
+QToolBox -> QTextEdit
+QPushButton1 -> QPushButton2
+QPushButton2 -> QPushButton3
+QPushButton3 -> QCheckBox1
+QCheckBox1 -> QCheckBox2
+
+
+QTextEdit -> QStatusBar
+
+QProgressBar -> QLabel
+
+}

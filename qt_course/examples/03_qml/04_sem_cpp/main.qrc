@@ -1,0 +1,8 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+	<file>SemLight.qml</file>
+	<file>semaphore.qml</file>
+	<file>stop.svg</file>
+	<file>walk.svg</file>
+</qresource>
+</RCC>

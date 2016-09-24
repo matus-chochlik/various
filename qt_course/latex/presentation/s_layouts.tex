@@ -1,0 +1,105 @@
+\subsection{Layouts}
+
+\begin{frame}
+  \frametitle{Qt's widget layouts -- \texttt{QLayout}\footnote
+    {\url{http://doc.qt.io/qt-5.6/qlayout.html}}}
+  \begin{itemize}
+    \item Layouts are classes responsible for automatic arranging of
+    child widgets within a parent widget, in order to make good
+    use of the available screen space.
+    \item Layouts manage the following tasks:
+    \begin{itemize}
+      \item positioning of child widgets,
+      \item determining sensible default sizes of child widgets,
+      \item determining sensible minimum (and maximum) dimensions of child widgets,
+      \item resizing of children after the resize of their parent widget,
+      \item automatic repositioning when the contents of a parent widget change.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Qt's widget layouts}
+  \begin{itemize}
+    \item Similar to widgets, layouts can also form a hierarchy of:
+    \begin{itemize}
+      \item \texttt{QWidget}s,
+      \item other layouts,
+      \item frames, margins and other \say{empty} spaces, both fixed and stretching.
+    \end{itemize}
+    \item Layouts are \texttt{QObject}s, however they {\em are not} descendants
+     of \texttt{QWidget} themselves.
+    \item Layouts {\em do not} manage the lifetime of the objects they are
+      arranging.
+    \item Layouts can be applied to instances of \texttt{QWidget}.
+    \item The widget to which a layout is applied is responsible for its deletion.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{The layout process}
+  \begin{itemize}
+    \item The process of creating widget layouts usually consists of these
+      steps:
+    \begin{itemize}
+      \item Create the parent widget
+      \item Create the child widgets as being contained and owned by the parent
+        widget
+      \item Create the layout(s) arranging the children of the parent widget
+      \item Add the child widgets to the layout(s)
+      \item Optionally nest the layout(s)
+      \item Assign the single outermost layout to the parent widget
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Basic layout types\footnote{Source \url{http://doc.qt.io/qt-5.6/layout.html}}}
+  This table briefly describes the most commonly used layout types.
+  \begin{center}
+  \rowcolors{2}{green!80!yellow!50}{green!70!yellow!40}
+  \begin{tabular}{|p{0.2\textwidth}|p{0.7\textwidth}|}
+    \hline
+    \textbf{Class} & \textbf{Description} \\
+    \hline
+    \texttt{QHBoxLayout} & Arranges widgets in a single horizontal row, from left
+      to right, or right to left for right-to-left languages. \\
+    \hline
+    \texttt{QVBoxLayout} & Arranges widgets in a single vertical column, from top
+      to bottom. \\
+    \hline
+    \texttt{QGridLayout} & Arranges widgets in a two-dimensional grid with several
+      rows and/or columns. Widgets can occupy multiple cells. \\
+    \hline
+    \texttt{QFormLayout} & Arranges widgets in a 2-column descriptive
+      label-and-field style, typical for data input forms. \\
+    \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Applying layouts to widgets}
+  \begin{itemize}
+    \item Layouts are applied to instances of \texttt{QWidget}:
+    \begin{itemize}
+    \item {\em early} -- by passing a pointer to the parent of the layout in
+    the layout's constructor:
+    \begin{verbatim}
+	QWidget* parent = ...
+	QHBoxLayout* layout = new QHBoxLayout(parent);
+	QWidget* child = ...
+	layout->addWidget(child);
+    \end{verbatim}
+    \item {\em later} -- by calling \verb@QWidget::setLayout@:
+    \begin{verbatim}
+	QWidget* parent = ...
+	QHBoxLayout* layout = new QHBoxLayout;
+	QWidget* child = ...
+	layout->addWidget(child);
+	parent->setLayout(layout);
+    \end{verbatim}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+

@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+	<file>plurals.qml</file>
+	<file>plurals_sk.qm</file>
+</qresource>
+</RCC>
