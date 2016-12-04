@@ -34,10 +34,20 @@ function cal_translate()
 	cut -d'|' -f2 
 }
 
+function babel_lang_name()
+{
+	case ${language}_${country} in
+	sk_SK) echo "slovak";;
+	en_UK) echo "british";;
+	*) echo "english";;
+	esac
+}
+
 function cal_begin_document()
 {
 echo "\\documentclass{article}"
 echo "\\usepackage[utf8]{inputenc}"
+echo "\\usepackage[$(babel_lang_name)]{babel}"
 echo "\\usepackage{geometry}"
 echo "\\geometry{"
 echo "	paperwidth=29.7cm,"
