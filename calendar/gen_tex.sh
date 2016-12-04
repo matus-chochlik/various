@@ -26,10 +26,11 @@ yearweeks=$(date +%W -d "${year}-12-31")
 
 language=${3:-sk}
 country=${4:-SK}
+input_dir=${5:-$(dirname ${0})}
 
 function cal_translate()
 {
-	grep -e "^${1}|" < $(dirname ${0})/dict/${language}.txt |
+	grep -e "^${1}|" < ${input_dir}/dict/${language}.txt |
 	cut -d'|' -f2 
 }
 
@@ -52,6 +53,7 @@ echo "\\usepackage{graphicx}"
 echo "\\DeclareGraphicsExtensions{.png}"
 echo "\\usepackage[dvipsnames]{xcolor}"
 echo "\\usepackage{shadowtext}"
+echo "\\usepackage{transparent}"
 echo "\\usepackage{tikz}"
 echo "\\usetikzlibrary{calendar}"
 echo "\\usepackage[pages=all,placement=center]{background}"
@@ -124,9 +126,9 @@ function cal_page_image()
 	echo "  \\mbox{"
 	echo "  \\begin{minipage}[c]{\\linewidth}"
 	echo "  \\vspace{6mm}"
-	echo "	\\large{\\textsl{"
+	echo "	\\large{\\selectfont\\usefont{T1}{qag}{m}{sc}"
 	cat "${imgdir}/${week_no}.txt"
-	echo "  }}"
+	echo "  }"
 	echo "  \\end{minipage}"
 	echo "  }"
 	echo "\\end{minipage}"
@@ -191,11 +193,11 @@ function cal_page_table()
 		weekend=0
 		items=0
 
-		stable_holiday_file="$(dirname $0)/holidays/${country}/stable/${month_no}.txt"
-		movable_holiday_file="$(dirname $0)/holidays/${country}/movable/${year}/${month_no}.txt"
+		stable_holiday_file="${input_dir}/holidays/${country}/stable/${month_no}.txt"
+		movable_holiday_file="${input_dir}/holidays/${country}/movable/${year}/${month_no}.txt"
 		holiday_file="${temp_dir}/holidays${year}${month_no}.txt"
 
-		items_file="$(dirname $0)/items/${country}/${month_no}.txt"
+		items_file="${input_dir}/items/${country}/${month_no}.txt"
 
 		rm -f ${holiday_file}
 
