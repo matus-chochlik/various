@@ -62,6 +62,10 @@ echo "}"
 echo "\\usepackage{graphicx}"
 echo "\\DeclareGraphicsExtensions{.png}"
 echo "\\usepackage[dvipsnames]{xcolor}"
+echo "\\definecolor{Workday0Color}{gray}{0.85}"
+echo "\\definecolor{Workday1Color}{gray}{0.95}"
+echo "\\definecolor{Holiday0Color}{rgb}{0.9,0.9,0.5}"
+echo "\\definecolor{Holiday1Color}{rgb}{1.0,1.0,0.0}"
 echo "\\usepackage{shadowtext}"
 echo "\\usepackage{transparent}"
 echo "\\usepackage{tikz}"
@@ -240,8 +244,8 @@ function cal_page_table()
 
 
 		if let holidays+weekend
-		then echo "  \\colorbox{GreenYellow}{"
-		else echo "  \\colorbox{White}{"
+		then echo "  \\colorbox{Holiday$((weekday%2))Color}{"
+		else echo "  \\colorbox{Workday$((weekday%2))Color}{"
 		fi
 		echo "  \\begin{minipage}[c]{0.957\\linewidth}"
 		echo "    \\mbox{"
