@@ -4,12 +4,16 @@ set rtp+=~/.vim/bundle/Vundle.vim
 
 call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
-Plugin 'Valloric/YouCompleteMe'
-Plugin 'tpope/vim-surround'
+Plugin 'scrooloose/nerdtree'
+Plugin 'ctrlpvim/ctrlp.vim'
 Plugin 'easymotion/vim-easymotion'
+Plugin 'godlygeek/tabular'
+Plugin 'tpope/vim-surround'
+Plugin 'tpope/vim-fugitive'
+Plugin 'airblade/vim-gitgutter'
 call vundle#end()
 
-let g:ycm_extra_conf_globlist = ['~/devel/*/*','!~/*']
+let g:ycm_extra_conf_globlist = ['~/Devel/*/*','!~/*']
 let g:ycm_filetype_whitelist = {'cpp':1, 'c':1, 'python':1}
 
 filetype plugin indent on
@@ -20,3 +24,4 @@ syntax on
 let &colorcolumn="80,".join(range(100,999),",")
 highlight ColorColumn ctermbg=darkgray
 
+colorscheme desert
