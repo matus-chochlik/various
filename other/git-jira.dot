@@ -1,0 +1,274 @@
+digraph workflow {
+
+	overlap=false;
+	ranksep=1.0;
+	nodesep=1.0;
+
+	graph [fontname = "helvetica" fontsize=22];
+	node  [fontname = "helvetica" fontsize=18];
+	edge  [fontname = "helvetica" fontsize=14];
+
+	node [style="filled"];
+
+
+	node [penwidth=3];
+	edge [penwidth=3];
+
+	node [shape="box3d" fillcolor="#F0F0F0"];
+	git; jira;
+
+	node [shape="folder" fillcolor="CYAN"];
+	jira_task_01;
+	jira_task_03;
+
+	node [shape="cds" fillcolor="CYAN"];
+	jira_task_01_created [label="New"];
+	jira_task_01_open [label="Open"];
+	jira_task_01_rfr [label="Ready for\nreview"];
+	jira_task_01_closed [label="Closed"];
+	jira_task_01_valid [label="Validated"];
+	jira_task_01_integ [label="Integrated"];
+
+	jira_task_03_created [label="New"];
+	jira_task_03_open1 [label="Open"];
+	jira_task_03_rfr1 [label="Ready for\nreview"];
+	jira_task_03_open2 [label="Open"];
+	jira_task_03_rfr2 [label="Ready for\nreview"];
+	jira_task_03_closed [label="Closed"];
+	jira_task_03_valid  [label="Validated"];
+	jira_task_03_integ  [label="Integrated"];
+
+	subgraph cluster_master {
+		style="invis";
+		node [shape="signature" fillcolor="#C0C0C0"];
+		master  [label="master"];
+
+		node [shape="circle" label=""];
+		node [fillcolor="#A0FFA0"];
+		master_initial;
+		master_v_0_1;
+		master_v_0_2;
+		master_v_0_3;
+
+		node [style="invis"]
+		master_cont;
+	}
+
+	subgraph cluster_release {
+		style="invis";
+		node [shape="signature" fillcolor="#C0C0C0"];
+		release [label="release"];
+
+		node [shape="circle" label=""];
+		node [fillcolor="#FFFF80"];
+		release_0_1_1;
+		release_0_1_2;
+		release_0_2_1;
+		release_0_3_1;
+		release_0_3_2;
+		release_0_3_3;
+
+		node [style="invis"]
+		release_cont;
+	}
+
+	subgraph cluster_develop {
+		style="invis";
+		node [shape="signature" fillcolor="#C0C0C0"];
+		develop  [label="develop"];
+
+		node [shape="circle" label=""];
+		node [fillcolor="#E0D0A0"];
+		develop_initial;
+		develop_1;
+		develop_2;
+		develop_3;
+		develop_4;
+		develop_5;
+		develop_6;
+		develop_7;
+
+		node [style="invis"]
+		develop_cont;
+	}
+
+	subgraph cluster_task_01 {
+		style="invis";
+		node [shape="signature" fillcolor="#C0C0C0"];
+		task_01 [label="task-01"];
+
+		node [shape="circle" label=""];
+		node [fillcolor="#FFA0A0"];
+		task_01_1;
+		task_01_2;
+
+		node [shape="point" fillcolor="BLACK"];
+		task_01_r;
+	}
+
+	subgraph cluster_task_02 {
+		style="invis";
+		node [shape="signature" fillcolor="#C0C0C0"];
+		task_02 [label="task-02"];
+
+		node [shape="circle" label=""];
+		node [fillcolor="#FFA0A0"];
+		task_02_1;
+
+		node [shape="point" fillcolor="BLACK"];
+		task_02_r;
+	}
+
+	subgraph cluster_task_03 {
+		style="invis";
+		node [shape="signature" fillcolor="#C0C0C0"];
+		task_03 [label="task-03"];
+
+		node [shape="circle" label=""];
+		node [fillcolor="#FFA0A0"];
+		task_03_1;
+		task_03_2;
+		task_03_3;
+
+		node [shape="point" fillcolor="BLACK"];
+		task_03_r1;
+		task_03_r2;
+	}
+
+	{rank=same master release develop task_01 task_02 task_03};
+	{rank=same master_cont release_cont develop_cont};
+
+	edge [style="dashed"];
+	git -> master;
+	git -> release;
+	git -> develop;
+	git -> task_01;
+	git -> task_02;
+	git -> task_03;
+
+	jira -> jira_task_01;
+	jira -> jira_task_03;
+
+	edge [style="solid"];
+
+	// Git
+
+	master_initial -> master_v_0_1;
+	master_v_0_1 -> master_v_0_2;
+	master_v_0_2 -> master_v_0_3;
+	master_v_0_3 -> master_cont;
+
+	master_initial -> develop_initial [label="git checkout\n-b develop"];
+	develop_initial -> develop_1;
+	develop_1 -> develop_2;
+	develop_2 -> develop_3;
+	develop_3 -> develop_4;
+	develop_4 -> develop_5;
+	develop_5 -> develop_6;
+	develop_6 -> develop_7;
+
+	develop_initial -> task_01_1 [label="git checkout\n-b task-01"];
+	task_01_1 -> task_01_2;
+	task_01_2 -> task_01_r;
+	task_01_r -> develop_1 [label="git merge\n task-01"];
+
+	develop_initial -> task_02_1;
+	task_02_1 -> task_02_r;
+	task_02_r -> develop_3;
+
+	develop_1 -> task_03_1;
+	task_03_1 -> task_03_2;
+	task_03_2 -> task_03_r1;
+	task_03_r1 -> task_03_3;
+	task_03_3 -> task_03_r2;
+	task_03_r2 -> develop_5;
+
+	develop_1 -> release_0_1_1 [label="git checkout\n-b rel-0.1"];
+	release_0_1_1 -> release_0_1_2;
+	release_0_1_2 -> develop_2 [label="git merge rel-0.1"];
+	release_0_1_2 -> master_v_0_1 [label="git merge rel-0.1\ngit tag -a -m v0.1"];
+
+	develop_3 -> release_0_2_1;
+	release_0_2_1 -> develop_4;
+	release_0_2_1 -> master_v_0_2 [label="git merge rel-0.2\ngit tag -a -m v0.2"];
+
+	develop_5 -> release_0_3_1;
+	release_0_3_1 -> release_0_3_2;
+	release_0_3_2 -> release_0_3_3;
+	release_0_3_2 -> develop_6;
+	release_0_3_3 -> develop_7;
+	release_0_3_3 -> master_v_0_3 [label="git merge rel-0.3\ngit tag -a -m v0.3"];
+
+	develop_7 -> develop_cont;
+
+	// Jira
+	jira_task_01_created -> jira_task_01_open [label="open"];
+	jira_task_01_open -> jira_task_01_rfr [label="implement"];
+	jira_task_01_rfr -> jira_task_01_closed [label="review"];
+	jira_task_01_closed -> jira_task_01_valid [label="validate"];
+	jira_task_01_valid -> jira_task_01_integ [label="integrate"];
+
+	jira_task_03_created -> jira_task_03_open1 [label="open"];
+	jira_task_03_open1 -> jira_task_03_rfr1 [label="implement"];
+	jira_task_03_rfr1 -> jira_task_03_open2 [taillabel="review" headlabel="reject"];
+	jira_task_03_open2 -> jira_task_03_rfr2 [label="fix"];
+	jira_task_03_rfr2 -> jira_task_03_closed [label="review"];
+	jira_task_03_closed -> jira_task_03_valid [label="validate"];
+	jira_task_03_valid -> jira_task_03_integ [label="integrate"];
+
+	edge [style="dotted" arrowhead="none"];
+
+	// Git
+	master -> master_initial [label="git init"];
+	release -> release_0_1_1;
+	release_0_1_2 -> release_0_2_1;
+	release_0_2_1 -> release_0_3_1;
+	develop -> develop_initial;
+	task_01 -> task_01_1;
+	task_02 -> task_02_1;
+	task_03 -> task_03_1;
+	release_0_3_3 -> release_cont;
+
+	// Jira
+	jira_task_01 -> jira_task_01_created [label="create"];
+	jira_task_03 -> jira_task_03_created [label="create"];
+
+
+	// Note edges
+	edge [penwidth=1 constraint=false];
+	edge [style="dashed" arrowhead="none"];
+
+	jira_task_01_open -> task_01_1 [taillabel="create branch "];
+	{rank=same jira_task_01_open task_01_1};
+	jira_task_01_rfr -> task_01_r [taillabel="pull-request "];
+	{rank=same jira_task_01_rfr task_01_r};
+	jira_task_01_closed -> develop_1 [taillabel="merge "];
+	{rank=same jira_task_01_closed develop_1};
+	jira_task_01_valid -> release_0_1_2 [taillabel="bugfix"];
+	{rank=same jira_task_01_valid release_0_1_2};
+	jira_task_01_integ -> master_v_0_1 [taillabel="merge"];
+	{rank=same jira_task_01_integ master_v_0_1};
+
+	jira_task_03_open1 -> task_03_1 [taillabel="create branch "];
+	{rank=same jira_task_03_open1 task_03_1};
+	jira_task_03_rfr1 -> task_03_r1 [taillabel="pull-request "];
+	{rank=same jira_task_03_rfr1 task_03_r1};
+	jira_task_03_open2 -> task_03_3;
+	{rank=same jira_task_03_open2 task_03_3};
+	jira_task_03_rfr2 -> task_03_r2 [taillabel="pull-request "];
+	{rank=same jira_task_03_rfr2 task_03_r2};
+	jira_task_03_closed -> develop_5 [taillabel="merge "];
+	{rank=same jira_task_03_closed develop_5};
+	jira_task_03_valid -> release_0_3_3 [taillabel="bugfix"];
+	{rank=same jira_task_03_valid release_0_3_3};
+	jira_task_03_integ -> master_v_0_3 [taillabel="merge"];
+	{rank=same jira_task_03_integ master_v_0_3};
+
+	// Ordering edges
+	edge [style="invis" constraint=true];
+	master_v_0_1 -> develop_2;
+	develop_1 -> task_03_1;
+	task_01_1 -> task_02_1;
+	task_03_1 -> task_02_r;
+
+}
