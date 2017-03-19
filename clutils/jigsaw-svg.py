@@ -173,14 +173,14 @@ class options:
 
 		def get_curve(get_coord, s):
 			return [
-				get_coord( 0,  0*s), get_coord(20,  5*s), get_coord(35,  0*s),
+				get_coord( 0,  0*s), get_coord(20, -5*s), get_coord(35,  0*s),
 				get_coord( 0,  0*s), get_coord( 5,  0*s), get_coord( 5,  5*s),
 				get_coord( 0,  5*s), get_coord(-5,  5*s), get_coord(-5, 15*s),
 				get_coord( 0,  5*s), get_coord( 5, 10*s), get_coord(15, 10*s),
 				get_coord(10,  0*s), get_coord(15, -5*s), get_coord(15,-10*s),
 				get_coord( 0,-10*s), get_coord(-5,-10*s), get_coord(-5,-15*s),
 				get_coord( 0, -5*s), get_coord( 5, -5*s), get_coord( 5, -5*s),
-				get_coord( 0,  0*s), get_coord(20,  5*s), get_coord(35,  0*s)
+				get_coord( 0,  0*s), get_coord(20, -5*s), get_coord(35,  0*s)
 			]
 
 		def get_curve_str(get_coord, s):
