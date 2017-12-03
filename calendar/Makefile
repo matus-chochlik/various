@@ -10,7 +10,7 @@ $(BUILD_DIR)/%.pdf: $(BUILD_DIR)/%.tex
 $(BUILD_DIR)/%.tex: $(BUILD_DIR)/call_gen_tex.sh | $(BUILD_DIR)
 	cd $(BUILD_DIR) && ./call_gen_tex.sh "$*" > $*.tex && cd ..
 
-$(BUILD_DIR)/call_gen_tex.sh: call_gen_tex.sh \
+$(BUILD_DIR)/call_gen_tex.sh: call_gen_tex.sh gen_tex.sh \
 	$(BUILD_DIR)/SOURCE_DIR \
 	$(BUILD_DIR)/YEAR \
 	$(BUILD_DIR)/LANGUAGE \
@@ -22,7 +22,7 @@ $(BUILD_DIR)/SOURCE_DIR $(BUILD_DIR)/INPUT_DIR: | $(BUILD_DIR)
 	pwd > $@
 
 $(BUILD_DIR)/YEAR: | $(BUILD_DIR)
-	date +%Y > $@
+	date --date='+1 year' +%Y > $@
 
 $(BUILD_DIR)/LANGUAGE: | $(BUILD_DIR)
 	locale | grep LANGUAGE | cut -d'=' -f2 | cut -d'_' -f1 > $@

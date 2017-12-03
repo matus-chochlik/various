@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2015-2016 Matus Chochlik
+# Copyright (c) 2015-2017 Matus Chochlik
 
 temp_dir="$(mktemp -d)"
 
@@ -21,7 +21,7 @@ fi
 
 year=${2:-$(date +%Y -d '+1 year')}
 
-extradays=$(date +%u -d "${year}-01-01 -1 day")
+extradays=$(($(date +%u -d "${year}-01-01 -1 day") % 7))
 yearweeks=$(date +%W -d "${year}-12-31")
 
 language=${3:-sk}
@@ -62,15 +62,16 @@ echo "}"
 echo "\\usepackage{graphicx}"
 echo "\\DeclareGraphicsExtensions{.png}"
 echo "\\usepackage[dvipsnames]{xcolor}"
-echo "\\definecolor{Workday0Color}{gray}{0.85}"
-echo "\\definecolor{Workday1Color}{gray}{0.95}"
-echo "\\definecolor{Holiday0Color}{rgb}{0.9,0.9,0.5}"
-echo "\\definecolor{Holiday1Color}{rgb}{1.0,1.0,0.0}"
+echo "\\definecolor{Workday0Color}{gray}{0.92}"
+echo "\\definecolor{Workday1Color}{gray}{0.98}"
+echo "\\definecolor{Holiday0Color}{rgb}{0.8,0.9,0.7}"
+echo "\\definecolor{Holiday1Color}{rgb}{0.7,0.8,0.6}"
 echo "\\usepackage{shadowtext}"
 echo "\\usepackage{transparent}"
 echo "\\usepackage{tikz}"
 echo "\\usetikzlibrary{calendar}"
-echo "\\usepackage[pages=all,placement=center]{background}"
+
+echo "\\usepackage[pages=all]{background}"
 
 echo "\\backgroundsetup{"
 echo "scale=1.0,"
@@ -78,7 +79,7 @@ echo "color=white,"
 echo "opacity=1,"
 echo "angle=0,"
 echo "contents={"
-echo "  \\includegraphics[width=28.9cm,height=17.5cm]{${imgdir}/background.pdf}"
+echo "  \\includegraphics[width=\\textwidth,height=\\textheight]{${imgdir}/background.pdf}"
 echo "  }"
 echo "}"
 
@@ -110,8 +111,8 @@ function cal_page_image()
 {
 	week=${1}
 	extradays=${2}
-	week_no=$(printf "%02d" ${week})
-	week_str="${week}. $(cal_translate week)"
+	week_no=$(date +%W --date "${year}-01-01 +$((week-1)) weeks -${extradays} days")
+	week_str="${week_no}. $(cal_translate week)"
 	month_name1=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks -${extradays} days"))
 	month_name2=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks +6 days -${extradays} days"))
 
@@ -188,7 +189,6 @@ function cal_year_table()
 function cal_page_table()
 {
 	week=${1}
-	week_no=$(printf "%02d" ${week})
 	extradays=${2}
 
 	echo "\\mbox{"
@@ -395,7 +395,7 @@ function cal_single_page()
 cal_begin_document
 cal_cover_page
 cal_year_page
-for week in $(seq 1 $((yearweeks+1)))
+for week in $(seq 1 $((yearweeks)))
 do cal_single_page ${week} ${extradays}
 done
 cal_end_document
