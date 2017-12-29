@@ -1,0 +1,43 @@
+CREATE TABLE meta_parameter_column;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN function_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN function_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN function_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN parameter_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN parameter_kind $(FUNCTION_PARAM_KIND) NOT NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN ordinal_position $(CARDINAL_NUMBER) NOT NULL;
+
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN table_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN relation_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_parameter_column
+ADD COLUMN column_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_parameter_column
+ADD PRIMARY KEY function_catalog, function_schema, function_name, parameter_name;
+
+GRANT SELECT ON meta_parameter_column TO $(GUEST_ROLE);
+GRANT SELECT ON meta_parameter_column TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_parameter_column TO $(EDITOR_ROLE);
+

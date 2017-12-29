@@ -1,0 +1,27 @@
+CREATE TABLE meta_usage;
+
+ALTER TABLE meta_usage
+ADD COLUMN used_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_usage
+ADD COLUMN used_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_usage
+ADD COLUMN used_relation $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_usage
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_usage
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_usage
+ADD COLUMN relation_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_usage
+ADD PRIMARY KEY used_catalog, used_schema, used_relation, catalog_name, schema_name, relation_name;
+
+GRANT SELECT ON meta_usage TO $(GUEST_ROLE);
+GRANT SELECT ON meta_usage TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_usage TO $(EDITOR_ROLE);
+

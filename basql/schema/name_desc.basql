@@ -1,0 +1,77 @@
+IMPORT VERBATIM name_desc;
+
+CREATE TABLE name_desc
+WITH WEAK_ID 
+WITH REFERENCE_TO locale;
+
+ALTER TABLE name_desc
+ADD PRIMARY KEY $(TABLE_PK_NAME name_desc), $(TABLE_PK_NAME locale);
+
+ALTER TABLE name_desc
+ADD COLUMN name $(NAME_STR);
+
+ALTER TABLE name_desc
+ADD COLUMN description $(DESC_STR);
+
+GRANT SELECT ON name_desc TO $(BROWSER_ROLE);
+
+GRANT SELECT ON name_desc TO $(EDITOR_ROLE);
+GRANT INSERT ON name_desc TO $(EDITOR_ROLE);
+GRANT UPDATE ON name_desc TO $(EDITOR_ROLE);
+
+
+CREATE VIEW current_user_name_desc
+AS
+SELECT $(TABLE_PK_NAME name_desc), name, description
+FROM $(PREFIXED name_desc)
+WHERE $(TABLE_PK_NAME locale) = $(PREFIXED get_current_locale());
+
+GRANT SELECT ON current_user_name_desc TO $(BROWSER_ROLE);
+GRANT SELECT ON current_user_name_desc TO $(EDITOR_ROLE);
+
+
+CREATE VIEW fallback_name_desc
+AS
+SELECT $(TABLE_PK_NAME name_desc), name, description
+FROM $(PREFIXED name_desc)
+WHERE $(TABLE_PK_NAME locale) = 'en_US';
+
+GRANT SELECT ON fallback_name_desc TO $(BROWSER_ROLE);
+GRANT SELECT ON fallback_name_desc TO $(EDITOR_ROLE);
+
+
+ALTER TABLE locale
+WITH NAME_DESC;
+
+GRANT SELECT ON locale TO $(BROWSER_ROLE);
+GRANT SELECT ON locale TO $(EDITOR_ROLE);
+GRANT SELECT ON locale TO $(GUEST_ROLE);
+
+CREATE VIEW locale_list
+AS
+SELECT $(TABLE_PK_NAME locale), nd.name, nd.description
+FROM $(PREFIXED $(TABLE_NAME locale)) l
+JOIN $(PREFIXED $(TABLE_NAME name_desc)) nd USING($(TABLE_PK_NAME locale), $(TABLE_PK_NAME name_desc));
+
+GRANT SELECT ON locale_list TO $(BROWSER_ROLE);
+GRANT SELECT ON locale_list TO $(EDITOR_ROLE);
+
+CREATE VIEW untranslated_name_desc_ids
+AS
+SELECT $(TABLE_PK_NAME name_desc)
+FROM $(PREFIXED name_desc)
+GROUP BY $(TABLE_PK_NAME name_desc)
+HAVING count(1) < (SELECT count(1) FROM $(PREFIXED $(TABLE_NAME locale)));
+
+CREATE VIEW untranslated_name_desc
+AS
+SELECT nd.$(TABLE_PK_NAME name_desc), lc.$(TABLE_PK_NAME locale)
+FROM	$(PREFIXED untranslated_name_desc_ids) nd,
+	$(PREFIXED $(TABLE_NAME locale)) lc
+WHERE lc.$(TABLE_PK_NAME locale) NOT IN (
+	SELECT $(TABLE_PK_NAME locale)
+	FROM $(PREFIXED name_desc)
+	WHERE $(TABLE_PK_NAME name_desc) = nd.$(TABLE_PK_NAME name_desc)
+);
+
+

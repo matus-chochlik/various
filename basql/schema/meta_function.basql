@@ -1,0 +1,21 @@
+CREATE TABLE meta_function;
+
+ALTER TABLE meta_function
+ADD COLUMN function_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function
+ADD COLUMN function_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function
+ADD COLUMN function_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function
+WITH NAME_DESC;
+
+ALTER TABLE meta_function
+ADD PRIMARY KEY function_catalog, function_schema, function_name;
+
+GRANT SELECT ON meta_function TO $(GUEST_ROLE);
+GRANT SELECT ON meta_function TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_function TO $(EDITOR_ROLE);
+

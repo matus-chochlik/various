@@ -1,0 +1,82 @@
+CREATE TABLE meta_column;
+
+ALTER TABLE meta_column
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_column
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_column
+ADD COLUMN table_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_column
+ADD COLUMN relation_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_column
+ADD COLUMN column_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_column
+ADD COLUMN data_type $(DATA_TYPE) NOT NULL;
+
+ALTER TABLE meta_column
+ADD COLUMN ordinal_position $(CARDINAL_NUMBER) NOT NULL;
+
+ALTER TABLE meta_column
+ADD COLUMN is_nullable $(BOOLEAN) NOT NULL;
+
+ALTER TABLE meta_column
+WITH NAME_DESC;
+
+ALTER TABLE meta_column
+WITH CATEGORY;
+
+ALTER TABLE meta_column
+ADD PRIMARY KEY catalog_name, schema_name, relation_name, column_name;
+
+GRANT SELECT ON meta_column TO $(GUEST_ROLE);
+GRANT SELECT ON meta_column TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_column TO $(EDITOR_ROLE);
+
+CREATE VIEW meta_relation_column
+AS
+SELECT
+	catalog_name,
+	schema_name,
+	coalesce(mc.table_name, mfc.table_name) AS table_name,
+	relation_name,
+	column_name,
+	coalesce(mc.$(TABLE_PK_NAME category), mfc.$(TABLE_PK_NAME category)) AS $(TABLE_PK_NAME category),
+	coalesce(mc.name, mfc.name) AS name,
+	coalesce(mc.description, mfc.description) AS description,
+	coalesce(mc.data_type, mfc.data_type) AS data_type,
+	coalesce(mc.is_nullable, mfc.is_nullable) AS is_nullable,
+	coalesce(mc.ordinal_position, mfc.ordinal_position) AS ordinal_position
+FROM $(PREFIXED meta_column) mc
+FULL OUTER JOIN (
+	SELECT
+		child_catalog AS catalog_name,
+		child_schema AS schema_name,
+		child_table AS table_name,
+		child_relation AS relation_name,
+		child_column AS column_name,
+		max($(TABLE_PK_NAME category)) AS $(TABLE_PK_NAME category),
+		string_agg(coalesce(mprc.name, mc2.name), '/') AS name,
+		string_agg(coalesce(mprc.description, mc2.description), ' ') AS description,
+		string_agg(mc2.data_type, '|') AS data_type,
+		bool_and(mc2.is_nullable) AS is_nullable,
+		max(mc2.ordinal_position) AS ordinal_position
+	FROM gen_seq.meta_parent_relationship_column mprc
+	LEFT OUTER
+	JOIN gen_seq.meta_column mc2
+	USING (catalog_name, schema_name, relation_name, column_name)
+	WHERE (child_catalog, child_schema, child_relation, child_column) NOT IN (
+		SELECT catalog_name, schema_name, relation_name, column_name
+		FROM gen_seq.meta_column
+	)
+	GROUP BY child_catalog, child_schema, child_table, child_relation, child_column
+) AS mfc
+USING(catalog_name, schema_name, relation_name, column_name);
+
+GRANT SELECT ON meta_relation_column TO $(GUEST_ROLE);
+GRANT SELECT ON meta_relation_column TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_relation_column TO $(EDITOR_ROLE);

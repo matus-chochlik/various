@@ -1,0 +1,26 @@
+CREATE SCHEMA $(SCHEMA_NAME);
+
+INCLUDE meta_user_privilege;
+INCLUDE meta_usage;
+INCLUDE meta_relationship_column;
+INCLUDE meta_function_result;
+INCLUDE meta_function_relation_op;
+INCLUDE meta_parameter_column;
+
+INCLUDE config;
+
+INCLUDE locale;
+INCLUDE name_desc;
+
+INCLUDE category;
+
+INCLUDE meta_operation;
+INCLUDE meta_schema;
+INCLUDE meta_relation;
+INCLUDE meta_relationship;
+INCLUDE meta_column;
+INCLUDE meta_function;
+INCLUDE meta_parameter;
+INCLUDE meta_group;
+
+FINALIZE_SCHEMA;

@@ -1,0 +1,28 @@
+CREATE TABLE meta_relation;
+
+ALTER TABLE meta_relation
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relation
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relation
+ADD COLUMN table_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relation
+ADD COLUMN relation_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relation
+WITH NAME_DESC;
+
+ALTER TABLE meta_relation
+WITH CATEGORY;
+
+ALTER TABLE meta_relation
+ADD PRIMARY KEY catalog_name, schema_name, relation_name;
+
+GRANT SELECT ON meta_relation TO $(GUEST_ROLE);
+GRANT SELECT ON meta_relation TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_relation TO $(EDITOR_ROLE);
+
+

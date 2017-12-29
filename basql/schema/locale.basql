@@ -1,0 +1,4 @@
+CREATE TABLE locale
+WITH PRIMARY_KEY code LOCALE_CODE;
+
+IMPORT FUNCTION get_current_locale FWD;

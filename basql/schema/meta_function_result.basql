@@ -1,0 +1,37 @@
+CREATE TABLE meta_function_result;
+
+ALTER TABLE meta_function_result
+ADD COLUMN function_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_result
+ADD COLUMN function_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_result
+ADD COLUMN function_name $(SQL_IDENTIFIER) NOT NULL;
+
+
+ALTER TABLE meta_function_result
+ADD COLUMN result_kind $(FUNCTION_RESULT_KIND) NULL;
+
+ALTER TABLE meta_function_result
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_function_result
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_function_result
+ADD COLUMN table_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_function_result
+ADD COLUMN relation_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_function_result
+ADD COLUMN column_name $(SQL_IDENTIFIER) NULL;
+
+ALTER TABLE meta_function_result
+ADD PRIMARY KEY function_catalog, function_schema, function_name;
+
+GRANT SELECT ON meta_function_result TO $(GUEST_ROLE);
+GRANT SELECT ON meta_function_result TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_function_result TO $(EDITOR_ROLE);
+

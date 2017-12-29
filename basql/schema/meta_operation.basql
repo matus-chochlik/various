@@ -1,0 +1,16 @@
+CREATE TABLE meta_operation;
+
+ALTER TABLE meta_operation
+ADD COLUMN operation_name $(OPERATION_NAME) NOT NULL;
+
+ALTER TABLE meta_operation
+WITH NAME_DESC;
+
+ALTER TABLE meta_operation
+ADD PRIMARY KEY operation_name;
+
+GRANT SELECT ON meta_operation TO $(LOGIN_ROLE);
+GRANT SELECT ON meta_operation TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_operation TO $(EDITOR_ROLE);
+
+

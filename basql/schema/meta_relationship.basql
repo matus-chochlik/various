@@ -1,0 +1,127 @@
+CREATE TABLE meta_relationship;
+
+ALTER TABLE meta_relationship
+ADD COLUMN child_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship
+ADD COLUMN child_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship
+ADD COLUMN child_table $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship
+ADD COLUMN child_relation $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship
+ADD COLUMN relationship_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship
+WITH NAME_DESC;
+
+ALTER TABLE meta_relationship
+ADD PRIMARY KEY child_catalog, child_schema, child_relation, relationship_name;
+
+GRANT SELECT ON meta_relationship TO $(GUEST_ROLE);
+GRANT SELECT ON meta_relationship TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_relationship TO $(EDITOR_ROLE);
+
+IMPORT FUNCTION get_relationship_join_predicate;
+
+
+
+CREATE VIEW meta_parent_relationship_column
+AS
+SELECT
+	parent_catalog AS catalog_name,
+	parent_schema AS schema_name,
+	parent_table AS table_name,
+	parent_relation AS relation_name,
+	parent_column AS column_name,
+	child_catalog,
+	child_schema,
+	mrc.child_table,
+	child_relation,
+	child_column,
+	relationship_name,
+	mrs.name,
+	mrs.description
+FROM $(PREFIXED meta_relationship_column) mrc
+LEFT OUTER
+JOIN $(PREFIXED meta_relationship) mrs
+USING(child_catalog, child_schema, child_relation, relationship_name);
+
+GRANT SELECT ON meta_parent_relationship_column TO $(GUEST_ROLE);
+GRANT SELECT ON meta_parent_relationship_column TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_parent_relationship_column TO $(EDITOR_ROLE);
+
+
+
+CREATE VIEW meta_parent_relationship
+AS
+SELECT DISTINCT
+	catalog_name,
+	schema_name,
+	table_name,
+	relation_name,
+	child_catalog,
+	child_schema,
+	child_table,
+	child_relation,
+	relationship_name,
+	name,
+	description
+FROM $(PREFIXED meta_parent_relationship_column);
+
+GRANT SELECT ON meta_parent_relationship TO $(GUEST_ROLE);
+GRANT SELECT ON meta_parent_relationship TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_parent_relationship TO $(EDITOR_ROLE);
+
+
+
+CREATE VIEW meta_child_relationship_column
+AS
+SELECT
+	child_catalog AS catalog_name,
+	child_schema AS schema_name,
+	mrc.child_table AS table_name,
+	child_relation AS relation_name,
+	child_column AS column_name,
+	parent_catalog,
+	parent_schema,
+	parent_table,
+	parent_relation,
+	parent_column,
+	relationship_name,
+	mrs.name,
+	mrs.description
+FROM $(PREFIXED meta_relationship_column) mrc
+LEFT OUTER
+JOIN $(PREFIXED meta_relationship) mrs
+USING(child_catalog, child_schema, child_relation, relationship_name);
+
+GRANT SELECT ON meta_child_relationship_column TO $(GUEST_ROLE);
+GRANT SELECT ON meta_child_relationship_column TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_child_relationship_column TO $(EDITOR_ROLE);
+
+
+
+CREATE VIEW meta_child_relationship
+AS
+SELECT DISTINCT
+	catalog_name,
+	schema_name,
+	table_name,
+	relation_name,
+	parent_catalog,
+	parent_schema,
+	parent_table,
+	parent_relation,
+	relationship_name,
+	name,
+	description
+FROM $(PREFIXED meta_child_relationship_column);
+
+GRANT SELECT ON meta_child_relationship TO $(GUEST_ROLE);
+GRANT SELECT ON meta_child_relationship TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_child_relationship TO $(EDITOR_ROLE);
+

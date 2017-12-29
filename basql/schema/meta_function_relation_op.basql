@@ -1,0 +1,34 @@
+CREATE TABLE meta_function_relation_op;
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN function_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN function_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN function_name $(SQL_IDENTIFIER) NOT NULL;
+
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN operation_name $(OPERATION_NAME) NOT NULL;
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN table_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_relation_op
+ADD COLUMN relation_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_function_relation_op
+ADD PRIMARY KEY function_catalog, function_schema, function_name, operation_name, catalog_name, schema_name, relation_name;
+
+GRANT SELECT ON meta_function_relation_op TO $(GUEST_ROLE);
+GRANT SELECT ON meta_function_relation_op TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_function_relation_op TO $(EDITOR_ROLE);
+

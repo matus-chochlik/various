@@ -1,0 +1,83 @@
+CREATE TABLE meta_group;
+
+ALTER TABLE meta_group
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group
+ADD COLUMN group_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group
+WITH NAME_DESC;
+
+ALTER TABLE meta_group
+WITH CATEGORY;
+
+ALTER TABLE meta_group
+ADD PRIMARY KEY catalog_name, schema_name, group_name;
+
+GRANT SELECT ON meta_group TO $(GUEST_ROLE);
+GRANT SELECT ON meta_group TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_group TO $(EDITOR_ROLE);
+
+
+
+CREATE TABLE meta_group_relation;
+
+ALTER TABLE meta_group_relation
+ADD COLUMN group_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_relation
+ADD COLUMN group_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_relation
+ADD COLUMN group_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_relation
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_relation
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_relation
+ADD COLUMN relation_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_relation
+ADD PRIMARY KEY group_catalog, group_schema, group_name, catalog_name, schema_name, relation_name;
+
+GRANT SELECT ON meta_group_relation TO $(GUEST_ROLE);
+GRANT SELECT ON meta_group_relation TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_group_relation TO $(EDITOR_ROLE);
+
+
+
+CREATE TABLE meta_group_function;
+
+ALTER TABLE meta_group_function
+ADD COLUMN group_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_function
+ADD COLUMN group_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_function
+ADD COLUMN group_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_function
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_function
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_function
+ADD COLUMN function_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_group_function
+ADD PRIMARY KEY group_catalog, group_schema, group_name, catalog_name, schema_name, function_name;
+
+GRANT SELECT ON meta_group_function TO $(GUEST_ROLE);
+GRANT SELECT ON meta_group_function TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_group_function TO $(EDITOR_ROLE);
+
+

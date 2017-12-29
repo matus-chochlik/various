@@ -1,0 +1,19 @@
+CREATE TABLE meta_schema;
+
+ALTER TABLE meta_schema
+ADD COLUMN catalog_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_schema
+ADD COLUMN schema_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_schema
+WITH NAME_DESC;
+
+ALTER TABLE meta_schema
+ADD PRIMARY KEY catalog_name, schema_name;
+
+GRANT SELECT ON meta_schema TO $(GUEST_ROLE);
+GRANT SELECT ON meta_schema TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_schema TO $(EDITOR_ROLE);
+
+

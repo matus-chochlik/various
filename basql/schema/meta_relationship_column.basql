@@ -1,0 +1,45 @@
+CREATE TABLE meta_relationship_column;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN parent_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN parent_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN parent_table $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN parent_relation $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN parent_column $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN child_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN child_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN child_table $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN child_relation $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN child_column $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN relationship_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_relationship_column
+ADD COLUMN ordinal_position $(CARDINAL_NUMBER) NULL;
+
+ALTER TABLE meta_relationship_column
+ADD PRIMARY KEY parent_catalog, parent_schema, parent_relation, parent_column, child_catalog, child_schema, child_relation, child_column;
+
+GRANT SELECT ON meta_relationship_column TO $(GUEST_ROLE);
+GRANT SELECT ON meta_relationship_column TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_relationship_column TO $(EDITOR_ROLE);
+

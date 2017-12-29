@@ -1,0 +1,54 @@
+CREATE TABLE meta_parameter;
+
+ALTER TABLE meta_parameter
+ADD COLUMN function_catalog $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter
+ADD COLUMN function_schema $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter
+ADD COLUMN function_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter
+ADD COLUMN parameter_name $(SQL_IDENTIFIER) NOT NULL;
+
+ALTER TABLE meta_parameter
+WITH NAME_DESC;
+
+ALTER TABLE meta_parameter
+ADD PRIMARY KEY function_catalog, function_schema, function_name, parameter_name;
+
+GRANT SELECT ON meta_parameter TO $(GUEST_ROLE);
+GRANT SELECT ON meta_parameter TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_parameter TO $(EDITOR_ROLE);
+
+CREATE VIEW meta_function_parameter
+AS
+SELECT
+	function_catalog,
+	function_schema,
+	function_name,
+	parameter_name,
+	mpm.parameter_kind,
+	mpm.ordinal_position,
+	coalesce(mp.name, mc.name) AS name,
+	coalesce(mp.description, mc.description) AS description,
+	catalog_name,
+	schema_name,
+	mpm.table_name,
+	relation_name,
+	column_name,
+	mc.data_type,
+	mc.is_nullable
+FROM $(PREFIXED meta_parameter_column) mpm
+LEFT OUTER
+JOIN $(PREFIXED meta_parameter) mp
+USING(function_catalog, function_schema, function_name, parameter_name)
+LEFT OUTER
+JOIN $(PREFIXED meta_relation_column) mc
+USING(catalog_name, schema_name, relation_name, column_name);
+
+GRANT SELECT ON meta_function_parameter TO $(GUEST_ROLE);
+GRANT SELECT ON meta_function_parameter TO $(BROWSER_ROLE);
+GRANT SELECT ON meta_function_parameter TO $(EDITOR_ROLE);
+
