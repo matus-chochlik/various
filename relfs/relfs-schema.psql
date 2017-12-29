@@ -1,0 +1,3 @@
+DROP SCHEMA relfs CASCADE;
+CREATE SCHEMA relfs;
+

@@ -1,0 +1,4 @@
+\i relfs-schema.psql
+\i relfs-types.psql
+\i relfs-object.psql
+\i relfs-attrib.psql
