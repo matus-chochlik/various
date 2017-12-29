@@ -15,16 +15,14 @@ ADD UNIQUE(tag_code);
 CREATE SEQUENCE relfs.seq_tag_id;
 
 CREATE FUNCTION relfs.get_next_tag_id()
-RETURNS relfs.ID
-AS
+RETURNS relfs.ID AS
 $$
 SELECT CAST(nextval('relfs.seq_tag_id') AS relfs.ID);
 $$
 LANGUAGE sql;
 
 CREATE FUNCTION relfs.get_last_tag_id()
-RETURNS relfs.ID
-AS
+RETURNS relfs.ID AS
 $$
 SELECT CAST(last_value AS relfs.ID)
 FROM relfs.seq_tag_id;
@@ -55,8 +53,7 @@ REFERENCES relfs.tag;
 -- get_tag --
 --
 CREATE FUNCTION relfs.get_tag(relfs.STR_CODE)
-RETURNS relfs.ID
-AS
+RETURNS relfs.ID AS
 $$
 DECLARE
 	v_tag_id relfs.ID;
@@ -82,8 +79,7 @@ LANGUAGE plpgsql;
 CREATE FUNCTION relfs.add_tag_inheritance(
 	generalization_id relfs.STR_CODE,
 	specialization_id relfs.STR_CODE
-) RETURNS VOID
-AS
+) RETURNS VOID AS
 $$
 INSERT INTO relfs.tag_inheritance
 (generalization_tag_id, specialization_tag_id)
@@ -98,7 +94,7 @@ LANGUAGE sql;
 CREATE TABLE relfs.tag_hierarchy (
 	generalization_tag_id relfs.ID NOT NULL,
 	specialization_tag_id relfs.ID NOT NULL,
-	distance              INTEGER  NOT NULL
+	distance              SMALLINT NOT NULL
 );
 
 ALTER TABLE relfs.tag_hierarchy
@@ -107,7 +103,7 @@ ADD PRIMARY KEY(generalization_tag_id, specialization_tag_id, distance);
 --
 -- tag_code_hierarchy --
 --
-CREATE VIEW relfs.tag_code_hierarchy AS 
+CREATE VIEW relfs.tag_code_hierarchy AS
 SELECT
 	th.generalization_tag_id,
 	gt.tag_code AS generalization_tag_code,
@@ -118,12 +114,43 @@ FROM relfs.tag_hierarchy th
 JOIN relfs.tag gt ON(th.generalization_tag_id = gt.tag_id)
 JOIN relfs.tag st ON(th.specialization_tag_id = st.tag_id);
 
+CREATE TYPE relfs._tag_id_code_and_distance AS (
+	tag_id         relfs.ID,
+	tag_code       relfs.STR_CODE,
+	distance       SMALLINT
+);
+
+--
+-- tag_generalizations --
+--
+CREATE FUNCTION relfs.tag_generalizations(relfs.STR_CODE)
+RETURNS setof relfs._tag_id_code_and_distance AS
+$$
+SELECT t.tag_id, t.tag_code, th.distance
+FROM relfs.tag_hierarchy th
+JOIN relfs.tag t ON(th.generalization_tag_id = t.tag_id)
+WHERE th.specialization_tag_id = relfs.get_tag($1);
+$$
+LANGUAGE sql;
+
+--
+-- tag_specializations --
+--
+CREATE FUNCTION relfs.tag_specializations(relfs.STR_CODE)
+RETURNS setof relfs._tag_id_code_and_distance AS
+$$
+SELECT t.tag_id, t.tag_code, th.distance
+FROM relfs.tag_hierarchy th
+JOIN relfs.tag t ON(th.specialization_tag_id = t.tag_id)
+WHERE th.generalization_tag_id = relfs.get_tag($1);
+$$
+LANGUAGE sql;
+
 --
 -- tag modification triggers --
 --
 CREATE FUNCTION relfs._insert_tag_hierarchy()
-RETURNS TRIGGER
-AS
+RETURNS TRIGGER AS
 $$
 BEGIN
 	INSERT INTO relfs.tag_hierarchy
@@ -144,8 +171,7 @@ EXECUTE PROCEDURE relfs._insert_tag_hierarchy();
 -- tag inheritance modification triggers --
 --
 CREATE FUNCTION relfs._insert_tag_inheritance_hierarchy()
-RETURNS TRIGGER
-AS
+RETURNS TRIGGER AS
 $$
 BEGIN
 	INSERT INTO relfs.tag_hierarchy

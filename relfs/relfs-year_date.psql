@@ -1,0 +1,123 @@
+CREATE TYPE relfs.YEAR_DATE AS (
+	month SMALLINT,
+	day SMALLINT
+);
+
+CREATE FUNCTION relfs.extract_year_date(DATE)
+RETURNS relfs.YEAR_DATE AS
+$$
+BEGIN
+RETURN (
+	CAST(EXTRACT(MONTH FROM $1) AS SMALLINT),
+	CAST(EXTRACT(DAY FROM $1) AS SMALLINT)
+);
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE FUNCTION relfs.extract_year_date(TIMESTAMP WITHOUT TIME ZONE)
+RETURNS relfs.YEAR_DATE AS
+$$
+BEGIN
+RETURN (
+	CAST(EXTRACT(MONTH FROM $1) AS SMALLINT),
+	CAST(EXTRACT(DAY FROM $1) AS SMALLINT)
+);
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE FUNCTION relfs.extract_year_date(TIMESTAMP WITH TIME ZONE)
+RETURNS relfs.YEAR_DATE AS
+$$
+BEGIN
+RETURN (
+	CAST(EXTRACT(MONTH FROM $1) AS SMALLINT),
+	CAST(EXTRACT(DAY FROM $1) AS SMALLINT)
+);
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE FUNCTION relfs._eq_year_date(relfs.YEAR_DATE, relfs.YEAR_DATE)
+RETURNS BOOLEAN AS
+$$
+SELECT ($1.month = $2.month) AND ($1.day = $2.day);
+$$
+LANGUAGE sql;
+
+CREATE FUNCTION relfs._ne_year_date(relfs.YEAR_DATE, relfs.YEAR_DATE)
+RETURNS BOOLEAN AS
+$$
+SELECT NOT(relfs._eq_year_date($1, $2));
+$$
+LANGUAGE sql;
+
+CREATE FUNCTION relfs._lt_year_date(relfs.YEAR_DATE, relfs.YEAR_DATE)
+RETURNS BOOLEAN AS
+$$
+SELECT ($1.month < $2.month)
+OR (($1.month = $2.month) AND ($1.day < $2.day));
+$$
+LANGUAGE sql;
+
+CREATE FUNCTION relfs._le_year_date(relfs.YEAR_DATE, relfs.YEAR_DATE)
+RETURNS BOOLEAN AS
+$$
+SELECT relfs._eq_year_date($1, $2) OR relfs._lt_year_date($1, $2);
+$$
+LANGUAGE sql;
+
+CREATE FUNCTION relfs._gt_year_date(relfs.YEAR_DATE, relfs.YEAR_DATE)
+RETURNS BOOLEAN AS
+$$
+SELECT NOT(relfs._le_year_date($1, $2));
+$$
+LANGUAGE sql;
+
+CREATE FUNCTION relfs._ge_year_date(relfs.YEAR_DATE, relfs.YEAR_DATE)
+RETURNS BOOLEAN AS
+$$
+SELECT NOT(relfs._lt_year_date($1, $2));
+$$
+LANGUAGE sql;
+
+--
+-- operators --
+--
+CREATE OPERATOR =  (
+	leftarg  = relfs.YEAR_DATE,
+	rightarg = relfs.YEAR_DATE,
+	procedure = relfs._eq_year_date,
+	commutator = =
+);
+CREATE OPERATOR != (
+	leftarg  = relfs.YEAR_DATE,
+	rightarg = relfs.YEAR_DATE,
+	procedure = relfs._ne_year_date,
+	commutator = !=
+);
+CREATE OPERATOR <  (
+	leftarg  = relfs.YEAR_DATE,
+	rightarg = relfs.YEAR_DATE,
+	procedure = relfs._lt_year_date,
+	commutator = <
+);
+CREATE OPERATOR <= (
+	leftarg  = relfs.YEAR_DATE,
+	rightarg = relfs.YEAR_DATE,
+	procedure = relfs._le_year_date,
+	commutator = <=
+);
+CREATE OPERATOR >  (
+	leftarg  = relfs.YEAR_DATE,
+	rightarg = relfs.YEAR_DATE,
+	procedure = relfs._gt_year_date,
+	commutator = >
+);
+CREATE OPERATOR >= (
+	leftarg  = relfs.YEAR_DATE,
+	rightarg = relfs.YEAR_DATE,
+	procedure = relfs._ge_year_date,
+	commutator = >=
+);
