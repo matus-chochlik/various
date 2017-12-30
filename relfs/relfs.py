@@ -28,16 +28,19 @@ def get_repo_config_file_list():
 		get_user_repo_config_file_path()
 	]
 #------------------------------------------------------------------------------#
+def load_config_file(file_path):
+	try:
+		config_file = open(file_path, 'rt')
+		return json.load(config_file)
+	except IOError as io_error:
+		if io_error.errno == os.errno.ENOENT:
+			return dict()
+		else: raise
+#------------------------------------------------------------------------------#
 def load_config_files():
 	config = dict()
 	for file_path in get_repo_config_file_list():
-		try:
-			config_file = open(file_path, 'rt')
-			config.update(json.load(config_file))
-		except IOError as io_error:
-			if io_error.errno == os.errno.ENOENT:
-				pass
-			else: raise
+		config.update(load_config_file(file_path))
 
 	return config
 #------------------------------------------------------------------------------#
@@ -57,10 +60,45 @@ def __config():
 #------------------------------------------------------------------------------#
 def get_default_arg_parser(
 	command, description,
-	with_repository_names=False
+	with_repo_names=False,
+	with_file_paths=False
 ):
 	import argparse
-	argparser = argparse.ArgumentParser(
+
+	class __RelfsArgumentParser(argparse.ArgumentParser):
+		def __init__(self, *args, **kw):
+			argparse.ArgumentParser.__init__(self, *args, **kw)
+			with_repo_names=False
+			with_file_paths=False
+
+		def process_parsed_options(self, options):
+			repos = [x[1:] for x in options.arguments if x[0] == '@']
+			files = [x     for x in options.arguments if x[0] != '@']
+			if self.with_repo_names:
+				options.repositories += repos
+			elif len(repos) > 0:
+				self.error(
+					"unexpected repository name '%s' in argument list" % repos[0]
+				)
+
+
+			if self.with_file_paths:
+				options.file_paths += files
+			elif len(files) > 0:
+				self.error(
+					"unexpected file path '%s' in argument list" % files[0]
+				)
+
+
+			options.__dict__.pop("arguments", None)
+			return options
+
+		def parse_args(self):
+			return self.process_parsed_options(
+				argparse.ArgumentParser.parse_args(self)
+			)
+
+	argparser = __RelfsArgumentParser(
 		prog=command,
 		description=description,
 		epilog="""
@@ -70,13 +108,8 @@ def get_default_arg_parser(
 			(See a copy at http://www.boost.org/LICENSE_1_0.txt)
 		"""
 	)
-
-	class __IncVerbosity(argparse.Action):
-		def __init__(self, **kw):
-			argparse.Action.__init__(self, nargs=0, type=int, **kw)
-
-		def __call__(self, parser, options, values, option_string=None):
-			options.verbosity += 1
+	argparser.with_repo_names = with_repo_names
+	argparser.with_file_paths = with_file_paths
 
 	argparser.add_argument(
 		"--version",
@@ -91,14 +124,44 @@ def get_default_arg_parser(
 		action="count"
 	)
 
-	if with_repository_names:
+	if with_repo_names:
 		argparser.add_argument(
 			"--repository", "-r",
-			nargs=1,
+			nargs='?',
 			dest="repositories",
-			choices=__config().repositories,
+			choices=list(__config().repositories.keys()),
 			default=list(),
 			action="append"
+		)
+
+	if with_file_paths:
+		argparser.add_argument(
+			"--file", "-f",
+			metavar='FILE-PATH',
+			nargs='?',
+			dest="file_paths",
+			default=list(),
+			action="append"
+		)
+
+	if with_repo_names or with_file_paths:
+		mvar_list = list()
+		help_list = list()
+
+		if with_repo_names:
+			mvar_list.append('@repo')
+			help_list.append('repository name')
+
+		if with_file_paths:
+			mvar_list.append('file-path')
+			help_list.append('file path')
+
+		argparser.add_argument(
+			"arguments",
+			metavar=" | ".join(mvar_list),
+			nargs='*',
+			type=str,
+			help=" or ".join(help_list)
 		)
 
 	return argparser
@@ -110,7 +173,7 @@ def init_repository(os_path, options):
 		__print_error("failed to initialize repository: ", error)
 #------------------------------------------------------------------------------#
 def remove_repository(os_path, options):
-	pass
+	pass # TODO
 #------------------------------------------------------------------------------#
 def make_file_hash(file_path):
 	hash_obj = hashlib.sha256()
@@ -130,6 +193,12 @@ class Repository:
 	def __init__(self, name, config):
 		self.name = name
 		self.metadata = config.repositories[name]
+	#--------------------------------------------------------------------------#
+	def __repr__(self):
+		return "<relfs://%(path)s>" % {"path": self.metadata.path}
+	#--------------------------------------------------------------------------#
+	def __str__(self):
+		return "<relfs:%(name)s>" % {"name": self.name}
 	#--------------------------------------------------------------------------#
 	def get_name(self):
 		return self.name
@@ -164,20 +233,39 @@ class Repository:
 		self.set_object_display_name(obj_hash, display_name)
 		return RepositoryFileObject(self, obj_hash)
 	#--------------------------------------------------------------------------#
+	def get_object_display_name(self, obj_hash):
+		return obj_hash #TODO
+	#--------------------------------------------------------------------------#
 	def set_object_display_name(self, obj_hash, display_name):
-		pass
+		pass # TODO
 #------------------------------------------------------------------------------#
 def open_repository(repo_name, config = __config()):
 	return Repository(repo_name, config)
 #------------------------------------------------------------------------------#
 class RepositoryFileObject:
+	#--------------------------------------------------------------------------#
 	def __init__(self, repo, obj_hash):
 		self.repo = repo
 		self.obj_hash = obj_hash
-
-	def get_path(self):
+	#--------------------------------------------------------------------------#
+	def __repr__(self):
+		return "<relfs://%(repo)s/%(hash)s>" % {
+			"repo": self.repo.get_objects_dir_path(),
+			"hash": self.obj_hash
+		}
+	#--------------------------------------------------------------------------#
+	def __str__(self):
+		return "<relfs:%(repo)s/%(name)s>" % {
+			"repo": self.repo.get_name(),
+			"name": self.get_display_name()
+		}
+	#--------------------------------------------------------------------------#
+	def get_path_in_repository(self):
 		return self.repo.get_object_file_path(self.obj_hash)
-
+	#--------------------------------------------------------------------------#
+	def get_display_name(self):
+		return self.repo.get_object_display_name(self.obj_hash)
+	#--------------------------------------------------------------------------#
 	def set_display_name(self, name):
-		self.repo.set_object_display_name(obj_hash, name)
+		self.repo.set_object_display_name(self.obj_hash, name)
 #------------------------------------------------------------------------------#
