@@ -58,10 +58,14 @@ def __config():
 		__cached_config = load_config()
 	return __cached_config
 #------------------------------------------------------------------------------#
+def __existing_repo_names():
+	return list(__config().repositories.keys())
+#------------------------------------------------------------------------------#
 def get_default_arg_parser(
 	command, description,
 	with_repo_names=False,
-	with_file_paths=False
+	with_file_paths=False,
+	existing_repos=False
 ):
 	import argparse
 
@@ -125,14 +129,24 @@ def get_default_arg_parser(
 	)
 
 	if with_repo_names:
-		argparser.add_argument(
-			"--repository", "-r",
-			nargs='?',
-			dest="repositories",
-			choices=list(__config().repositories.keys()),
-			default=list(),
-			action="append"
-		)
+		if existing_repos:
+			argparser.add_argument(
+				"--repository", "-r",
+				nargs='?',
+				dest="repositories",
+				choices=__existing_repo_names(),
+				default=list(),
+				action="append"
+			)
+		else:
+			argparser.add_argument(
+				"--repository", "-r",
+				nargs='?',
+				dest="repositories",
+				metavar='REPO-NAME',
+				default=list(),
+				action="append"
+			)
 
 	if with_file_paths:
 		argparser.add_argument(
@@ -149,7 +163,12 @@ def get_default_arg_parser(
 		help_list = list()
 
 		if with_repo_names:
-			mvar_list.append('@repo')
+			if existing_repos:
+				mvar_list += [
+					'@'+x.encode('ascii', 'ignore')
+					for x in __existing_repo_names()
+				]
+			else: mvar_list.append('@repo')
 			help_list.append('repository name')
 
 		if with_file_paths:
@@ -158,7 +177,7 @@ def get_default_arg_parser(
 
 		argparser.add_argument(
 			"arguments",
-			metavar=" | ".join(mvar_list),
+			metavar="|".join(mvar_list),
 			nargs='*',
 			type=str,
 			help=" or ".join(help_list)
