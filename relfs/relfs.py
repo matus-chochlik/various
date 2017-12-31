@@ -14,21 +14,34 @@ def _mkdir_p(os_path):
 		if not(os_error.errno == os.errno.EEXIST and os.path.isdir(os_path)):
 			raise
 #------------------------------------------------------------------------------#
-repository_kinds = ['user', 'system']
+def system_config_dir_path():
+	return os.path.expanduser('/etc/relfs/')
 #------------------------------------------------------------------------------#
-def get_system_repo_config_file_path():
-	return os.path.expanduser('/etc/relfs/repositories')
+def user_config_dir_path():
+	return os.path.expanduser('~/.config/relfs/')
 #------------------------------------------------------------------------------#
-def get_user_repo_config_file_path():
-	return os.path.expanduser('~/.config/relfs/repositories')
+def config_types():
+	return ['system', 'user']
 #------------------------------------------------------------------------------#
-def get_repo_config_file_list():
-	return [
-		get_system_repo_config_file_path(),
-		get_user_repo_config_file_path()
-	]
+def config_dir_paths():
+	return [system_config_dir_path(), user_config_dir_path()]
 #------------------------------------------------------------------------------#
-def load_config_file(file_path):
+def config_dir_types_and_paths():
+	return dict(zip(config_types(), config_dir_paths()))
+#------------------------------------------------------------------------------#
+def config_dir_path(config_type):
+	return config_dir_types_and_paths()[config_type]
+#------------------------------------------------------------------------------#
+def __make_repo_config_file_path(config_dir):
+	return os.path.join(config_dir, "repositories")
+#------------------------------------------------------------------------------#
+def repo_config_file_path(config_type):
+	return __make_repo_config_file_path(config_dir_path(config_type))
+#------------------------------------------------------------------------------#
+def repo_config_file_paths():
+	return [__make_repo_config_file_path(x) for x in config_dir_paths()]
+#------------------------------------------------------------------------------#
+def __load_config_content(file_path):
 	try:
 		config_file = open(file_path, 'rt')
 		return json.load(config_file)
@@ -37,31 +50,45 @@ def load_config_file(file_path):
 			return dict()
 		else: raise
 #------------------------------------------------------------------------------#
-def load_config_files():
-	config = dict()
-	for file_path in get_repo_config_file_list():
-		config.update(load_config_file(file_path))
-
-	return config
+def __save_config_content(file_path, content):
+	config_file = open(file_path, 'wt')
+	json.dump(content, config_file, indent=2)
 #------------------------------------------------------------------------------#
-def load_config():
-	class ConfigStruct:
-		def __init__(self, **entries):
-			self.__dict__.update(**entries)
+class __ConfigStruct(object):
+	def __init__(self, entries):
+		self.__dict__.update(entries)
+#------------------------------------------------------------------------------#
+def load_all_configs():
+	config = dict()
+	for file_path in repo_config_file_paths():
+		config.update(__load_config_content(file_path))
 
-	return ConfigStruct(**load_config_files())
+	return __ConfigStruct(config)
+#------------------------------------------------------------------------------#
+def load_config_file(file_path):
+	return __ConfigStruct(__load_config_content(file_path))
+#------------------------------------------------------------------------------#
+def load_config(config_type):
+	return load_config_file(repo_config_file_path(config_type))
+#------------------------------------------------------------------------------#
+def save_config_file(file_path, config):
+	assert(isinstance(config, __ConfigStruct))
+	__save_config_content(file_path, config.__dict__)
+#------------------------------------------------------------------------------#
+def save_config(config_type, config):
+	return save_config_file(repo_config_file_path(config_type), config)
 #------------------------------------------------------------------------------#
 __cached_config = None
 def __config():
 	global __cached_config
 	if __cached_config is None:
-		__cached_config = load_config()
+		__cached_config = load_all_configs()
 	return __cached_config
 #------------------------------------------------------------------------------#
 def __existing_repo_names():
 	return list(__config().repositories.keys())
 #------------------------------------------------------------------------------#
-def get_default_arg_parser(
+def make_default_arg_parser(
 	command, description,
 	with_repo_names=False,
 	with_file_paths=False,
@@ -207,37 +234,37 @@ def make_file_repo_path(repo, os_path, config=__config()):
 	file_hash = make_file_hash(os_path)
 	return (os.path.join(repo_prefix, "objects", file_hash[:3]), file_hash[3:])
 #------------------------------------------------------------------------------#
-class Repository:
+class Repository(object):
 	#--------------------------------------------------------------------------#
 	def __init__(self, name, config):
-		self.name = name
-		self.metadata = config.repositories[name]
+		self._name = name
+		self._metadata = config.repositories[name]
 	#--------------------------------------------------------------------------#
 	def __repr__(self):
-		return "<relfs://%(path)s>" % {"path": self.metadata.path}
+		return "<relfs://%(path)s>" % {"path": self._metadata.path}
 	#--------------------------------------------------------------------------#
 	def __str__(self):
-		return "<relfs:%(name)s>" % {"name": self.name}
+		return "<relfs:%(name)s>" % {"name": self._name}
 	#--------------------------------------------------------------------------#
-	def get_name(self):
-		return self.name
+	def name(self):
+		return self._name
 	#--------------------------------------------------------------------------#
-	def get_prefix(self):
-		return self.metadata["path"]
+	def prefix(self):
+		return self._metadata["path"]
 	#--------------------------------------------------------------------------#
-	def get_objects_dir_path(self):
-		return os.path.join(self.get_prefix(), "objects")
+	def objects_dir_path(self):
+		return os.path.join(self.prefix(), "objects")
 	#--------------------------------------------------------------------------#
-	def get_object_dir_path(self, obj_hash):
-		return os.path.join(self.get_objects_dir_path(), obj_hash[:3])
+	def object_dir_path(self, obj_hash):
+		return os.path.join(self.objects_dir_path(), obj_hash[:3])
 	#--------------------------------------------------------------------------#
-	def get_object_file_name(self, obj_hash):
+	def object_file_name(self, obj_hash):
 		return obj_hash[3:]
 	#--------------------------------------------------------------------------#
-	def get_object_file_path(self, obj_hash):
+	def object_file_path(self, obj_hash):
 		return os.path.join(
-			self.get_object_dir_path(obj_hash),
-			self.get_object_file_name(obj_hash)
+			self.object_dir_path(obj_hash),
+			self.object_file_name(obj_hash)
 		)
 	#--------------------------------------------------------------------------#
 	def checkin_file(self, os_path, display_name=None):
@@ -245,46 +272,46 @@ class Repository:
 			display_name = os.path.basename(os_path)
 
 		obj_hash = make_file_hash(os_path)
-		dir_path = self.get_object_dir_path(obj_hash)
+		dir_path = self.object_dir_path(obj_hash)
 		_mkdir_p(dir_path)
-		obj_path = os.path.join(dir_path, self.get_object_file_name(obj_hash))
+		obj_path = os.path.join(dir_path, self.object_file_name(obj_hash))
 		shutil.copyfile(os_path, obj_path)
 		self.set_object_display_name(obj_hash, display_name)
 		return RepositoryFileObject(self, obj_hash)
 	#--------------------------------------------------------------------------#
-	def get_object_display_name(self, obj_hash):
+	def object_display_name(self, obj_hash):
 		return obj_hash #TODO
 	#--------------------------------------------------------------------------#
-	def set_object_display_name(self, obj_hash, display_name):
+	def change_object_display_name(self, obj_hash, display_name):
 		pass # TODO
 #------------------------------------------------------------------------------#
 def open_repository(repo_name, config = __config()):
 	return Repository(repo_name, config)
 #------------------------------------------------------------------------------#
-class RepositoryFileObject:
+class RepositoryFileObject(object):
 	#--------------------------------------------------------------------------#
 	def __init__(self, repo, obj_hash):
-		self.repo = repo
-		self.obj_hash = obj_hash
+		self._repo = repo
+		self._obj_hash = obj_hash
 	#--------------------------------------------------------------------------#
 	def __repr__(self):
 		return "<relfs://%(repo)s/%(hash)s>" % {
-			"repo": self.repo.get_objects_dir_path(),
-			"hash": self.obj_hash
+			"repo": self._repo.objects_dir_path(),
+			"hash": self._obj_hash
 		}
 	#--------------------------------------------------------------------------#
 	def __str__(self):
 		return "<relfs:%(repo)s/%(name)s>" % {
-			"repo": self.repo.get_name(),
-			"name": self.get_display_name()
+			"repo": self._repo.name(),
+			"name": self.display_name()
 		}
 	#--------------------------------------------------------------------------#
-	def get_path_in_repository(self):
-		return self.repo.get_object_file_path(self.obj_hash)
+	def path_in_repository(self):
+		return self.repo.object_file_path(self.obj_hash)
 	#--------------------------------------------------------------------------#
-	def get_display_name(self):
-		return self.repo.get_object_display_name(self.obj_hash)
+	def display_name(self):
+		return self.repo.object_display_name(self.obj_hash)
 	#--------------------------------------------------------------------------#
-	def set_display_name(self, name):
-		self.repo.set_object_display_name(self.obj_hash, name)
+	def change_display_name(self, name):
+		self.repo.change_object_display_name(self.obj_hash, name)
 #------------------------------------------------------------------------------#
