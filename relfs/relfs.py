@@ -5,8 +5,8 @@ import os, sys, json, hashlib, resource, shutil
 #------------------------------------------------------------------------------#
 __version_numbers= (0,1,0)
 #------------------------------------------------------------------------------#
-def __print_error(message, error):
-	print(message, file=sys.stderr)
+class Error(Exception):
+	pass
 #------------------------------------------------------------------------------#
 def _mkdir_p(os_path):
 	try: os.makedirs(os_path)
@@ -212,15 +212,6 @@ def make_default_arg_parser(
 
 	return argparser
 #------------------------------------------------------------------------------#
-def init_repository(os_path, options):
-	try:
-		_mkdir_p(os_path)
-	except Exception as error:
-		__print_error("failed to initialize repository: ", error)
-#------------------------------------------------------------------------------#
-def remove_repository(os_path, options):
-	pass # TODO
-#------------------------------------------------------------------------------#
 def make_file_hash(file_path):
 	hash_obj = hashlib.sha256()
 	chunk_size = resource.getpagesize()
@@ -229,12 +220,29 @@ def make_file_hash(file_path):
 			hash_obj.update(chunk)
 	return hash_obj.hexdigest()
 #------------------------------------------------------------------------------#
-def make_file_repo_path(repo, os_path, config=__config()):
-	repo_prefix = config.repositories[repo]["path"]
-	file_hash = make_file_hash(os_path)
-	return (os.path.join(repo_prefix, "objects", file_hash[:3]), file_hash[3:])
-#------------------------------------------------------------------------------#
 class Repository(object):
+	#--------------------------------------------------------------------------#
+	@staticmethod
+	def make_default_config(name):
+		return dict()
+	#--------------------------------------------------------------------------#
+	@staticmethod
+	def initialize(config_type, name, os_path):
+		if os.path.exists(os_path):
+			if os.path.isdir(os_path):
+				if len(os.listdir(os_path)) > 0:
+					raise Error("repository directory '%s' is not empty" % os_path)
+			else:
+				raise Error("file '%s' exists and is not a directory" % os_path)
+		else:
+			_mkdir_p(os_path)
+
+		with open(os.path.join(os_path, "config"), "wt") as config_file:
+			json.dump(Repository.make_default_config(name), config_file)
+
+		global_config = load_config(config_type)
+		global_config.repositories[name] = os_path
+		save_config(config_type, global_config)
 	#--------------------------------------------------------------------------#
 	def __init__(self, name, config):
 		self._name = name
