@@ -1,9 +1,9 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 from __future__ import print_function
-import os, sys, json, hashlib, resource, shutil
+import os, sys, json, hashlib, resource, shutil, argparse
 #------------------------------------------------------------------------------#
-__version_numbers= (0,1,0)
+_version_numbers= (0,1,0)
 #------------------------------------------------------------------------------#
 class Error(Exception):
 	pass
@@ -88,59 +88,173 @@ def __config():
 def __existing_repo_names():
 	return list(__config().repositories.keys())
 #------------------------------------------------------------------------------#
+class __RelfsArgumentParser(argparse.ArgumentParser):
+	#--------------------------------------------------------------------------#
+	def __init__(
+		self,
+		with_repo_names=False,
+		with_tag_labels=False,
+		with_file_paths=False,
+		with_obj_hashes=False,
+		existing_repos=False,
+		**kw
+	):
+		argparse.ArgumentParser.__init__(self, **kw)
+		self.with_repo_names=with_repo_names
+		self.with_tag_labels=with_tag_labels
+		self.with_file_paths=with_file_paths
+		self.with_obj_hashes=with_obj_hashes
+
+		self.add_argument(
+			"--version",
+			action="version",
+			version="%(prog)s relfs-"+".".join([str(x) for x in _version_numbers])
+		)
+
+		self.add_argument(
+			"--verbose", "-v",
+			dest="verbosity",
+			default=0,
+			action="count"
+		)
+		if with_repo_names:
+			if existing_repos:
+				self.add_argument(
+					"--repository", "-r",
+					nargs='?',
+					dest="repositories",
+					choices=__existing_repo_names(),
+					default=list(),
+					action="append"
+				)
+			else:
+				self.add_argument(
+					"--repository", "-r",
+					nargs='?',
+					dest="repositories",
+					metavar='REPO-NAME',
+					default=list(),
+					action="append"
+				)
+
+		if with_tag_labels:
+			self.add_argument(
+				"--tag", "-t",
+				nargs='?',
+				dest="tag_labels",
+				metavar='TAG-LABEL',
+				default=list(),
+				action="append"
+			)
+
+		if with_obj_hashes:
+			self.add_argument(
+				"--obj", "-o",
+				nargs='?',
+				dest="obj_hashes",
+				metavar='OBJ-HASH',
+				default=list(),
+				action="append"
+			)
+
+		if with_file_paths:
+			self.add_argument(
+				"--file", "-f",
+				metavar='FILE-PATH',
+				nargs='?',
+				dest="file_paths",
+				default=list(),
+				action="append"
+			)
+
+		if with_repo_names or with_tag_labels or with_obj_hashes or with_file_paths:
+			mvar_list = list()
+			help_list = list()
+
+			if with_repo_names:
+				if existing_repos:
+					mvar_list += [
+						'@'+x.encode('ascii', 'ignore')
+						for x in __existing_repo_names()
+					]
+				else: mvar_list.append('@repo')
+				help_list.append('repository name')
+
+			if with_tag_labels:
+				mvar_list.append(':tag-label')
+				help_list.append('tag label')
+
+			if with_obj_hashes:
+				mvar_list.append('^obj-hash')
+				help_list.append('obj hash')
+
+			if with_file_paths:
+				mvar_list.append('file-path')
+				help_list.append('file path')
+
+			self.add_argument(
+				"arguments",
+				metavar="|".join(mvar_list),
+				nargs='*',
+				type=str,
+				help=" or ".join(help_list)
+			)
+	#--------------------------------------------------------------------------#
+	def process_parsed_options(self, options):
+		repos  = [x[1:] for x in options.arguments if x[0] == '@']
+		tags   = [x[1:] for x in options.arguments if x[0] == ':']
+		hashes = [x[1:] for x in options.arguments if x[0] == '^']
+		files  = [x for x in options.arguments if x[0] not in ['@',':','^']]
+
+		if self.with_repo_names:
+			options.repositories += repos
+		elif len(repos) > 0:
+			self.error(
+				"unexpected repository name '%s' in argument list" % repos[0]
+			)
+
+		if self.with_tag_labels:
+			options.tag_labels += tags
+		elif len(tags) > 0:
+			self.error(
+				"unexpected tag '%s' in argument list" % tags[0]
+			)
+
+		if self.with_file_paths:
+			options.file_paths += files
+		elif len(files) > 0:
+			self.error(
+				"unexpected file path '%s' in argument list" % files[0]
+			)
+
+		if self.with_obj_hashes:
+			options.obj_hashes += hashes
+		elif len(files) > 0:
+			self.error(
+				"unexpected object hash '%s' in argument list" % hashes[0]
+			)
+
+		options.__dict__.pop("arguments", None)
+		return options
+	#--------------------------------------------------------------------------#
+	def parse_args(self):
+		return self.process_parsed_options(
+			argparse.ArgumentParser.parse_args(self)
+		)
+#------------------------------------------------------------------------------#
 def make_default_arg_parser(
 	command, description,
 	with_repo_names=False,
-	with_file_paths=False,
 	with_tag_labels=False,
+	with_file_paths=False,
+	with_obj_hashes=False,
 	existing_repos=False
 ):
-	import argparse
-
-	class __RelfsArgumentParser(argparse.ArgumentParser):
-		def __init__(self, *args, **kw):
-			argparse.ArgumentParser.__init__(self, *args, **kw)
-			self.with_repo_names=False
-			self.with_tag_labels=False
-			self.with_file_paths=False
-
-		def process_parsed_options(self, options):
-			repos = [x[1:] for x in options.arguments if x[0] == '@']
-			tags  = [x[1:] for x in options.arguments if x[0] == '#']
-			files = [x     for x in options.arguments if x[0] not in ['@','#']]
-
-			if self.with_repo_names:
-				options.repositories += repos
-			elif len(repos) > 0:
-				self.error(
-					"unexpected repository name '%s' in argument list" % repos[0]
-				)
-
-			if self.with_tag_labels:
-				options.tag_labels += tags
-			elif len(tags) > 0:
-				self.error(
-					"unexpected tag '%s' in argument list" % tags[0]
-				)
-
-
-			if self.with_file_paths:
-				options.file_paths += files
-			elif len(files) > 0:
-				self.error(
-					"unexpected file path '%s' in argument list" % files[0]
-				)
-
-
-			options.__dict__.pop("arguments", None)
-			return options
-
-		def parse_args(self):
-			return self.process_parsed_options(
-				argparse.ArgumentParser.parse_args(self)
-			)
-
 	argparser = __RelfsArgumentParser(
+		with_repo_names = with_repo_names,
+		with_tag_labels = with_tag_labels,
+		with_file_paths = with_file_paths,
+		with_obj_hashes = with_obj_hashes,
 		prog=command,
 		description=description,
 		epilog="""
@@ -150,91 +264,6 @@ def make_default_arg_parser(
 			(See a copy at http://www.boost.org/LICENSE_1_0.txt)
 		"""
 	)
-	argparser.with_repo_names = with_repo_names
-	argparser.with_tag_labels = with_tag_labels
-	argparser.with_file_paths = with_file_paths
-
-	argparser.add_argument(
-		"--version",
-		action="version",
-		version="%(prog)s relfs-"+".".join([str(x) for x in __version_numbers])
-	)
-
-	argparser.add_argument(
-		"--verbose", "-v",
-		dest="verbosity",
-		default=0,
-		action="count"
-	)
-
-	if with_repo_names:
-		if existing_repos:
-			argparser.add_argument(
-				"--repository", "-r",
-				nargs='?',
-				dest="repositories",
-				choices=__existing_repo_names(),
-				default=list(),
-				action="append"
-			)
-		else:
-			argparser.add_argument(
-				"--repository", "-r",
-				nargs='?',
-				dest="repositories",
-				metavar='REPO-NAME',
-				default=list(),
-				action="append"
-			)
-
-	if with_tag_labels:
-		argparser.add_argument(
-			"--tag", "-t",
-			nargs='?',
-			dest="tag_labels",
-			metavar='TAG-LABEL',
-			default=list(),
-			action="append"
-		)
-
-	if with_file_paths:
-		argparser.add_argument(
-			"--file", "-f",
-			metavar='FILE-PATH',
-			nargs='?',
-			dest="file_paths",
-			default=list(),
-			action="append"
-		)
-
-	if with_repo_names or with_tag_labels or with_file_paths:
-		mvar_list = list()
-		help_list = list()
-
-		if with_repo_names:
-			if existing_repos:
-				mvar_list += [
-					'@'+x.encode('ascii', 'ignore')
-					for x in __existing_repo_names()
-				]
-			else: mvar_list.append('@repo')
-			help_list.append('repository name')
-
-		if with_tag_labels:
-			mvar_list.append('#tag-label')
-			help_list.append('tag label')
-
-		if with_file_paths:
-			mvar_list.append('file-path')
-			help_list.append('file path')
-
-		argparser.add_argument(
-			"arguments",
-			metavar="|".join(mvar_list),
-			nargs='*',
-			type=str,
-			help=" or ".join(help_list)
-		)
 
 	return argparser
 #------------------------------------------------------------------------------#
