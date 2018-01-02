@@ -92,6 +92,7 @@ def make_default_arg_parser(
 	command, description,
 	with_repo_names=False,
 	with_file_paths=False,
+	with_tag_labels=False,
 	existing_repos=False
 ):
 	import argparse
@@ -99,17 +100,27 @@ def make_default_arg_parser(
 	class __RelfsArgumentParser(argparse.ArgumentParser):
 		def __init__(self, *args, **kw):
 			argparse.ArgumentParser.__init__(self, *args, **kw)
-			with_repo_names=False
-			with_file_paths=False
+			self.with_repo_names=False
+			self.with_tag_labels=False
+			self.with_file_paths=False
 
 		def process_parsed_options(self, options):
 			repos = [x[1:] for x in options.arguments if x[0] == '@']
-			files = [x     for x in options.arguments if x[0] != '@']
+			tags  = [x[1:] for x in options.arguments if x[0] == '#']
+			files = [x     for x in options.arguments if x[0] not in ['@','#']]
+
 			if self.with_repo_names:
 				options.repositories += repos
 			elif len(repos) > 0:
 				self.error(
 					"unexpected repository name '%s' in argument list" % repos[0]
+				)
+
+			if self.with_tag_labels:
+				options.tag_labels += tags
+			elif len(tags) > 0:
+				self.error(
+					"unexpected tag '%s' in argument list" % tags[0]
 				)
 
 
@@ -140,6 +151,7 @@ def make_default_arg_parser(
 		"""
 	)
 	argparser.with_repo_names = with_repo_names
+	argparser.with_tag_labels = with_tag_labels
 	argparser.with_file_paths = with_file_paths
 
 	argparser.add_argument(
@@ -175,6 +187,16 @@ def make_default_arg_parser(
 				action="append"
 			)
 
+	if with_tag_labels:
+		argparser.add_argument(
+			"--tag", "-t",
+			nargs='?',
+			dest="tag_labels",
+			metavar='TAG-LABEL',
+			default=list(),
+			action="append"
+		)
+
 	if with_file_paths:
 		argparser.add_argument(
 			"--file", "-f",
@@ -185,7 +207,7 @@ def make_default_arg_parser(
 			action="append"
 		)
 
-	if with_repo_names or with_file_paths:
+	if with_repo_names or with_tag_labels or with_file_paths:
 		mvar_list = list()
 		help_list = list()
 
@@ -197,6 +219,10 @@ def make_default_arg_parser(
 				]
 			else: mvar_list.append('@repo')
 			help_list.append('repository name')
+
+		if with_tag_labels:
+			mvar_list.append('#tag-label')
+			help_list.append('tag label')
 
 		if with_file_paths:
 			mvar_list.append('file-path')
