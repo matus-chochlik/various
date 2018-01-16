@@ -12,6 +12,7 @@ Plugin 'tpope/vim-surround'
 Plugin 'tpope/vim-fugitive'
 Plugin 'tpope/vim-abolish'
 Plugin 'airblade/vim-gitgutter'
+Plugin 'davidhalter/jedi-vim'
 call vundle#end()
 
 let g:ycm_extra_conf_globlist = ['~/Devel/*/*','!~/*']
