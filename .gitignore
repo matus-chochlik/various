@@ -31,3 +31,6 @@ calendar/_build
 *.exe
 *.out
 *.app
+
+# Python compiled scripts
+*.pyc
