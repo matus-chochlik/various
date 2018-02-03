@@ -98,8 +98,10 @@ class RelfsArgumentSetup:
 		self.with_obj_hashes = False
 
 		self.existing_repos = False
-
 		self.at_least_one_repo = self.with_repo_names
+
+		self.with_config_type = False
+
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
 	#--------------------------------------------------------------------------#
@@ -177,6 +179,24 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 				default=list(),
 				action="append"
 			)
+
+		if arg_setup.with_config_type:
+			ct_group = self.add_mutually_exclusive_group()
+			ct_group.add_argument(
+				"--config-type", "-C",
+				nargs='?',
+				dest="config_type",
+				choices=config_types(),
+				default="user",
+				action="store"
+			)
+			for conf_typ in config_types():
+				ct_group.add_argument(
+					"--%s" % conf_typ,
+					dest="config_type",
+					action="store_const",
+					const=conf_typ
+				)
 
 		if	arg_setup.with_repo_names or\
 			arg_setup.with_tag_labels or\
