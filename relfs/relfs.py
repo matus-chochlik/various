@@ -123,16 +123,25 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 			if arg_setup.existing_repos:
 				self.add_argument(
 					"--repository", "-r",
-					nargs='?',
+					nargs=1,
 					dest="repositories",
 					choices=_existing_repo_names(),
+					default=list(),
+					action="append"
+				)
+			elif arg_setup.with_repo_paths:
+				self.add_argument(
+					"--repository", "-r",
+					nargs=2,
+					dest="repositories",
+					metavar=('REPO-NAME', 'REPO-PATH'),
 					default=list(),
 					action="append"
 				)
 			else:
 				self.add_argument(
 					"--repository", "-r",
-					nargs='?',
+					nargs=1,
 					dest="repositories",
 					metavar='REPO-NAME',
 					default=list(),
@@ -182,8 +191,13 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 						'@'+x.encode('ascii', 'ignore')
 						for x in _existing_repo_names()
 					]
-				else: mvar_list.append('@repo')
-				help_list.append('repository name')
+					help_list.append('repository name')
+				elif arg_setup.with_repo_paths:
+					mvar_list.append('@repo dir-path')
+					help_list.append('repository name and repository path')
+				else:
+					mvar_list.append('@repo')
+					help_list.append('repository name')
 
 			if arg_setup.with_tag_labels:
 				mvar_list.append(':tag-label')
@@ -206,7 +220,27 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 			)
 	#--------------------------------------------------------------------------#
 	def process_parsed_options(self, options):
-		repos  = [x[1:] for x in options.arguments if x[0] == '@']
+
+		options.arg_setup = self.arg_setup
+
+		if self.arg_setup.with_repo_paths:
+			repos = list()
+			for i in xrange(0, len(options.arguments)):
+				try: this_arg = options.arguments[i]
+				except IndexError: break
+
+				try: next_arg = options.arguments[i+1]
+				except IndexError: next_arg = ""
+
+				if this_arg[0] == '@':
+					if not next_arg or next_arg[0] in ['@', ':', '^']:
+						self.error("a path is required after '%s'" % this_arg)
+					else:
+						repos.append([this_arg[1:], next_arg])
+						del(options.arguments[i+1])
+
+		else:
+			repos  = [x[1:] for x in options.arguments if x[0] == '@']
 		tags   = [x[1:] for x in options.arguments if x[0] == ':']
 		hashes = [x[1:] for x in options.arguments if x[0] == '^']
 		files  = [x for x in options.arguments if x[0] not in ['@',':','^']]
@@ -215,6 +249,8 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 			options.repositories += repos
 			if self.arg_setup.at_least_one_repo and len(repos) == 0:
 				self.error("at least one repository name must be specified")
+			if self.arg_setup.with_repo_paths:
+				options.repositories = {repo: path for repo, path in options.repositories}
 		elif len(repos) > 0:
 			self.error(
 				"unexpected repository name '%s' in argument list" % repos[0]
