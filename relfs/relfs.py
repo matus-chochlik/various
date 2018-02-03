@@ -85,25 +85,27 @@ def __config():
 		__cached_config = load_all_configs()
 	return __cached_config
 #------------------------------------------------------------------------------#
-def __existing_repo_names():
+def _existing_repo_names():
 	return list(__config().repositories.keys())
+#------------------------------------------------------------------------------#
+class RelfsArgumentSetup:
+	#--------------------------------------------------------------------------#
+	def __init__(self):
+		self.with_repo_names = False
+		self.with_repo_paths = False
+		self.with_tag_labels = False
+		self.with_file_paths = False
+		self.with_obj_hashes = False
+
+		self.existing_repos = False
+
+		self.at_least_one_repo = self.with_repo_names
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
 	#--------------------------------------------------------------------------#
-	def __init__(
-		self,
-		with_repo_names=False,
-		with_tag_labels=False,
-		with_file_paths=False,
-		with_obj_hashes=False,
-		existing_repos=False,
-		**kw
-	):
+	def __init__(self, arg_setup = RelfsArgumentSetup(), **kw):
 		argparse.ArgumentParser.__init__(self, **kw)
-		self.with_repo_names=with_repo_names
-		self.with_tag_labels=with_tag_labels
-		self.with_file_paths=with_file_paths
-		self.with_obj_hashes=with_obj_hashes
+		self.arg_setup = arg_setup
 
 		self.add_argument(
 			"--version",
@@ -117,13 +119,13 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 			default=0,
 			action="count"
 		)
-		if with_repo_names:
-			if existing_repos:
+		if arg_setup.with_repo_names:
+			if arg_setup.existing_repos:
 				self.add_argument(
 					"--repository", "-r",
 					nargs='?',
 					dest="repositories",
-					choices=__existing_repo_names(),
+					choices=_existing_repo_names(),
 					default=list(),
 					action="append"
 				)
@@ -137,7 +139,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 					action="append"
 				)
 
-		if with_tag_labels:
+		if arg_setup.with_tag_labels:
 			self.add_argument(
 				"--tag", "-t",
 				nargs='?',
@@ -147,7 +149,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 				action="append"
 			)
 
-		if with_obj_hashes:
+		if arg_setup.with_obj_hashes:
 			self.add_argument(
 				"--obj", "-o",
 				nargs='?',
@@ -157,7 +159,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 				action="append"
 			)
 
-		if with_file_paths:
+		if arg_setup.with_file_paths:
 			self.add_argument(
 				"--file", "-f",
 				metavar='FILE-PATH',
@@ -167,28 +169,31 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 				action="append"
 			)
 
-		if with_repo_names or with_tag_labels or with_obj_hashes or with_file_paths:
+		if	arg_setup.with_repo_names or\
+			arg_setup.with_tag_labels or\
+			arg_setup.with_obj_hashes or\
+			arg_setup.with_file_paths:
 			mvar_list = list()
 			help_list = list()
 
-			if with_repo_names:
-				if existing_repos:
+			if arg_setup.with_repo_names:
+				if arg_setup.existing_repos:
 					mvar_list += [
 						'@'+x.encode('ascii', 'ignore')
-						for x in __existing_repo_names()
+						for x in _existing_repo_names()
 					]
 				else: mvar_list.append('@repo')
 				help_list.append('repository name')
 
-			if with_tag_labels:
+			if arg_setup.with_tag_labels:
 				mvar_list.append(':tag-label')
 				help_list.append('tag label')
 
-			if with_obj_hashes:
+			if arg_setup.with_obj_hashes:
 				mvar_list.append('^obj-hash')
 				help_list.append('obj hash')
 
-			if with_file_paths:
+			if arg_setup.with_file_paths:
 				mvar_list.append('file-path')
 				help_list.append('file path')
 
@@ -206,28 +211,30 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 		hashes = [x[1:] for x in options.arguments if x[0] == '^']
 		files  = [x for x in options.arguments if x[0] not in ['@',':','^']]
 
-		if self.with_repo_names:
+		if self.arg_setup.with_repo_names:
 			options.repositories += repos
+			if self.arg_setup.at_least_one_repo and len(repos) == 0:
+				self.error("at least one repository name must be specified")
 		elif len(repos) > 0:
 			self.error(
 				"unexpected repository name '%s' in argument list" % repos[0]
 			)
 
-		if self.with_tag_labels:
+		if self.arg_setup.with_tag_labels:
 			options.tag_labels += tags
 		elif len(tags) > 0:
 			self.error(
 				"unexpected tag '%s' in argument list" % tags[0]
 			)
 
-		if self.with_file_paths:
+		if self.arg_setup.with_file_paths:
 			options.file_paths += files
 		elif len(files) > 0:
 			self.error(
 				"unexpected file path '%s' in argument list" % files[0]
 			)
 
-		if self.with_obj_hashes:
+		if self.arg_setup.with_obj_hashes:
 			options.obj_hashes += hashes
 		elif len(files) > 0:
 			self.error(
@@ -244,17 +251,10 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 #------------------------------------------------------------------------------#
 def make_default_arg_parser(
 	command, description,
-	with_repo_names=False,
-	with_tag_labels=False,
-	with_file_paths=False,
-	with_obj_hashes=False,
-	existing_repos=False
+	arg_setup = RelfsArgumentSetup()
 ):
 	argparser = __RelfsArgumentParser(
-		with_repo_names = with_repo_names,
-		with_tag_labels = with_tag_labels,
-		with_file_paths = with_file_paths,
-		with_obj_hashes = with_obj_hashes,
+		arg_setup = arg_setup,
 		prog=command,
 		description=description,
 		epilog="""
