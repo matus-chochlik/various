@@ -19,6 +19,8 @@ class ArgumentSetup:
 		self.at_least_one_repo = self.with_repo_names
 
 		self.with_config_type = False
+		self.with_database_name = False
+		self.with_schema_name = False
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
 	#--------------------------------------------------------------------------#
@@ -114,6 +116,26 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 					action="store_const",
 					const=conf_typ
 				)
+
+		if arg_setup.with_database_name:
+			self.add_argument(
+				"--database", "-d",
+				metavar='DB-NAME',
+				nargs=1,
+				dest="database",
+				default="relfs",
+				action="store"
+			)
+
+		if arg_setup.with_schema_name:
+			self.add_argument(
+				"--schema", "-s",
+				metavar='SCHEMA-NAME',
+				nargs=1,
+				dest="schema",
+				default="relfs",
+				action="store"
+			)
 
 		if	arg_setup.with_repo_names or\
 			arg_setup.with_tag_labels or\

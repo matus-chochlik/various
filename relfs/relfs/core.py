@@ -29,11 +29,14 @@ def make_file_hash(file_path):
 class Repository(object):
 	#--------------------------------------------------------------------------#
 	@staticmethod
-	def make_default_config(name):
-		return dict()
+	def make_default_config(name, options):
+		return {
+			"database": options.database,
+			"schema": options.schema
+		}
 	#--------------------------------------------------------------------------#
 	@staticmethod
-	def initialize(config_type, name, os_path):
+	def initialize(config_type, name, os_path, options):
 		if os.path.exists(os_path):
 			if os.path.isdir(os_path):
 				if len(os.listdir(os_path)) > 0:
@@ -44,7 +47,7 @@ class Repository(object):
 			_mkdir_p(os_path)
 
 		with open(os.path.join(os_path, "config"), "wt") as config_file:
-			json.dump(Repository.make_default_config(name), config_file)
+			json.dump(Repository.make_default_config(name, options), config_file)
 
 		global_config = load_config(config_type)
 		global_config.repositories[name] = {"path": os_path}
