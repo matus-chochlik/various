@@ -48,17 +48,25 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
 		return arg
 	#--------------------------------------------------------------------------#
-	def _database_name_value(arg):
-		return _identifier_value(arg, 'database')
+	def _database_name_value(self, arg):
+		return self._identifier_value(arg, 'database')
 	#--------------------------------------------------------------------------#
-	def _schema_name_value(arg):
-		return _identifier_value(arg, 'schema')
+	def _schema_name_value(self, arg):
+		return self._identifier_value(arg, 'schema')
 	#--------------------------------------------------------------------------#
 	def _repo_name_value(self, arg):
 		return self._identifier_value(arg, 'repository')
 	#--------------------------------------------------------------------------#
-	def _tag_name_value(arg):
-		return _identifier_value(arg, 'tag')
+	def _tag_name_value(self, arg):
+		return self._identifier_value(arg, 'tag')
+	#--------------------------------------------------------------------------#
+	def _obj_hash_value(self, arg):
+		msg_fmt = "'%s' is not a valid hash value"
+		ident = re.compile(r"^[0-9A-Fa-f]{6}[0-9A-Fa-f]*\Z", re.UNICODE)
+		if ident.match(arg) is None:
+			self.error(msg_fmt % arg)
+
+		return arg
 	#--------------------------------------------------------------------------#
 	def __init__(self, arg_setup = ArgumentSetup(), **kw):
 		argparse.ArgumentParser.__init__(self, **kw)
@@ -122,6 +130,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 		if arg_setup.with_obj_hashes:
 			self.add_argument(
 				"--obj", "-o",
+				type=self._obj_hash_value,
 				nargs='?',
 				dest="obj_hashes",
 				metavar='OBJ-HASH',
