@@ -31,8 +31,10 @@ class Repository(object):
 	@staticmethod
 	def make_default_config(name, options):
 		return {
-			"database": options.database,
-			"schema": options.schema
+			"db_host" : options.db_host or "localhost",
+			"db_port" : options.db_port or 5432,
+			"database": options.database or "relfs",
+			"schema": options.schema or "relfs"
 		}
 	#--------------------------------------------------------------------------#
 	@staticmethod

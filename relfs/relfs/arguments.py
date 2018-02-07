@@ -1,6 +1,7 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import os
+import re
 import argparse
 #------------------------------------------------------------------------------#
 from .core import _version_numbers
@@ -19,13 +20,49 @@ class ArgumentSetup:
 		self.at_least_one_repo = self.with_repo_names
 
 		self.with_config_type = False
-		self.with_database_name = False
-		self.with_schema_name = False
+
+		self.with_database_host = True
+		self.with_database_port = True
+		self.with_database_name = True
+		self.with_schema_name = True
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
 	#--------------------------------------------------------------------------#
+	def _port_number_value(self, arg):
+		msg_fmt = "'%s' is not a valid port number"
+		try:
+			port_num = int(arg)
+		except:
+			raise argparse.ArgumentTypeError(msg_fmt % str(arg))
+
+		if port_num <= 0 or port_num >= 2**16:
+			raise argparse.ArgumentTypeError(msg_fmt % str(arg))
+
+		return port_num
+	#--------------------------------------------------------------------------#
+	def _identifier_value(self, arg, name):
+		msg_fmt = "'%s' is not a valid " + name + " identifier"
+		ident = re.compile(r"^[^\d\W]\w*\Z", re.UNICODE)
+		if ident.match(arg) is None:
+			self.error(msg_fmt % arg)
+
+		return arg
+	#--------------------------------------------------------------------------#
+	def _database_name_value(arg):
+		return _identifier_value(arg, 'database')
+	#--------------------------------------------------------------------------#
+	def _schema_name_value(arg):
+		return _identifier_value(arg, 'schema')
+	#--------------------------------------------------------------------------#
+	def _repo_name_value(self, arg):
+		return self._identifier_value(arg, 'repository')
+	#--------------------------------------------------------------------------#
+	def _tag_name_value(arg):
+		return _identifier_value(arg, 'tag')
+	#--------------------------------------------------------------------------#
 	def __init__(self, arg_setup = ArgumentSetup(), **kw):
 		argparse.ArgumentParser.__init__(self, **kw)
+
 		self.arg_setup = arg_setup
 
 		self.add_argument(
@@ -44,6 +81,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 			if arg_setup.existing_repos:
 				self.add_argument(
 					"--repository", "-r",
+					type=self._repo_name_value,
 					nargs=1,
 					dest="repositories",
 					choices=_existing_repo_names(),
@@ -62,6 +100,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 			else:
 				self.add_argument(
 					"--repository", "-r",
+					type=self._repo_name_value,
 					nargs=1,
 					dest="repositories",
 					metavar='REPO-NAME',
@@ -72,6 +111,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 		if arg_setup.with_tag_labels:
 			self.add_argument(
 				"--tag", "-t",
+				type=self._tag_name_value,
 				nargs='?',
 				dest="tag_labels",
 				metavar='TAG-LABEL',
@@ -117,23 +157,46 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 					const=conf_typ
 				)
 
+		if arg_setup.with_database_host:
+			self.add_argument(
+				"--host", "-H",
+				metavar='HOST-NAME',
+				nargs=1,
+				dest="db_host",
+				default=None,
+				action="store"
+			)
+
+		if arg_setup.with_database_port:
+			self.add_argument(
+				"--port", "-P",
+				metavar='PORT-NUMBER',
+				type=self._port_number_value,
+				nargs=1,
+				dest="db_port",
+				default=None,
+				action="store"
+			)
+
 		if arg_setup.with_database_name:
 			self.add_argument(
-				"--database", "-d",
+				"--database", "-D",
+				type=self._database_name_value,
 				metavar='DB-NAME',
 				nargs=1,
 				dest="database",
-				default="relfs",
+				default=None,
 				action="store"
 			)
 
 		if arg_setup.with_schema_name:
 			self.add_argument(
-				"--schema", "-s",
+				"--schema", "-S",
+				type=self._schema_name_value,
 				metavar='SCHEMA-NAME',
 				nargs=1,
 				dest="schema",
-				default="relfs",
+				default=None,
 				action="store"
 			)
 
@@ -179,7 +242,6 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 			)
 	#--------------------------------------------------------------------------#
 	def process_parsed_options(self, options):
-
 		options.arg_setup = self.arg_setup
 
 		if self.arg_setup.with_repo_paths:
@@ -206,17 +268,26 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
 		if self.arg_setup.with_repo_names:
 			options.repositories += repos
-			if self.arg_setup.at_least_one_repo and len(repos) == 0:
+
+			if self.arg_setup.at_least_one_repo and len(options.repositories) == 0:
 				self.error("at least one repository name must be specified")
 			if self.arg_setup.with_repo_paths:
-				options.repositories = {repo: path for repo, path in options.repositories}
+				options.repositories = {
+					self._repo_name_value(repo): path
+					for repo, path in options.repositories
+				}
+			else:
+				options.repositories = [
+					self._repo_name_value(repo)
+					for repo in options.repositories
+				]
 		elif len(repos) > 0:
 			self.error(
 				"unexpected repository name '%s' in argument list" % repos[0]
 			)
 
 		if self.arg_setup.with_tag_labels:
-			options.tag_labels += tags
+			options.tag_labels += [self._tag_name_value(t) for t in tags]
 		elif len(tags) > 0:
 			self.error(
 				"unexpected tag '%s' in argument list" % tags[0]

@@ -10,8 +10,6 @@ def make_arg_parser():
 	arg_setup.existing_repos = False
 	arg_setup.at_least_one_repo = True
 	arg_setup.with_config_type = True
-	arg_setup.with_database_name = True
-	arg_setup.with_schema_name = True
 
 	parser = relfs.make_argument_parser(
 		'relfs-init',
