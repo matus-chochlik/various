@@ -3,7 +3,6 @@
 #ifndef SUDOKU_BOARD_HPP
 #define SUDOKU_BOARD_HPP
 
-#include <vector>
 #include <iomanip>
 #include "sudoku_cell.hpp"
 //------------------------------------------------------------------------------
@@ -13,30 +12,22 @@ enum class sudoku_reduce_result {
 	failure
 };
 //------------------------------------------------------------------------------
+template <int Rank>
 class sudoku_board {
 private:
-	int _rank;
-	std::vector<sudoku_cell> _cells;
-
-	auto _index(int r, int c) const {
-		return std::size_t(r*side() + c);
-	}
+	sudoku_cell _cells[Rank*Rank][Rank*Rank];
 public:
-	sudoku_board(int rank)
-	 : _rank(rank)
-	 , _cells(side()*side())
-	{ }
+	sudoku_board(void) = default;
 
-	int rank(void) const noexcept { return _rank; }
-	int side(void) const noexcept { return rank()*rank(); }
+	constexpr int side(void) const noexcept { return Rank*Rank; }
 
-	const sudoku_cell& cell(int r, int c) const { return _cells[_index(r, c)]; }
-	sudoku_cell& cell(int r, int c) { return _cells[_index(r, c)]; }
+	const sudoku_cell& cell(int r, int c) const { return _cells[r][c]; }
+	sudoku_cell& cell(int r, int c) { return _cells[r][c]; }
 
 	sudoku_cell valid_numbers(int r, int c, sudoku_cell v);
 
 	sudoku_cell valid_numbers(int r, int c) {
-		return valid_numbers(r, c, sudoku_cell::all_options(rank()));
+		return valid_numbers(r, c, sudoku_cell::all_options(Rank));
 	}
 
 	void read(std::istream& input);
@@ -48,10 +39,10 @@ public:
 	sudoku_reduce_result reduce(void);
 };
 //------------------------------------------------------------------------------
-inline
-sudoku_cell sudoku_board::valid_numbers(int r, int c, sudoku_cell v) {
+template <int Rank>
+sudoku_cell sudoku_board<Rank>::valid_numbers(int r, int c, sudoku_cell v) {
 	const int d = side();
-	const int k = rank();
+	const int k = Rank;
 
 	for(int x = 0; x < d; ++x) {
 		sudoku_cell& cr = cell(r, x);
@@ -84,8 +75,8 @@ sudoku_cell sudoku_board::valid_numbers(int r, int c, sudoku_cell v) {
 	return v;
 }
 //------------------------------------------------------------------------------
-inline
-void sudoku_board::read(std::istream& input) {
+template <int Rank>
+void sudoku_board<Rank>::read(std::istream& input) {
 	const int d = side();
 
 	char v, s;
@@ -94,11 +85,7 @@ void sudoku_board::read(std::istream& input) {
 			v = input.get();
 			s = input.get();
 
-			if(auto val = sudoku_value(rank(), v)) {
-				cell(r, c).init(val);
-			} else {
-				cell(r, c).clear();
-			}
+			cell(r, c).init(sudoku_value(Rank, v));
 
 			if((s == '\n') && (c < (d - 1))) {
 				throw std::runtime_error("Line too short");
@@ -121,15 +108,16 @@ void sudoku_board::read(std::istream& input) {
 	}
 }
 //------------------------------------------------------------------------------
-std::ostream& sudoku_board::print(std::ostream& output) {
+template <int Rank>
+std::ostream& sudoku_board<Rank>::print(std::ostream& output) {
 	const int d = side();
 
 	for(int r = 0; r < d; ++r) {
-		if((r > 0) && (r % rank() == 0)) {
+		if((r > 0) && (r % Rank == 0)) {
 			for(int c = 0; c < d; ++c) {
 				if((c + 1) == d) {
 					std::cout << "-";
-				} else if((c + 1) % rank() == 0) {
+				} else if((c + 1) % Rank == 0) {
 					std::cout << "-+";
 				} else {
 					std::cout << "--";
@@ -143,13 +131,15 @@ std::ostream& sudoku_board::print(std::ostream& output) {
 			const auto& cl = cell(r, c);
 
 			if(cl.determined()) {
-				cl.value().write_to(std::cout, rank());
+				cl.value().write_to(std::cout, Rank);
+			} else if(cl.empty()) {
+					std::cout << '.';
 			} else {
 					std::cout << '?';
 			}
 
 			if((c + 1) < d) {
-				if((c + 1) % rank() == 0) {
+				if((c + 1) % Rank == 0) {
 					std::cout << "|";
 				} else {
 					std::cout << " ";
@@ -162,7 +152,8 @@ std::ostream& sudoku_board::print(std::ostream& output) {
 	return output;
 }
 //------------------------------------------------------------------------------
-std::ostream& sudoku_board::print_counts(std::ostream& output) {
+template <int Rank>
+std::ostream& sudoku_board<Rank>::print_counts(std::ostream& output) {
 	const int d = side();
 
 	for(int r = 0; r < d; ++r) {
@@ -184,7 +175,8 @@ std::ostream& sudoku_board::print_counts(std::ostream& output) {
 	return output;
 }
 //------------------------------------------------------------------------------
-sudoku_reduce_result sudoku_board::reduce(void) {
+template <int Rank>
+sudoku_reduce_result sudoku_board<Rank>::reduce(void) {
 	const int d = side();
 
 	while(true) {

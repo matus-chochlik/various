@@ -3,9 +3,10 @@
 #ifndef SUDOKU_VALUE_HPP
 #define SUDOKU_VALUE_HPP
 
-#include <iostream>
-#include <string>
+#include <cstdint>
 #include <cassert>
+#include <string>
+#include <iostream>
 #include "sudoku_defs.hpp"
 //------------------------------------------------------------------------------
 class sudoku_value {
@@ -18,7 +19,12 @@ private:
 	static
 	short _get_symbol_value(int rank, sudoku_symbol symbol);
 public:
-	sudoku_value(int value) noexcept
+	sudoku_value(void) noexcept
+	 : _value(-1)
+	{ }
+
+	explicit
+	sudoku_value(std::uint64_t value) noexcept
 	 : _value(short(value))
 	{ }
 
@@ -50,7 +56,12 @@ public:
 		return l._value <  r._value;
 	}
 
-	void write_to(std::ostream& out, int rank) const;
+	auto index(void) const {
+		assert(_value >= 0);
+		return std::uint64_t(_value);
+	}
+
+	std::ostream& write_to(std::ostream& out, int rank) const;
 };
 //------------------------------------------------------------------------------
 inline
@@ -83,7 +94,7 @@ short sudoku_value::_get_symbol_value(int rank, sudoku_symbol symbol) {
 }
 //------------------------------------------------------------------------------
 inline
-void sudoku_value::write_to(std::ostream& out, int rank) const {
+std::ostream& sudoku_value::write_to(std::ostream& out, int rank) const {
 	if(_value < 0) {
 		out << '.';
 	} else {
@@ -91,6 +102,7 @@ void sudoku_value::write_to(std::ostream& out, int rank) const {
 		assert(index < _rank_symbols(rank).size());
 		out << _rank_symbols(rank)[index];
 	}
+	return out;
 }
 //------------------------------------------------------------------------------
 #endif // include guard

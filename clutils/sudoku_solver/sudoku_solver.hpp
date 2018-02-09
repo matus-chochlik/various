@@ -5,13 +5,12 @@
 
 #include "sudoku_board.hpp"
 //------------------------------------------------------------------------------
+template <int Rank>
 class sudoku_solver {
 private:
-	sudoku_board _board;
+	sudoku_board<Rank> _board;
 public:
-	sudoku_solver(int rank)
-	 : _board(rank)
-	{ }
+	sudoku_solver(void) = default;
 
 	void read(std::istream& input) {
 		_board.read(input);
@@ -25,15 +24,19 @@ public:
 		return _board.print_counts(output);
 	}
 
-	static bool solve_board(int r0, int c0, sudoku_board& b, int depth);
+	static bool solve_board(int r0, int c0, sudoku_board<Rank>& b, int depth);
 
 	bool solve(void) {
 		return solve_board(0, 0, _board, 0);
 	}
 };
 //------------------------------------------------------------------------------
-inline
-bool sudoku_solver::solve_board(int r0, int c0, sudoku_board& board, int depth) {
+template <int Rank>
+inline bool sudoku_solver<Rank>::solve_board(
+	int r0, int c0,
+	sudoku_board<Rank>& board,
+	int depth
+) {
 
 	auto reduce_result = board.reduce();
 	if(reduce_result == sudoku_reduce_result::success) {
@@ -42,9 +45,8 @@ bool sudoku_solver::solve_board(int r0, int c0, sudoku_board& board, int depth) 
 		return false;
 	}
 
-	if(depth < 10) {
-		board.print_counts(std::cout);
-		std::cout << std::endl;
+	if(depth < 22) {
+		board.print(std::cout) << std::endl;
 	}
 
 	const int d = board.side();
@@ -57,7 +59,7 @@ bool sudoku_solver::solve_board(int r0, int c0, sudoku_board& board, int depth) 
 			if(cell.ambiguous()) {
 				for(auto value : cell) {
 
-					sudoku_board temp(board);
+					sudoku_board<Rank> temp(board);
 					temp.cell(r, c).init(value);
 
 					if(solve_board(r, c, temp, depth+1)) {
