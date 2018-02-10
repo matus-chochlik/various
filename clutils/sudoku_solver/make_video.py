@@ -10,43 +10,49 @@ import fileinput
 import tempfile
 
 def read_frames():
-	table = str()
+	table = unicode()
 	for line in fileinput.input():
-		table = table + line
-		if "┛" in line:
+		utf8line = line.decode('utf-8')
+		table = table + utf8line
+		if u"┛" in utf8line:
 			yield table
 			table = str()
 
 def make_asciiart():
+	width = None
+	height = None
 	for frame in read_frames():
+		lines = frame.split('\n')
+		if width is None: width = len(lines[0])
+		if height is None: height = len(lines)
+
 		print(frame)
-		yield 'text %(width)d, %(height)d "%(frame)s"' % {
-				"width": 40,
-				"height": len(frame.split('\n')),
+		yield u'text %(width)d, %(height)d "%(frame)s"' % {
+				"width": width,
+				"height": len(lines),
 				"frame": frame
-			}
+			}, width*10, height*17
 
 def render_images():
-	for asciiart in make_asciiart():
-		with tempfile.NamedTemporaryFile('w',delete=False) as art_file:
-			art_file.write(asciiart)
+	for asciiart, width, height in make_asciiart():
+		with tempfile.NamedTemporaryFile('w', delete=False) as art_file:
+			art_file.write(asciiart.encode('utf-8'))
 
 		conv_cmd = [
 			"convert",
-			"-size", "290x330", "xc:white",
-			"-font", "DejaVu-Sans-Mono", "-pointsize", "12",
+			"-size", str(width)+"x"+str(height), "xc:white",
+			"-font", "DejaVu-Sans-Mono", "-pointsize", "14",
 			"-fill", "black",
 			"-draw", "@"+art_file.name, art_file.name+".png"
 		]
-		yield subprocess.Popen(conv_cmd), art_file
+		yield subprocess.Popen(conv_cmd), art_file.name, art_file.name+".png"
 
 def load_images():
-	for renderer, art_file in render_images():
+	for renderer, art_path, img_path in render_images():
 		renderer.wait()
-		image_path = art_file.name+".png"
-		yield cv2.imread(image_path)
-		os.remove(art_file.name)
-		os.remove(image_path)
+		yield cv2.imread(img_path)
+		os.remove(art_path)
+		os.remove(img_path)
 
 def make_video(out_path, fps = 60, size = None, video_format = "DIV4"):
 	fourcc = cv2.VideoWriter_fourcc(*video_format)
@@ -60,6 +66,8 @@ def make_video(out_path, fps = 60, size = None, video_format = "DIV4"):
 			if size[0] != image.shape[1] and size[1] != image.shape[0]:
 				image = resize(image, size)
 			video.write(image)
+	for f in xrange(0, fps*2):
+		video.write(image)
 	video.release()
 
 def main():

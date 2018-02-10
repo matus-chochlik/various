@@ -14,7 +14,10 @@ private:
 	short _value;
 
 	static
-	const std::string& _rank_symbols(int rank);
+	const std::string& _rank_input_symbols(int rank);
+
+	static
+	const std::string& _rank_output_symbols(int rank);
 
 	static
 	short _get_symbol_value(int rank, sudoku_symbol symbol);
@@ -65,13 +68,35 @@ public:
 };
 //------------------------------------------------------------------------------
 inline
-const std::string& sudoku_value::_rank_symbols(int rank) {
+const std::string& sudoku_value::_rank_input_symbols(int rank) {
 
-	static const std::string _symbols[5] = {
+	static const std::string _symbols[7] = {
 		{}, {"1"},
 		{"1234"},
 		{"123456789"},
-		{"0123456789ABCDEF"}
+		{"0123456789ABCDEF"},
+		{"ABCDEFGHIJKLMNOPQRSTUVWXY"},
+		{"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
+	};
+
+	static const int n = int(sizeof(_symbols)/sizeof(_symbols[0]));
+
+	if((rank >= 0) && (rank < n)) {
+		return _symbols[rank];
+	}
+	return _symbols[0];
+}
+//------------------------------------------------------------------------------
+inline
+const std::string& sudoku_value::_rank_output_symbols(int rank) {
+
+	static const std::string _symbols[7] = {
+		{}, {"1"},
+		{"1234"},
+		{"123456789"},
+		{"0123456789ABCDEF"},
+		{"ABCDEFGHIJKLMNOPQRSTUVWXY"},
+		{"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"}
 	};
 
 	static const int n = int(sizeof(_symbols)/sizeof(_symbols[0]));
@@ -85,7 +110,7 @@ const std::string& sudoku_value::_rank_symbols(int rank) {
 inline
 short sudoku_value::_get_symbol_value(int rank, sudoku_symbol symbol) {
 
-	const auto p = _rank_symbols(rank).find(symbol);
+	const auto p = _rank_input_symbols(rank).find(symbol);
 
 	if(p != std::string::npos) {
 		return short(p);
@@ -99,8 +124,8 @@ std::ostream& sudoku_value::write_to(std::ostream& out, int rank) const {
 		out << '.';
 	} else {
 		const std::size_t index(_value);
-		assert(index < _rank_symbols(rank).size());
-		out << _rank_symbols(rank)[index];
+		assert(index < _rank_output_symbols(rank).size());
+		out << _rank_output_symbols(rank)[index];
 	}
 	return out;
 }

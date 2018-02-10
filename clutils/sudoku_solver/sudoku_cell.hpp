@@ -179,7 +179,7 @@ sudoku_cell sudoku_cell::get_all_options(int rank, std::index_sequence<I...>) {
 //------------------------------------------------------------------------------
 inline
 sudoku_cell sudoku_cell::all_options(int rank) {
-	return get_all_options(rank, std::make_index_sequence<5>());
+	return get_all_options(rank, std::make_index_sequence<7>());
 }
 //------------------------------------------------------------------------------
 #endif // include guard

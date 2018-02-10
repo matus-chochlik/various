@@ -166,7 +166,11 @@ std::ostream& sudoku_board<Rank>::print(std::ostream& output) {
 			} else if(cl.is_empty()) {
 					output << "×";
 			} else {
+				if(((r + c) % 2) == 0) {
 					output << "∴";
+				} else {
+					output << "∵";
+				}
 			}
 
 			if((c + 1) < d) {

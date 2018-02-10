@@ -3,6 +3,8 @@
 #ifndef SUDOKU_SOLVER_HPP
 #define SUDOKU_SOLVER_HPP
 
+#include <random>
+#include <algorithm>
 #include "sudoku_board.hpp"
 //------------------------------------------------------------------------------
 template <int Rank>
@@ -24,16 +26,47 @@ public:
 		return _board.print_counts(output);
 	}
 
-	static bool solve_board(sudoku_board<Rank>& b, int depth);
+	class shuffler {
+	private:
+		int _idx[Rank*Rank][Rank*Rank];
+	public:
+		shuffler(void) {
+			std::random_device rd;
+			std::default_random_engine re(rd());
+
+			for(int r=0; r<Rank*Rank; ++r) {
+				for(int c=0; c<Rank*Rank; ++c) {
+					_idx[r][c] = c;
+				}
+				std::shuffle(_idx[r], _idx[r]+Rank*Rank, re);
+			}
+		}
+
+		int get(int i) const {
+			return _idx[Rank][i];
+		}
+
+		int get(int r, int c) const {
+			return _idx[r][c];
+		}
+	};
+
+	static bool solve_board(
+		sudoku_board<Rank>& b,
+		const shuffler& shfl,
+		int depth
+	);
 
 	bool solve(void) {
-		return solve_board(_board, 0);
+		shuffler shfl;
+		return solve_board(_board, shfl, 0);
 	}
 };
 //------------------------------------------------------------------------------
 template <int Rank>
 inline bool sudoku_solver<Rank>::solve_board(
 	sudoku_board<Rank>& board,
+	const shuffler& shfl,
 	int depth
 ) {
 	auto reduce_result = board.reduce();
@@ -48,27 +81,32 @@ inline bool sudoku_solver<Rank>::solve_board(
 
 	const int d = board.side();
 
-	for(int r = 0; r < d; ++r) {
-		for(int c = 0; c < d; ++c) {
+	for(int ri = 0; ri < d; ++ri) {
+		for(int ci = 0; ci < d; ++ci) {
 
-			sudoku_cell& cell = board.cell(r, c);
+			const int r = shfl.get(ri);
+			const int c = shfl.get(ri, ci);
+
+			const sudoku_cell& cell = board.cell(r, c);
 
 			if(cell.is_ambiguous()) {
-				sudoku_cell temp = cell;
 				for(auto value : cell) {
 
 					sudoku_board<Rank> fixed_board(board);
 					fixed_board.cell(r, c).init(value);
 
-					if(solve_board(fixed_board, depth+1)) {
+					bool solved = false;
+					if(depth % 3 == 0) {
+						shuffler shfl2;
+						solved = solve_board(fixed_board, shfl2, depth+1);
+					} else {
+						solved = solve_board(fixed_board, shfl, depth+1);
+					}
+
+					if(solved) {
 						board = fixed_board;
 						return true;
-					} else {
-						temp.remove(value);
 					}
-				}
-				if(cell != temp) {
-					cell = temp;
 				}
 			}
 		}
