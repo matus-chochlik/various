@@ -8,6 +8,7 @@ import cv2
 import subprocess
 import fileinput
 import tempfile
+import functools
 
 def read_frames():
 	table = unicode()
@@ -48,16 +49,49 @@ def render_images():
 		yield subprocess.Popen(conv_cmd), art_file.name, art_file.name+".png"
 
 def load_images():
-	for renderer, art_path, img_path in render_images():
+	queue = list()
+	backlog = 8
+	for _renderer, _art_path, _img_path in render_images():
+		if len(queue) < backlog:
+			queue.append((_renderer, _art_path, _img_path))
+		if len(queue) >= backlog:
+			renderer, art_path, img_path = queue[0]
+			queue = queue[1:]
+			renderer.wait()
+			yield cv2.imread(img_path)
+			os.remove(art_path)
+			os.remove(img_path)
+
+	for renderer, art_path, img_path in queue:
 		renderer.wait()
 		yield cv2.imread(img_path)
 		os.remove(art_path)
 		os.remove(img_path)
 
+
+def blend_images(imgs):
+	return functools.reduce(lambda x, y: cv2.addWeighted(x, 0.5, y, 0.5, 0), imgs)
+
+def blur_images():
+	group = list()
+	n = 4;
+	m = 1;
+	for image in load_images():
+		if len(group) < n:
+			group.append(image);
+
+		if len(group) >= n:
+			yield blend_images(group)
+			group = group[m:]
+
+	while len(group) > 0:
+		yield blend_images(group)
+		group = group[m:]
+
 def make_video(out_path, fps = 60, size = None, video_format = "DIV4"):
 	fourcc = cv2.VideoWriter_fourcc(*video_format)
 	video = None
-	for image in load_images():
+	for image in blur_images():
 		if image is not None:
 			if size is None:
 				size = image.shape[1], image.shape[0]
@@ -66,12 +100,13 @@ def make_video(out_path, fps = 60, size = None, video_format = "DIV4"):
 			if size[0] != image.shape[1] and size[1] != image.shape[0]:
 				image = resize(image, size)
 			video.write(image)
+
 	for f in xrange(0, fps*2):
 		video.write(image)
 	video.release()
 
 def main():
-	make_video("bla.avi")
+	make_video("sudoku.avi")
 	return 0
 
 if __name__ == "__main__":

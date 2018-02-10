@@ -234,7 +234,7 @@ sudoku_reduce_result sudoku_board<Rank>::reduce(void) {
 			for(int c=0; c<d; ++c) {
 				sudoku_cell& candidate = cell(r, c);
 				if(!candidate.is_determined()) {
-					candidate = valid_numbers(r, c, std::move(candidate));
+					candidate = valid_numbers(r, c, candidate);
 
 					if(candidate.is_empty()) {
 						return sudoku_reduce_result::failure;
