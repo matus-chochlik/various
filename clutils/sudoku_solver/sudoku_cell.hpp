@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cassert>
+#include <utility>
 #include "sudoku_value.hpp"
 //------------------------------------------------------------------------------
 class sudoku_cell {
@@ -23,21 +24,34 @@ private:
 	{ }
 
 	static sudoku_cell make_all_options(int rank);
+
+	template <std::size_t ... I>
+	static sudoku_cell get_all_options(int rank, std::index_sequence<I...>);
 public:
 	sudoku_cell(void) = default;
 
 	static sudoku_cell all_options(int rank);
 
-	bool empty(void) const {
+	friend bool operator == (const sudoku_cell& a, const sudoku_cell& b)
+	{
+		return a._values == b._values;
+	}
+
+	friend bool operator != (const sudoku_cell& a, const sudoku_cell& b)
+	{
+		return a._values != b._values;
+	}
+
+	bool is_empty(void) const {
 		return _values == 0;
 	}
 
-	bool ambiguous(void) const {
+	bool is_ambiguous(void) const {
 		return (_values & (_values - 1)) != 0;
 	}
 
-	bool determined(void) const {
-		return !(empty() || ambiguous());
+	bool is_determined(void) const {
+		return !(is_empty() || is_ambiguous());
 	}
 
 	std::size_t num_options(void) const {
@@ -155,17 +169,17 @@ sudoku_cell sudoku_cell::make_all_options(int rank) {
 	return sudoku_cell(values);
 }
 //------------------------------------------------------------------------------
+template <std::size_t ... I>
+sudoku_cell sudoku_cell::get_all_options(int rank, std::index_sequence<I...>) {
+	static const std::size_t N = sizeof...(I);
+	assert((rank > 0) && (rank < int(N)));
+	static sudoku_cell opts[sizeof...(I)] = {make_all_options(int(I))...};
+	return opts[rank];
+}
+//------------------------------------------------------------------------------
 inline
 sudoku_cell sudoku_cell::all_options(int rank) {
-	assert((rank > 0) && (rank < 5));
-	static sudoku_cell opts[5] = {
-		make_all_options(0),
-		make_all_options(1),
-		make_all_options(2),
-		make_all_options(3),
-		make_all_options(4)
-	};
-	return opts[rank];
+	return get_all_options(rank, std::make_index_sequence<5>());
 }
 //------------------------------------------------------------------------------
 #endif // include guard

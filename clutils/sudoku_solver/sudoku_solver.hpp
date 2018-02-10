@@ -24,48 +24,51 @@ public:
 		return _board.print_counts(output);
 	}
 
-	static bool solve_board(int r0, int c0, sudoku_board<Rank>& b, int depth);
+	static bool solve_board(sudoku_board<Rank>& b, int depth);
 
 	bool solve(void) {
-		return solve_board(0, 0, _board, 0);
+		return solve_board(_board, 0);
 	}
 };
 //------------------------------------------------------------------------------
 template <int Rank>
 inline bool sudoku_solver<Rank>::solve_board(
-	int r0, int c0,
 	sudoku_board<Rank>& board,
 	int depth
 ) {
-
 	auto reduce_result = board.reduce();
+
 	if(reduce_result == sudoku_reduce_result::success) {
 		return true;
 	} else if(reduce_result == sudoku_reduce_result::failure) {
 		return false;
 	}
 
-	if(depth < 22) {
-		board.print(std::cout) << std::endl;
-	}
+	board.print(std::cout) << std::endl;
 
 	const int d = board.side();
 
-	for(int r = r0; r < d; ++r) {
-		for(int c = c0; c < d; ++c) {
+	for(int r = 0; r < d; ++r) {
+		for(int c = 0; c < d; ++c) {
 
 			sudoku_cell& cell = board.cell(r, c);
 
-			if(cell.ambiguous()) {
+			if(cell.is_ambiguous()) {
+				sudoku_cell temp = cell;
 				for(auto value : cell) {
 
-					sudoku_board<Rank> temp(board);
-					temp.cell(r, c).init(value);
+					sudoku_board<Rank> fixed_board(board);
+					fixed_board.cell(r, c).init(value);
 
-					if(solve_board(r, c, temp, depth+1)) {
-						board = temp;
+					if(solve_board(fixed_board, depth+1)) {
+						board = fixed_board;
 						return true;
+					} else {
+						temp.remove(value);
 					}
+				}
+				if(cell != temp) {
+					cell = temp;
 				}
 			}
 		}

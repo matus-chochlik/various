@@ -1,6 +1,8 @@
 CXX ?= c++
 
-all: sudoku_solver
+CXXFLAGS = -std=c++14 -pedantic -Werror -Wall -O3
 
-sudoku_solver: sudoku_solver.cpp $(wildcard *.hpp) Makefile
-	$(CXX) -std=c++14 -pedantic -Werror -Wall -O3 -o $@ $<
+all: sudoku_solver_3 sudoku_solver_4
+
+sudoku_solver_%: sudoku_solver.cpp $(wildcard *.hpp) Makefile
+	$(CXX) $(CXXFLAGS) -DSUDOKU_SOLVER_RANK=$* -o $@ $<

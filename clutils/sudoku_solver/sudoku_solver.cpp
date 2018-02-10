@@ -3,9 +3,13 @@
 #include <fstream>
 #include "sudoku_solver.hpp"
 
+#ifndef SUDOKU_SOLVER_RANK
+#define SUDOKU_SOLVER_RANK 3
+#endif
+
 int main(void) {
 
-	sudoku_solver<4> s;
+	sudoku_solver<SUDOKU_SOLVER_RANK> s;
 
 	s.read(std::cin);
 

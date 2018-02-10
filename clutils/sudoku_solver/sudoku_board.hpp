@@ -42,12 +42,11 @@ public:
 template <int Rank>
 sudoku_cell sudoku_board<Rank>::valid_numbers(int r, int c, sudoku_cell v) {
 	const int d = side();
-	const int k = Rank;
 
 	for(int x = 0; x < d; ++x) {
 		sudoku_cell& cr = cell(r, x);
 
-		if((x != c) && cr.determined()) {
+		if((x != c) && cr.is_determined()) {
 			v.remove(cr.value());
 		}
 	}
@@ -55,17 +54,17 @@ sudoku_cell sudoku_board<Rank>::valid_numbers(int r, int c, sudoku_cell v) {
 	for(int y = 0; y < d; ++y) {
 		sudoku_cell& cr = cell(y, c);
 
-		if((y != r) && cr.determined()) {
+		if((y != r) && cr.is_determined()) {
 			v.remove(cr.value());
 		}
 	}
 
-	for(int y = (r/k)*k; y < (1+r/k)*k; ++y) {
-		for(int x = (c/k)*k; x < (1+c/k)*k; ++x) {
+	for(int y = (r/Rank)*Rank; y < (1+r/Rank)*Rank; ++y) {
+		for(int x = (c/Rank)*Rank; x < (1+c/Rank)*Rank; ++x) {
 
 			if((y != r) && (x != c)) {
 				sudoku_cell& cr = cell(y, x);
-				if(cr.determined()) {
+				if(cr.is_determined()) {
 					v.remove(cr.value());
 				}
 			}
@@ -80,28 +79,40 @@ void sudoku_board<Rank>::read(std::istream& input) {
 	const int d = side();
 
 	char v, s;
-	for(int r = 0; r < d; ++r) {
+	for(int r = 0; r < d;) {
+		bool sep_row = false;
 		for(int c = 0; c < d; ++c) {
 			v = input.get();
 			s = input.get();
 
-			cell(r, c).init(sudoku_value(Rank, v));
+			if(v == '-') {
+				if((s != '-') && (s != '+') && (s != '\n')) {
+					throw std::runtime_error("Invalid separator");
+				}
+				sep_row = true;
+			} else {
+				cell(r, c).init(sudoku_value(Rank, v));
 
-			if((s == '\n') && (c < (d - 1))) {
-				throw std::runtime_error("Line too short");
-			} else if((s != ' ') && (s != '\t') && (s != '\n')) {
-				throw std::runtime_error("Invalid separator");
+				if((s == '\n') && (c < (d - 1))) {
+					throw std::runtime_error("Line too short");
+				} else if((s != ' ') && (s != '|') && (s != '\t') && (s != '\n')) {
+					throw std::runtime_error("Invalid separator");
+				}
 			}
 		}
 
 		if(s != '\n') {
 			throw std::runtime_error("Line too long");
 		}
+
+		if(!sep_row) {
+			++r;
+		}
 	}
 
 	for(int r = 0; r < d; ++r) {
 		for(int c = 0; c < d; ++c) {
-			if(!cell(r, c).determined()) {
+			if(!cell(r, c).is_determined()) {
 				cell(r, c) = valid_numbers(r, c);
 			}
 		}
@@ -112,41 +123,73 @@ template <int Rank>
 std::ostream& sudoku_board<Rank>::print(std::ostream& output) {
 	const int d = side();
 
+	for(int c = 0; c < d; ++c) {
+		if(c == 0) {
+			output << "┏━━";
+		} else if((c + 1) == d) {
+			output << "━┓";
+		} else if((c + 1) % Rank == 0) {
+			output << "━┯";
+		} else {
+			output << "━━";
+		}
+	}
+	output << std::endl;
+
 	for(int r = 0; r < d; ++r) {
 		if((r > 0) && (r % Rank == 0)) {
+			output << "┠";
 			for(int c = 0; c < d; ++c) {
 				if((c + 1) == d) {
-					std::cout << "-";
+					if((r + 1) == d) {
+						output << "━┛";
+					} else {
+						output << "─┨";
+					}
 				} else if((c + 1) % Rank == 0) {
-					std::cout << "-+";
+					output << "─┼";
 				} else {
-					std::cout << "--";
+					output << "──";
 				}
 			}
-			std::cout << std::endl;
+			output << std::endl;
 		}
+
+		output << "┃";
 
 		for(int c = 0; c < d; ++c) {
 
 			const auto& cl = cell(r, c);
 
-			if(cl.determined()) {
-				cl.value().write_to(std::cout, Rank);
-			} else if(cl.empty()) {
-					std::cout << '.';
+			if(cl.is_determined()) {
+				cl.value().write_to(output, Rank);
+			} else if(cl.is_empty()) {
+					output << "×";
 			} else {
-					std::cout << '?';
+					output << "∴";
 			}
 
 			if((c + 1) < d) {
 				if((c + 1) % Rank == 0) {
-					std::cout << "|";
+					output << "│";
 				} else {
-					std::cout << " ";
+					output << " ";
 				}
 			} else {
-				std::cout << std::endl;
+				output << "┃" << std::endl;
 			}
+		}
+	}
+
+	for(int c = 0; c < d; ++c) {
+		if(c == 0) {
+			output << "┗━━";
+		} else if((c + 1) == d) {
+			output << "━┛";
+		} else if((c + 1) % Rank == 0) {
+			output << "━┷";
+		} else {
+			output << "━━";
 		}
 	}
 	return output;
@@ -161,14 +204,14 @@ std::ostream& sudoku_board<Rank>::print_counts(std::ostream& output) {
 
 			const auto& cl = cell(r, c);
 
-			std::cout << std::setfill(' ');
-			std::cout << std::setw(4);
-			std::cout << cl.num_options();
+			output << std::setfill(' ');
+			output << std::setw(4);
+			output << cl.num_options();
 
 			if((c + 1) < d) {
-				std::cout << " ";
+				output << " ";
 			} else {
-				std::cout << std::endl;
+				output << std::endl;
 			}
 		}
 	}
@@ -186,14 +229,14 @@ sudoku_reduce_result sudoku_board<Rank>::reduce(void) {
 		for(int r=0; r<d; ++r) {
 			for(int c=0; c<d; ++c) {
 				sudoku_cell& candidate = cell(r, c);
-				if(!candidate.determined()) {
+				if(!candidate.is_determined()) {
 					candidate = valid_numbers(r, c, std::move(candidate));
 
-					if(candidate.empty()) {
+					if(candidate.is_empty()) {
 						return sudoku_reduce_result::failure;
 					}
 
-					if(candidate.determined()) {
+					if(candidate.is_determined()) {
 						++solved;
 					} else {
 						++unsolved;
