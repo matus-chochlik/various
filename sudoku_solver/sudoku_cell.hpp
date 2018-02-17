@@ -12,8 +12,10 @@ class sudoku_cell {
 public:
 	static constexpr std::size_t capacity = 64;
 	using container_t = std::uint64_t ;
+	using flags_t = std::uint8_t ;
 private:
 	container_t _values;
+	flags_t _flags;
 
 	static container_t _bit(std::size_t index) noexcept {
 		return container_t{1} << index;
@@ -21,6 +23,7 @@ private:
 
 	sudoku_cell(container_t values)
 	 : _values(values)
+	 , _flags{0}
 	{ }
 
 	static sudoku_cell make_all_options(int rank);
@@ -28,7 +31,14 @@ private:
 	template <std::size_t ... I>
 	static sudoku_cell get_all_options(int rank, std::index_sequence<I...>);
 public:
-	sudoku_cell(void) = default;
+	enum class flags : flags_t {
+		initial = 0x1
+	};
+
+	sudoku_cell(void)
+	 : _values{0}
+	 , _flags{0}
+	{ }
 
 	static sudoku_cell all_options(int rank);
 
@@ -72,25 +82,52 @@ public:
 		return sudoku_value();
 	}
 
-	void remove(sudoku_value v) {
+	sudoku_cell& remove(sudoku_value v) {
 		assert(v);
 		_values &= ~_bit(v.index());
+		return *this;
 	}
 
-	void clear(void) {
+	sudoku_cell& clear(void) {
 		_values = 0;
+		_flags = 0;
+		return *this;
 	}
 
-	void set(container_t v) {
+	sudoku_cell& set(container_t v) {
 		_values = _bit(v);
+		return *this;
 	}
 
-	void init(sudoku_value v) {
+	sudoku_cell& init(sudoku_value v) {
 		if(v) {
 			set(container_t(v.index()));
 		} else {
 			clear();
 		}
+		return *this;
+	}
+
+	bool is_flag_set(flags flag) const {
+		return (_flags & flags_t(flag)) == flags_t(flag);
+	}
+
+	sudoku_cell& set_flag(flags flag) {
+		_flags |= flags_t(flag);
+		return *this;
+	}
+
+	sudoku_cell& clear_flag(flags flag) {
+		_flags &= ~flags_t(flag);
+		return *this;
+	}
+
+	bool is_initial(void) const {
+		return is_flag_set(flags::initial);
+	}
+
+	sudoku_cell& set_initial(void) {
+		return set_flag(flags::initial);
 	}
 
 	class iterator {

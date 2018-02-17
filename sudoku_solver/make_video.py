@@ -31,12 +31,19 @@ def make_asciiart(options):
 		if width is None: width = len(lines[0])
 		if height is None: height = len(lines)
 
-		print(frame)
-		yield u'text %(width)d, %(height)d "%(frame)s"' % {
-				"width": width,
-				"height": len(lines),
+		if options.print_frames:
+			print(frame)
+
+		if options.use_pango:
+			yield u'<tt>%(frame)s</tt>' % {
 				"frame": frame
-			}, width*10, height*17
+			}, width*10, height*18
+		else:
+			yield u'text %(width)d, %(height)d "%(frame)s"' % {
+					"width": width,
+					"height": len(lines),
+					"frame": frame
+				}, width*10, height*17
 
 class RenderThread(threading.Thread):
 	def __init__(self, renderer, art_input):
@@ -54,20 +61,35 @@ class RenderThread(threading.Thread):
 
 def render_images(options):
 	for art_input, width, height in make_asciiart(options):
-		conv_cmd = [
-			"convert",
-			"-size", str(width)+"x"+str(height), "xc:white",
-			"-font", "DejaVu-Sans-Mono", "-pointsize", "14",
-			"-fill", "black",
-			"-draw", "@-", "PNG8:-"
-		]
-		renderer = subprocess.Popen(
-			conv_cmd,
-			stdin=subprocess.PIPE,
-			stdout=subprocess.PIPE
-		)
+		if options.use_pango:
+			conv_cmd = [
+				"convert",
+				"-size", str(width)+"x"+str(height), "-background", "white",
+				"-define", "pango:justify=true",
+				"-define", "pango:font=Monospace Regular 12",
+				"pango:%s" % art_input, "PNG8:-"
+			]
+			renderer = subprocess.Popen(
+				conv_cmd,
+				stdout=subprocess.PIPE
+			)
+			yield RenderThread(renderer, None)
+		else:
+			conv_cmd = [
+				"convert",
+				"-size", str(width)+"x"+str(height), "xc:white",
+				"-font", "DejaVu-Sans-Mono", "-pointsize", "14",
+				"-fill", "black",
+				"-draw", "@-", "PNG8:-"
+			]
 
-		yield RenderThread(renderer, art_input.encode('utf-8'))
+			renderer = subprocess.Popen(
+				conv_cmd,
+				stdin=subprocess.PIPE,
+				stdout=subprocess.PIPE
+			)
+
+			yield RenderThread(renderer, art_input.encode('utf-8'))
 
 def load_image(future_img_data):
 	return cv2.imdecode(
@@ -181,6 +203,20 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 			nargs='?',
 			type=os.path.realpath,
 			default=None
+		)
+
+		self.add_argument(
+			'-P', '--no-print',
+			dest='print_frames',
+			default=True,
+			action='store_false'
+		)
+
+		self.add_argument(
+			'-p', '--pango',
+			dest='use_pango',
+			default=False,
+			action='store_true'
 		)
 
 		self.add_argument(

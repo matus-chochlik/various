@@ -32,7 +32,7 @@ public:
 
 	void read(std::istream& input);
 
-	std::ostream& print(std::ostream& output);
+	std::ostream& print(std::ostream& output, const sudoku_options&);
 
 	std::ostream& print_counts(std::ostream& output);
 
@@ -91,7 +91,7 @@ void sudoku_board<Rank>::read(std::istream& input) {
 				}
 				sep_row = true;
 			} else {
-				cell(r, c).init(sudoku_value(Rank, v));
+				cell(r, c).init(sudoku_value(Rank, v)).set_initial();
 
 				if((s == '\n') && (c < (d - 1))) {
 					throw std::runtime_error("Line too short");
@@ -120,7 +120,10 @@ void sudoku_board<Rank>::read(std::istream& input) {
 }
 //------------------------------------------------------------------------------
 template <int Rank>
-std::ostream& sudoku_board<Rank>::print(std::ostream& output) {
+std::ostream& sudoku_board<Rank>::print(
+	std::ostream& output,
+	const sudoku_options& options
+) {
 	const int d = side();
 
 	for(int c = 0; c < d; ++c) {
@@ -162,7 +165,13 @@ std::ostream& sudoku_board<Rank>::print(std::ostream& output) {
 			const auto& cl = cell(r, c);
 
 			if(cl.is_determined()) {
-				cl.value().write_to(output, Rank);
+				if(options.pango_markup && cl.is_initial()) {
+					output << "<b>";
+					cl.value().write_to(output, Rank);
+					output << "</b>";
+				} else {
+					cl.value().write_to(output, Rank);
+				}
 			} else if(cl.is_empty()) {
 					output << "×";
 			} else {

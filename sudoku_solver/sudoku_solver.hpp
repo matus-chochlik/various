@@ -16,27 +16,32 @@ public:
 		_board.read(input);
 	}
 
-	std::ostream& print(std::ostream& output) {
-		return _board.print(output);
+	std::ostream& print(std::ostream& output, const sudoku_options& options) {
+		return _board.print(output, options);
 	}
 
 	std::ostream& print_counts(std::ostream& output) {
 		return _board.print_counts(output);
 	}
 
-	static bool solve_board(sudoku_board<Rank>& b, int r0, int c0);
+	static bool solve_board(
+		sudoku_board<Rank>& b,
+		int r0, int c0,
+		const sudoku_options& options
+	);
 
-	bool solve(void) {
-		return solve_board(_board, 0, 0);
+	bool solve(const sudoku_options& options) {
+		return solve_board(_board, 0, 0, options);
 	}
 };
 //------------------------------------------------------------------------------
 template <int Rank>
 inline bool sudoku_solver<Rank>::solve_board(
 	sudoku_board<Rank>& board,
-	int r0, int c0
+	int r0, int c0,
+	const sudoku_options& options
 ) {
-	board.print(std::cout) << std::endl;
+	board.print(std::cout, options) << std::endl;
 
 	auto reduce_result = board.reduce();
 
@@ -60,12 +65,14 @@ inline bool sudoku_solver<Rank>::solve_board(
 					sudoku_board<Rank> fixed_board(board);
 					fixed_board.cell(r, c).init(value);
 
-					if(solve_board(fixed_board, r, c)) {
+					if(solve_board(fixed_board, r, c, options)) {
 						board = fixed_board;
 						return true;
 					}
 				}
-				board.print(std::cout) << std::endl;
+				if(options.print_backtrace) {
+					board.print(std::cout, options) << std::endl;
+				}
 				return false;
 			}
 		}
