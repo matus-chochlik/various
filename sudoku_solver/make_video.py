@@ -77,20 +77,25 @@ def load_image(future_img_data):
 
 def load_images(options):
 	queue = collections.deque()
-	backlog = multiprocessing.cpu_count()*2
 	for renderer in render_images(options):
-		if len(queue) < backlog:
+		if len(queue) < options.queue_length:
 			queue.append(renderer)
-		if len(queue) >= backlog:
-			yield load_image(queue.popleft())
+		if len(queue) >= options.queue_length:
+			image = load_image(queue.popleft())
+			yield image
 
 	for renderer in queue:
-		yield load_image(renderer)
+		image = load_image(renderer)
+		yield image
+
+	for x in xrange(0, int(options.fps*options.tail)):
+		yield image
 
 
 def blend_images(options, imgs):
 	return functools.reduce(
-		lambda x, y: cv2.addWeighted(x, 0.6, y, 0.4, 0),
+		lambda x, y:
+			cv2.addWeighted(x, options.blend_src, y, options.blend_dst, 0),
 		imgs
 	)
 
@@ -107,7 +112,6 @@ def blur_images(options):
 	while len(group) > 0:
 		yield blend_images(options, group)
 		group = group[options.step_frames:]
-	yield image
 
 def make_video(options, size = None):
 	fourcc = cv2.VideoWriter_fourcc(*options.fourcc)
@@ -128,16 +132,37 @@ def make_video(options, size = None):
 				image = resize(image, size)
 			video.write(image)
 
-	for f in xrange(0, int(options.fps*options.tail)):
-		video.write(image)
 	video.release()
 
 class __MakeVideoArgumentParser(argparse.ArgumentParser):
 	def __init__(self, **kw):
 		def _rank_value(x):
-			if x < 2:
+			try:
+				assert(int(x) >= 2)
+				return int(x)
+			except:
 				self.error("`%d' is not a valid rank" % x)
-			return x
+
+		def _positive_int(x):
+			try:
+				assert(int(x) > 0)
+				return int(x)
+			except:
+				self.error("`%s' is not a positive integer value" % str(x))
+
+		def _positive_float(x):
+			try:
+				assert(float(x) > 0)
+				return float(x)
+			except:
+				self.error("`%s' is not a positive integer value" % str(x))
+
+		def _norm_weight(x):
+			try:
+				assert(float(x) >= 0.0 and float(x) <= 1.0)
+				return float(x)
+			except:
+				self.error("`%s' is not a valid weight value" % str(x))
 
 		argparse.ArgumentParser.__init__(self, **kw)
 
@@ -155,7 +180,7 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 			metavar='INPUT-FILE',
 			nargs='?',
 			type=os.path.realpath,
-			default='sudoku.avi'
+			default=None
 		)
 
 		self.add_argument(
@@ -178,8 +203,17 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 			'-f', '--fps',
 			metavar='FPS',
 			nargs='?',
-			type=float,
+			type=_positive_float,
 			default=None
+		)
+
+		self.add_argument(
+			'-q', '--queue',
+			dest='queue_length',
+			metavar='FRAME-COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=multiprocessing.cpu_count()*2
 		)
 
 		self.add_argument(
@@ -187,7 +221,7 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 			dest='blur_frames',
 			metavar='FRAME-COUNT',
 			nargs='?',
-			type=int,
+			type=_positive_int,
 			default=None
 		)
 
@@ -196,15 +230,24 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 			dest='step_frames',
 			metavar='FRAME-COUNT',
 			nargs='?',
-			type=int,
+			type=_positive_int,
 			default=None
+		)
+
+		self.add_argument(
+			'-w', '--blur-weight',
+			dest='blur_weight',
+			metavar='WEIGHT',
+			nargs='?',
+			type=_norm_weight,
+			default=0.6
 		)
 
 		self.add_argument(
 			'-t', '--tail',
 			metavar='SECONDS',
 			nargs='?',
-			type=float,
+			type=_positive_float,
 			default=2
 		)
 
@@ -221,6 +264,18 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 
 		if options.input is None:
 			options.input = sys.stdin
+
+		if options.output_path is None:
+			options.output_path = 'sudoku.avi'
+		else:
+			if os.path.isdir(options.output_path):
+				options.output_path = os.path.join(
+					options.output_path,
+					'sudoku.avi'
+				)
+
+		options.blend_src = options.blur_weight
+		options.blend_dst = 1.0 - options.blur_weight
 
 		return options
 
