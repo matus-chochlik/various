@@ -1,6 +1,9 @@
 CXX ?= c++
 
-CXXFLAGS = -std=c++14 -pedantic -Werror -Wall -g
+# VARIANT_FLAGS = -g3
+VARIANT_FLAGS = -O3 -DNDEBUG
+
+CXXFLAGS = -std=c++14 -pedantic -Werror -Wall $(VARIANT_FLAGS)
 
 all: $(foreach i, 2 3 4 5, sudoku_solver_$(i))
 

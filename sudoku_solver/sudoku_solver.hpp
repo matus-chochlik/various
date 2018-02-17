@@ -3,6 +3,7 @@
 #ifndef SUDOKU_SOLVER_HPP
 #define SUDOKU_SOLVER_HPP
 
+#include <algorithm>
 #include "sudoku_board.hpp"
 //------------------------------------------------------------------------------
 template <int Rank>
@@ -26,19 +27,17 @@ public:
 
 	static bool solve_board(
 		sudoku_board<Rank>& b,
-		int r0, int c0,
 		const sudoku_options& options
 	);
 
 	bool solve(const sudoku_options& options) {
-		return solve_board(_board, 0, 0, options);
+		return solve_board(_board, options);
 	}
 };
 //------------------------------------------------------------------------------
 template <int Rank>
 inline bool sudoku_solver<Rank>::solve_board(
 	sudoku_board<Rank>& board,
-	int r0, int c0,
 	const sudoku_options& options
 ) {
 	board.print(std::cout, options) << std::endl;
@@ -52,30 +51,55 @@ inline bool sudoku_solver<Rank>::solve_board(
 	}
 
 	const int d = board.side();
+	const auto n = d*d;
 
-	for(int r = r0; r < d; ++r) {
-		for(int c = (r == r0) ? c0 : 0; c < d; ++c) {
+	using component_t = std::int8_t;
+	using coord = std::pair<component_t, component_t>;
+	coord index[n];
 
-			const sudoku_cell& cell = board.cell(r, c);
+	for(int r = 0; r < d; ++r) {
+		for(int c = 0; c < d; ++c) {
+			index[r*d+c] = coord(component_t(r), component_t(c));
+		}
+	}
 
-			if(cell.is_ambiguous()) {
+	const auto e = std::remove_if(
+		index, index + n,
+		[&board](const coord& i) {
+			return board.cell(i.first, i.second).is_determined();
+		}
+	);
 
-				for(auto value : cell) {
+	std::sort(
+		index, e,
+		[&board](const coord& i, const coord& j) {
+			return	board.cell(i.first, i.second).num_options()<
+					board.cell(j.first, j.second).num_options();
+		}
+	);
 
-					sudoku_board<Rank> fixed_board(board);
-					fixed_board.cell(r, c).init(value);
 
-					if(solve_board(fixed_board, r, c, options)) {
-						board = fixed_board;
-						return true;
-					}
-				}
-				if(options.print_backtrace) {
-					board.print(std::cout, options) << std::endl;
-				}
-				return false;
+	for(auto p = index; p < e; ++p) {
+		int r = p->first;
+		int c = p->second;
+
+		const sudoku_cell& cell = board.cell(r, c);
+		assert(cell.is_ambiguous());
+
+		for(auto value : cell) {
+
+			sudoku_board<Rank> fixed_board(board);
+			fixed_board.cell(r, c).init(value);
+
+			if(solve_board(fixed_board, options)) {
+				board = fixed_board;
+				return true;
 			}
 		}
+		if(options.print_backtrace) {
+			board.print(std::cout, options) << std::endl;
+		}
+		return false;
 	}
 	return false;
 }

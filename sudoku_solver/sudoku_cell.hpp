@@ -210,7 +210,10 @@ template <std::size_t ... I>
 sudoku_cell sudoku_cell::get_all_options(int rank, std::index_sequence<I...>) {
 	static const std::size_t N = sizeof...(I);
 	assert((rank > 0) && (rank < int(N)));
+	(void)N;
+
 	static sudoku_cell opts[sizeof...(I)] = {make_all_options(int(I))...};
+
 	return opts[rank];
 }
 //------------------------------------------------------------------------------
