@@ -98,20 +98,46 @@ def load_image(future_img_data):
 	)
 
 def load_images(options):
-	queue = collections.deque()
-	for renderer in render_images(options):
-		if len(queue) < options.queue_length:
-			queue.append(renderer)
-		if len(queue) >= options.queue_length:
-			image = load_image(queue.popleft())
-			yield image
+	renderer_queue = collections.deque()
+	image_queue = collections.deque()
+	image_backlog = int(options.blur_frames*(options.head+options.tail))
+	step_frames = 1
+	first = True
+	image = None
 
-	for renderer in queue:
-		image = load_image(renderer)
-		yield image
+	for renderer in render_images(options):
+		renderer_queue.append(renderer)
+		if len(renderer_queue) >= options.queue_length:
+			image = load_image(renderer_queue.popleft())
+			if first:
+				for x in xrange(0, int(options.fps*options.head)):
+					yield image, 1
+				first = False
+			image_queue.append(image)
+
+		if len(image_queue) >= image_backlog:
+			image = image_queue.popleft()
+			if step_frames < options.step_frames:
+				step_frames += options.ease_in_out
+			yield image, int(step_frames)
+
+	for renderer in renderer_queue:
+		image_queue.append(load_image(renderer))
+		if len(image_queue) >= image_backlog:
+			image = image_queue.popleft()
+			if step_frames < options.step_frames:
+				step_frames += options.ease_in_out
+			yield image, int(step_frames)
+
+	for image in image_queue:
+		if step_frames > 1:
+			step_frames -= options.ease_in_out
+		if step_frames < 1:
+			step_frames = 1
+		yield image, int(step_frames)
 
 	for x in xrange(0, int(options.fps*options.tail)):
-		yield image
+		yield image, 1
 
 
 def blend_images(options, imgs):
@@ -123,17 +149,16 @@ def blend_images(options, imgs):
 
 def blur_images(options):
 	group = list()
-	for image in load_images(options):
-		if len(group) < options.blur_frames:
-			group.append(image);
+	for image, step_frames in load_images(options):
+		group.append(image);
 
 		if len(group) >= options.blur_frames:
 			yield blend_images(options, group)
-			group = group[options.step_frames:]
+			group = group[step_frames:]
 
 	while len(group) > 0:
 		yield blend_images(options, group)
-		group = group[options.step_frames:]
+		group = group[step_frames:]
 
 def make_video(options, size = None):
 	fourcc = cv2.VideoWriter_fourcc(*options.fourcc)
@@ -154,7 +179,8 @@ def make_video(options, size = None):
 				image = resize(image, size)
 			video.write(image)
 
-	video.release()
+	if video:
+		video.release()
 
 class __MakeVideoArgumentParser(argparse.ArgumentParser):
 	def __init__(self, **kw):
@@ -280,11 +306,28 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 		)
 
 		self.add_argument(
-			'-t', '--tail',
+			'-E', '--ease',
+			dest='ease_in_out',
+			metavar='FACTOR',
+			nargs='?',
+			type=_norm_weight,
+			default=0.05
+		)
+
+		self.add_argument(
+			'-H', '--head',
 			metavar='SECONDS',
 			nargs='?',
 			type=_positive_float,
 			default=2
+		)
+
+		self.add_argument(
+			'-T', '--tail',
+			metavar='SECONDS',
+			nargs='?',
+			type=_positive_float,
+			default=3
 		)
 
 	def process_parsed_options(self, options):
