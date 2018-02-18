@@ -14,8 +14,20 @@ int main(int argc, const char** argv) {
 
 	for(int a=1; a<argc; ++a) {
 		const std::string arg(argv[a]);
-		if(arg == "--pango") {
+		if(arg == "--sort") {
+			options.sort_cells = true;
+		} else if(arg == "--no-sort") {
+			options.sort_cells = false;
+		} else if(arg == "--random") {
+			options.randomize_cells = true;
+		} else if(arg == "--no-random") {
+			options.randomize_cells = false;
+		} else if(arg == "--pango") {
 			options.pango_markup = true;
+		} else if(arg == "--no-pango") {
+			options.pango_markup = false;
+		} else if(arg == "--backtrace") {
+			options.print_backtrace = true;
 		} else if(arg == "--no-backtrace") {
 			options.print_backtrace = false;
 		} else {

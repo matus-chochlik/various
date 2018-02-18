@@ -3,6 +3,7 @@
 #ifndef SUDOKU_SOLVER_HPP
 #define SUDOKU_SOLVER_HPP
 
+#include <random>
 #include <algorithm>
 #include "sudoku_board.hpp"
 //------------------------------------------------------------------------------
@@ -10,8 +11,11 @@ template <int Rank>
 class sudoku_solver {
 private:
 	sudoku_board<Rank> _board;
+	std::default_random_engine _rand;
 public:
-	sudoku_solver(void) = default;
+	sudoku_solver(void)
+	 : _rand(std::random_device()())
+	{ }
 
 	void read(std::istream& input) {
 		_board.read(input);
@@ -25,7 +29,7 @@ public:
 		return _board.print_counts(output);
 	}
 
-	static bool solve_board(
+	bool solve_board(
 		sudoku_board<Rank>& b,
 		const sudoku_options& options
 	);
@@ -70,14 +74,19 @@ inline bool sudoku_solver<Rank>::solve_board(
 		}
 	);
 
-	std::sort(
-		index, e,
-		[&board](const coord& i, const coord& j) {
-			return	board.cell(i.first, i.second).num_options()<
-					board.cell(j.first, j.second).num_options();
-		}
-	);
+	if(options.randomize_cells) {
+		std::shuffle(index, e, _rand);
+	}
 
+	if(options.sort_cells) {
+		std::sort(
+			index, e,
+			[&board](const coord& i, const coord& j) {
+				return	board.cell(i.first, i.second).num_options()<
+						board.cell(j.first, j.second).num_options();
+			}
+		);
+	}
 
 	for(auto p = index; p < e; ++p) {
 		int r = p->first;
