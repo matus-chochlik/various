@@ -19,6 +19,10 @@ int main(int argc, const char** argv) {
 			if(argv[a]) {
 				options.variant = std::atoi(argv[a]);
 			}
+		} else if(arg == "--depth-first") {
+			options.depth_first = true;
+		} else if(arg == "--breadth-first") {
+			options.depth_first = false;
 		} else if(arg == "--sort") {
 			options.sort_cells = true;
 		} else if(arg == "--no-sort") {
@@ -37,6 +41,7 @@ int main(int argc, const char** argv) {
 			options.print_backtrace = false;
 		} else {
 			std::cerr << "error: unknown option `" << arg << "'" << std::endl;
+			return 1;
 		}
 	}
 

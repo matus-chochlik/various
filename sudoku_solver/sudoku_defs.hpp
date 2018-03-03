@@ -8,6 +8,7 @@ using sudoku_symbol = char;
 struct sudoku_options
 {
 	short variant;
+	bool depth_first;
 	bool sort_cells;
 	bool randomize_cells;
 	bool print_backtrace;
@@ -15,6 +16,7 @@ struct sudoku_options
 
 	sudoku_options(void)
 	 : variant(0)
+	 , depth_first(true)
 	 , sort_cells(true)
 	 , randomize_cells(false)
 	 , print_backtrace(true)

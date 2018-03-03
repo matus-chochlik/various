@@ -88,27 +88,59 @@ inline bool sudoku_solver<Rank>::solve_board(
 		);
 	}
 
-	for(auto p = index; p < e; ++p) {
-		int r = p->first;
-		int c = p->second;
+	if(options.depth_first) {
+		for(auto p = index; p < e; ++p) {
+			int r = p->first;
+			int c = p->second;
 
-		const sudoku_cell& cell = board.cell(r, c);
-		assert(cell.is_ambiguous());
+			const sudoku_cell& cell = board.cell(r, c);
+			assert(cell.is_ambiguous());
 
-		for(auto value : cell) {
+			for(auto value : cell) {
 
-			sudoku_board<Rank> fixed_board(board);
-			fixed_board.cell(r, c).init(value);
+				sudoku_board<Rank> fixed_board(board);
+				fixed_board.cell(r, c).init(value);
 
-			if(solve_board(fixed_board, options)) {
-				board = fixed_board;
-				return true;
+				if(solve_board(fixed_board, options)) {
+					board = fixed_board;
+					return true;
+				}
+			}
+			if(options.print_backtrace) {
+				board.print(std::cout, options) << std::endl;
+			}
+			return false;
+		}
+	} else {
+		while(true) {
+			for(auto p = index; p < e; ++p) {
+				int r = p->first;
+				int c = p->second;
+
+				sudoku_cell& cell = board.cell(r, c);
+
+				if(auto value = cell.value()) {
+
+					sudoku_board<Rank> fixed_board(board);
+					fixed_board.cell(r, c).init(value);
+
+					if(solve_board(fixed_board, options)) {
+						board = fixed_board;
+						return true;
+					}
+					if(options.print_backtrace) {
+						board.print(std::cout, options) << std::endl;
+					}
+					cell.remove(value);
+
+					if(cell.is_empty()) {
+						return false;
+					}
+				} else {
+					return false;
+				}
 			}
 		}
-		if(options.print_backtrace) {
-			board.print(std::cout, options) << std::endl;
-		}
-		return false;
 	}
 	return false;
 }
