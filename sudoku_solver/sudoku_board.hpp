@@ -167,10 +167,10 @@ std::ostream& sudoku_board<Rank>::print(
 			if(cl.is_determined()) {
 				if(options.pango_markup && cl.is_initial()) {
 					output << "<b>";
-					cl.value().write_to(output, Rank);
+					cl.value().write_to(output, Rank, options.variant);
 					output << "</b>";
 				} else {
-					cl.value().write_to(output, Rank);
+					cl.value().write_to(output, Rank, options.variant);
 				}
 			} else if(cl.is_empty()) {
 					output << "×";

@@ -7,13 +7,15 @@ using sudoku_symbol = char;
 
 struct sudoku_options
 {
+	short variant;
 	bool sort_cells;
 	bool randomize_cells;
 	bool print_backtrace;
 	bool pango_markup;
 
 	sudoku_options(void)
-	 : sort_cells(true)
+	 : variant(0)
+	 , sort_cells(true)
 	 , randomize_cells(false)
 	 , print_backtrace(true)
 	 , pango_markup(false)

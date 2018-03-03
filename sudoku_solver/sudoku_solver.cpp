@@ -14,7 +14,12 @@ int main(int argc, const char** argv) {
 
 	for(int a=1; a<argc; ++a) {
 		const std::string arg(argv[a]);
-		if(arg == "--sort") {
+		if(arg == "--variant") {
+			++a;
+			if(argv[a]) {
+				options.variant = std::atoi(argv[a]);
+			}
+		} else if(arg == "--sort") {
 			options.sort_cells = true;
 		} else if(arg == "--no-sort") {
 			options.sort_cells = false;
