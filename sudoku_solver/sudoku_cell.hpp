@@ -159,6 +159,11 @@ public:
 	public:
 		using value_type = sudoku_value;
 
+		iterator(void)
+		 : _values{0}
+		 , _index{0}
+		{ }
+
 		iterator(container_t values, container_t index)
 		 : _values{values}
 		 , _index{index}

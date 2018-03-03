@@ -147,23 +147,48 @@ def blend_images(options, imgs):
 		imgs
 	)
 
+class BlenderThread(threading.Thread):
+	def __init__(self, options, images):
+		self._options = options
+		self._images = images
+		threading.Thread.__init__(self,target=self._run)
+		threading.Thread.start(self)
+
+	def _run(self):
+		self._blended = blend_images(self._options, self._images)
+
+	def get(self):
+		threading.Thread.join(self)
+		return self._blended
+
 def blur_images(options):
 	group = list()
 	for image, step_frames in load_images(options):
 		group.append(image);
 
 		if len(group) >= options.blur_frames:
-			yield blend_images(options, group)
+			yield BlenderThread(options, group)
 			group = group[step_frames:]
 
 	while len(group) > 0:
-		yield blend_images(options, group)
+		yield BlenderThread(options, group)
 		group = group[step_frames:]
+
+def feed_video_frames(options):
+	blender_queue = collections.deque()
+	for blender in blur_images(options):
+		blender_queue.append(blender)
+
+		if len(blender_queue) >= options.blur_threads:
+			yield blender_queue.popleft().get()
+
+	for blender in blender_queue:
+			yield blender.get()
 
 def make_video(options, size = None):
 	fourcc = cv2.VideoWriter_fourcc(*options.fourcc)
 	video = None
-	for image in blur_images(options):
+	for image in feed_video_frames(options):
 		if image is not None:
 			if size is None:
 				size = image.shape[1], image.shape[0]
@@ -288,6 +313,15 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 		)
 
 		self.add_argument(
+			'-t', '--blur-threads',
+			dest='blur_threads',
+			metavar='COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=None
+		)
+
+		self.add_argument(
 			'-s', '--step',
 			dest='step_frames',
 			metavar='FRAME-COUNT',
@@ -337,6 +371,9 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 
 		if options.blur_frames is None:
 			options.blur_frames = 16 if options.rank > 3 else 8
+
+		if options.blur_threads is None:
+			options.blur_threads = multiprocessing.cpu_count()*2
 
 		if options.step_frames is None:
 			options.step_frames = 8 if options.rank > 3 else 2
