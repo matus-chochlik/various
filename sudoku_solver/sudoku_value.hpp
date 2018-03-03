@@ -95,6 +95,27 @@ const std::string& sudoku_value::_rank_output_symbol(
 ) {
 
 	if(rank == 2 && sym < 2*2) {
+		if(variant == 1) {
+			static const std::string symbols[3*3] = {
+				{"\u25F0"},{"\u25F1"},
+				{"\u25F2"},{"\u25F3"}
+			};
+			return symbols[sym];
+		}
+		if(variant == 2) {
+			static const std::string symbols[3*3] = {
+				{"\u25F4"},{"\u25F5"},
+				{"\u25F6"},{"\u25F7"}
+			};
+			return symbols[sym];
+		}
+		if(variant == 3) {
+			static const std::string symbols[3*3] = {
+				{"\u2680"},{"\u2681"},
+				{"\u2682"},{"\u2683"}
+			};
+			return symbols[sym];
+		}
 		static const std::string symbols[2*2] = {
 			{"1"},{"2"},
 			{"3"},{"4"}
@@ -104,17 +125,25 @@ const std::string& sudoku_value::_rank_output_symbol(
 	if(rank == 3 && sym < 3*3) {
 		if(variant == 1) {
 			static const std::string symbols[3*3] = {
-				{"❶"},{"❷"},{"❸"},
-				{"❹"},{"❺"},{"❻"},
-				{"❼"},{"❽"},{"❾"}
+				{"\u25A0"},{"\u25A1"},{"\u25A3"},
+				{"\u25A4"},{"\u25A5"},{"\u25A6"},
+				{"\u25A7"},{"\u25A8"},{"\u25A9"}
 			};
 			return symbols[sym];
 		}
 		if(variant == 2) {
 			static const std::string symbols[3*3] = {
-				{"➀"},{"➁"},{"➂"},
-				{"➃"},{"➄"},{"➅"},
-				{"➆"},{"➇"},{"➈"}
+				{"\u2295"},{"\u2296"},{"\u2297"},
+				{"\u2298"},{"\u2299"},{"\u229A"},
+				{"\u229B"},{"\u229C"},{"\u229D"}
+			};
+			return symbols[sym];
+		}
+		if(variant == 3) {
+			static const std::string symbols[3*3] = {
+				{"\u278A"},{"\u278B"},{"\u278C"},
+				{"\u278D"},{"\u278E"},{"\u278F"},
+				{"\u2790"},{"\u2791"},{"\u2792"}
 			};
 			return symbols[sym];
 		}
@@ -126,6 +155,15 @@ const std::string& sudoku_value::_rank_output_symbol(
 		return symbols[sym];
 	}
 	if(rank == 4 && sym < 4*4) {
+		if(variant == 1) {
+			static const std::string symbols[4*4] = {
+				{"\u2735"},{"\u273A"},{"\u273D"},{"\u273F"},
+				{"\u2740"},{"\u2742"},{"\u2744"},{"\u2746"},
+				{"\u2748"},{"\u2732"},{"\u272D"},{"\u273E"},
+				{"\u2731"},{"\u2738"},{"\u2743"},{"\u2736"}
+			};
+			return symbols[sym];
+		}
 		static const std::string symbols[4*4] = {
 			{"0"},{"1"},{"2"},{"3"},
 			{"4"},{"5"},{"6"},{"7"},
