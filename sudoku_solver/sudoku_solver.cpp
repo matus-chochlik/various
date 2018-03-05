@@ -31,6 +31,10 @@ int main(int argc, const char** argv) {
 			options.randomize_cells = true;
 		} else if(arg == "--no-random") {
 			options.randomize_cells = false;
+		} else if(arg == "--fancy") {
+			options.print_fancy = true;
+		} else if(arg == "--plain") {
+			options.print_fancy = false;
 		} else if(arg == "--pango") {
 			options.pango_markup = true;
 		} else if(arg == "--no-pango") {

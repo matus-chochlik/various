@@ -22,12 +22,20 @@ public:
 		_board.read(input);
 	}
 
-	std::ostream& print(std::ostream& output, const sudoku_options& options) {
-		return _board.print(output, options);
+	static std::ostream& print_board(
+		const sudoku_board<Rank>& board,
+		std::ostream& output,
+		const sudoku_options& options
+	) {
+		if(options.print_fancy) {
+			return board.print_fancy(output, options);
+		} else {
+			return board.print_plain(output, options);
+		}
 	}
 
-	std::ostream& print_counts(std::ostream& output) {
-		return _board.print_counts(output);
+	std::ostream& print(std::ostream& output, const sudoku_options& options) {
+		return print_board(_board, output, options);
 	}
 
 	bool solve_board_depth(
@@ -54,7 +62,7 @@ inline bool sudoku_solver<Rank>::solve_board_depth(
 	sudoku_board<Rank>& board,
 	const sudoku_options& options
 ) {
-	board.print(std::cout, options) << std::endl;
+	print_board(board, std::cout, options) << std::endl;
 
 	auto reduce_result = board.reduce();
 
@@ -117,7 +125,7 @@ inline bool sudoku_solver<Rank>::solve_board_depth(
 			}
 		}
 		if(options.print_backtrace) {
-			board.print(std::cout, options) << std::endl;
+			print_board(board, std::cout, options) << std::endl;
 		}
 		return false;
 	}
@@ -129,7 +137,7 @@ inline bool sudoku_solver<Rank>::solve_board_breadth(
 	sudoku_board<Rank>& board,
 	const sudoku_options& options
 ) {
-	board.print(std::cout, options) << std::endl;
+	print_board(board, std::cout, options) << std::endl;
 
 	auto reduce_result = board.reduce();
 
@@ -207,7 +215,7 @@ inline bool sudoku_solver<Rank>::solve_board_breadth(
 				done_something = true;
 			}
 			if(options.print_backtrace) {
-				board.print(std::cout, options) << std::endl;
+				print_board(board, std::cout, options) << std::endl;
 			}
 		}
 		if(!done_something) {

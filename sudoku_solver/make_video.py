@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # coding: UTF-8
-#  Copyright (c) 2017 Matus Chochlik
+#  Copyright (c) 2017-2018 Matus Chochlik
 from __future__ import print_function
 
 import os

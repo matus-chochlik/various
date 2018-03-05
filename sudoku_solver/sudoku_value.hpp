@@ -64,7 +64,8 @@ public:
 		return std::uint64_t(_value);
 	}
 
-	std::ostream& write_to(std::ostream& out, int rank, short variant) const;
+	std::ostream& print_plain(std::ostream& out, int rank) const;
+	std::ostream& print_fancy(std::ostream& out, int rank, short variant) const;
 };
 //------------------------------------------------------------------------------
 inline
@@ -198,7 +199,17 @@ short sudoku_value::_get_symbol_value(int rank, sudoku_symbol symbol) {
 }
 //------------------------------------------------------------------------------
 inline
-std::ostream& sudoku_value::write_to(std::ostream& out, int rank, short variant) const {
+std::ostream& sudoku_value::print_plain(std::ostream& out, int rank) const {
+	if(_value < 0) {
+		out << '.';
+	} else {
+		out << _rank_input_symbols(rank)[std::size_t(_value)];
+	}
+	return out;
+}
+//------------------------------------------------------------------------------
+inline
+std::ostream& sudoku_value::print_fancy(std::ostream& out, int rank, short variant) const {
 	if(_value < 0) {
 		out << '.';
 	} else {

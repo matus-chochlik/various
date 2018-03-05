@@ -32,7 +32,9 @@ public:
 
 	void read(std::istream& input);
 
-	std::ostream& print(std::ostream& output, const sudoku_options&);
+	std::ostream& print_plain(std::ostream& output, const sudoku_options&) const;
+
+	std::ostream& print_fancy(std::ostream& output, const sudoku_options&) const;
 
 	std::ostream& print_counts(std::ostream& output);
 
@@ -120,10 +122,61 @@ void sudoku_board<Rank>::read(std::istream& input) {
 }
 //------------------------------------------------------------------------------
 template <int Rank>
-std::ostream& sudoku_board<Rank>::print(
+std::ostream& sudoku_board<Rank>::print_plain(
 	std::ostream& output,
 	const sudoku_options& options
-) {
+) const {
+	const int d = side();
+
+	for(int r = 0; r < d; ++r) {
+		if((r > 0) && (r % Rank == 0)) {
+			for(int c = 0; c < d; ++c) {
+				if((c + 1) == d) {
+					if((r + 1) == d) {
+						output << "-";
+					} else {
+						output << "-";
+					}
+				} else if((c + 1) % Rank == 0) {
+					output << "-+";
+				} else {
+					output << "--";
+				}
+			}
+			output << std::endl;
+		}
+
+		for(int c = 0; c < d; ++c) {
+
+			const auto& cl = cell(r, c);
+
+			if(cl.is_determined()) {
+				cl.value().print_plain(output, Rank);
+			} else if(cl.is_empty()) {
+					output << "?";
+			} else {
+				output << ".";
+			}
+
+			if((c + 1) < d) {
+				if((c + 1) % Rank == 0) {
+					output << "|";
+				} else {
+					output << " ";
+				}
+			} else {
+				output << std::endl;
+			}
+		}
+	}
+	return output;
+}
+//------------------------------------------------------------------------------
+template <int Rank>
+std::ostream& sudoku_board<Rank>::print_fancy(
+	std::ostream& output,
+	const sudoku_options& options
+) const {
 	const int d = side();
 
 	for(int c = 0; c < d; ++c) {
@@ -167,10 +220,10 @@ std::ostream& sudoku_board<Rank>::print(
 			if(cl.is_determined()) {
 				if(options.pango_markup && cl.is_initial()) {
 					output << "<b>";
-					cl.value().write_to(output, Rank, options.variant);
+					cl.value().print_fancy(output, Rank, options.variant);
 					output << "</b>";
 				} else {
-					cl.value().write_to(output, Rank, options.variant);
+					cl.value().print_fancy(output, Rank, options.variant);
 				}
 			} else if(cl.is_empty()) {
 					output << "×";
