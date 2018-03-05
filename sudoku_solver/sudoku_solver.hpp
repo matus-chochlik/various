@@ -79,19 +79,19 @@ inline bool sudoku_solver<Rank>::solve_board_depth(
 	}
 
 	const auto e = std::remove_if(
-		index, index + n,
+		std::begin(index), std::end(index),
 		[&board](const coord& i) {
 			return board.cell(get<0>(i), get<1>(i)).is_determined();
 		}
 	);
 
 	if(options.randomize_cells) {
-		std::shuffle(index, e, _rand);
+		std::shuffle(std::begin(index), e, _rand);
 	}
 
 	if(options.sort_cells) {
 		std::sort(
-			index, e,
+			std::begin(index), e,
 			[&board](const coord& i, const coord& j) {
 				return	board.cell(get<0>(i), get<1>(i)).num_options()<
 						board.cell(get<0>(j), get<1>(j)).num_options();
@@ -99,7 +99,7 @@ inline bool sudoku_solver<Rank>::solve_board_depth(
 		);
 	}
 
-	for(auto p = index; p < e; ++p) {
+	for(auto p = std::begin(index); p < e; ++p) {
 		int r = get<0>(*p);
 		int c = get<1>(*p);
 
@@ -146,7 +146,7 @@ inline bool sudoku_solver<Rank>::solve_board_breadth(
 	using coord = std::tuple<component_t, component_t, sudoku_cell::iterator>;
 	using std::get;
 
-	coord index[n];
+	std::vector<coord> index(n);
 
 	for(int r = 0; r < d; ++r) {
 		for(int c = 0; c < d; ++c) {
@@ -158,21 +158,22 @@ inline bool sudoku_solver<Rank>::solve_board_breadth(
 		}
 	}
 
-
-	const auto e = std::remove_if(
-		index, index + n,
-		[&board](const coord& i) {
-			return board.cell(get<0>(i), get<1>(i)).is_determined();
-		}
+	const auto e = index.erase(
+		std::remove_if(
+			std::begin(index), std::end(index),
+			[&board](const coord& i) {
+				return board.cell(get<0>(i), get<1>(i)).is_determined();
+			}
+		), index.end()
 	);
 
 	if(options.randomize_cells) {
-		std::shuffle(index, e, _rand);
+		std::shuffle(std::begin(index), e, _rand);
 	}
 
 	if(options.sort_cells) {
 		std::sort(
-			index, e,
+			std::begin(index), e,
 			[&board](const coord& i, const coord& j) {
 				return	board.cell(get<0>(i), get<1>(i)).num_options()<
 						board.cell(get<0>(j), get<1>(j)).num_options();
@@ -182,7 +183,7 @@ inline bool sudoku_solver<Rank>::solve_board_breadth(
 
 	while(true) {
 		bool done_something = false;
-		for(auto p = index; p < e; ++p) {
+		for(auto p = std::begin(index); p < e; ++p) {
 			int r = get<0>(*p);
 			int c = get<1>(*p);
 
