@@ -20,7 +20,7 @@ struct sudoku_options
 	 , depth_first(true)
 	 , sort_cells(true)
 	 , randomize_cells(false)
-	 , print_fancy(true)
+	 , print_fancy(false)
 	 , pango_markup(false)
 	 , print_backtrace(true)
 	{ }
