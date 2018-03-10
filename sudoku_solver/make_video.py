@@ -6,6 +6,7 @@ from __future__ import print_function
 import os
 import sys
 import cv2
+import json
 import numpy
 import argparse
 import subprocess
@@ -18,10 +19,13 @@ def read_frames(options):
 	table = unicode()
 	for line in options.input:
 		utf8line = line.decode('utf-8')
-		table = table + utf8line
-		if u"┛" in utf8line:
-			yield table
-			table = str()
+		if line[0] == '{' and line.rstrip()[-1] == '}':
+			input_options = json.loads(line)
+		else:
+			table = table + utf8line
+			if u"┛" in utf8line:
+				yield table
+				table = str()
 
 def make_asciiart(options):
 	width = None

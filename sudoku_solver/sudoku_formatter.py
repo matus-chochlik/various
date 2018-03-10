@@ -3,13 +3,15 @@
 #  Copyright (c) 2017-2018 Matus Chochlik
 from __future__ import print_function
 
+import os
 import sys
-import fileinput
+import json
+import argparse
 
-def get_line_and_rank():
+def get_line_and_rank(options):
 	rank = None
 	counter = 0
-	for line in fileinput.input():
+	for line in options.input:
 		if line.strip():
 			counter += 1
 			row = list()
@@ -26,9 +28,9 @@ def get_line_and_rank():
 				counter = 0
 				yield None, rank
 
-def get_board_and_rank():
+def get_board_and_rank(options):
 	board = []
-	for line, rank in get_line_and_rank():
+	for line, rank in get_line_and_rank(options):
 		if not line:
 			if board:
 				yield board, rank
@@ -36,71 +38,152 @@ def get_board_and_rank():
 		else:
 			board.append(line.split(' '))
 
-def print_board(board, rank, out):
+
+def print_board(board, rank, options):
 	d = rank*rank
 
 	for c in xrange(0, d):
 		if c == 0:
-			out.write("┏━━")
+			options.output.write("┏━━")
 		elif (c + 1) == d:
-			out.write("━┓")
+			options.output.write("━┓")
 		elif (c + 1) % rank == 0:
-			out.write("━┯")
+			options.output.write("━┯")
 		else:
-			out.write("━━")
-	out.write('\n')
+			options.output.write("━━")
+	options.output.write('\n')
 
 	for r in xrange(0, d):
 		if (r > 0) and (r % rank == 0):
-			out.write("┠")
+			options.output.write("┠")
 			for c in xrange(0, d):
 				if (c + 1) == d:
 					if (r + 1) == d:
-						out.write("━┛")
+						options.output.write("━┛")
 					else:
-						out.write("─┨")
+						options.output.write("─┨")
 				elif (c + 1) % rank == 0:
-					out.write("─┼")
+					options.output.write("─┼")
 				else:
-					out.write("──")
-			out.write('\n')
+					options.output.write("──")
+			options.output.write('\n')
 
-		out.write("┃")
+		options.output.write("┃")
 
 		for c in xrange(0, d):
 
 			cl = board[r][c]
 
 			if cl not in ['?', '.']:
-					out.write(cl)
+					options.output.write(cl)
 			elif cl == '?':
-					out.write("×")
+					options.output.write("×")
 			else:
 				if ((r + c) % 2) == 0:
-					out.write("∴")
+					options.output.write("∴")
 				else:
-					out.write("∵")
+					options.output.write("∵")
 
 			if (c + 1) < d:
 				if (c + 1) % rank == 0:
-					out.write("│")
+					options.output.write("│")
 				else:
-					out.write(" ")
+					options.output.write(" ")
 			else:
-				out.write("┃\n")
+				options.output.write("┃\n")
 
 	for c in xrange(0, d):
 		if c == 0:
-			out.write("┗━━");
+			options.output.write("┗━━");
 		elif (c + 1) == d:
-			out.write("━┛\n");
+			options.output.write("━┛\n");
 		elif (c + 1) % rank == 0:
-			out.write("━┷");
+			options.output.write("━┷");
 		else:
-			out.write("━━");
+			options.output.write("━━");
 
-for board, rank in get_board_and_rank():
-	print_board(board, rank, sys.stdout)
+class __FormatSudokuArgumentParser(argparse.ArgumentParser):
+	def __init__(self, **kw):
+		def _rank_value(x):
+			try:
+				assert(int(x) >= 2)
+				return int(x)
+			except:
+				self.error("`%d' is not a valid rank" % x)
 
+		def _positive_int(x):
+			try:
+				assert(int(x) > 0)
+				return int(x)
+			except:
+				self.error("`%s' is not a positive integer value" % str(x))
 
+		def _positive_float(x):
+			try:
+				assert(float(x) > 0)
+				return float(x)
+			except:
+				self.error("`%s' is not a positive integer value" % str(x))
 
+		argparse.ArgumentParser.__init__(self, **kw)
+
+		self.add_argument(
+			'-i', '--input',
+			metavar='INPUT-FILE',
+			nargs='?',
+			type=argparse.FileType('r'),
+			default=None
+		)
+
+		self.add_argument(
+			'-o', '--output',
+			dest='output_path',
+			metavar='INPUT-FILE',
+			nargs='?',
+			type=os.path.realpath,
+			default=None
+		)
+
+	def process_parsed_options(self, options):
+
+		if options.input is None:
+			options.input = sys.stdin
+
+		if options.output_path is None:
+			options.output = sys.stdout
+		else:
+			if os.path.isdir(options.output_path):
+				options.output = open(os.path.join(
+					options.output_path,
+					'sudoku.txt'
+				))
+		return options
+
+	def parse_args(self):
+		return self.process_parsed_options(
+			argparse.ArgumentParser.parse_args(self)
+		)
+
+def make_argparser():
+	return __FormatSudokuArgumentParser(
+		prog="format_sudoku",
+		description="re-formats the output output of the sudoku_solver script"
+	)
+
+def format_frames(options):
+	first_frame = True
+	for board, rank in get_board_and_rank(options):
+		output_options = dict()
+		if first_frame:
+			output_options["rank"] = rank
+			first_frame = False
+		json.dump(output_options, options.output, ensure_ascii=False)
+		options.output.write('\n')
+		print_board(board, rank, options)
+
+def main():
+	format_frames(make_argparser().parse_args())
+	return 0
+
+if __name__ == "__main__":
+	exit(main())
