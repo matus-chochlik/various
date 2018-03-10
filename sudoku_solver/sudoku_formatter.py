@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import argparse
+import collections
 
 def get_line_and_rank(options):
 	rank = None
@@ -144,6 +145,51 @@ class __FormatSudokuArgumentParser(argparse.ArgumentParser):
 			default=None
 		)
 
+		self.add_argument(
+			'-b', '--min-blur',
+			dest='min_blur_frames',
+			metavar='FRAME-COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=1
+		)
+
+		self.add_argument(
+			'-B', '--max-blur',
+			dest='max_blur_frames',
+			metavar='FRAME-COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=None
+		)
+
+		self.add_argument(
+			'-s', '--min-step',
+			dest='min_step_frames',
+			metavar='FRAME-COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=1
+		)
+
+		self.add_argument(
+			'-S', '--max-step',
+			dest='max_step_frames',
+			metavar='FRAME-COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=None
+		)
+
+		self.add_argument(
+			'-e', '--ease-frames',
+			dest='ease_frames',
+			metavar='FRAME-COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=1
+		)
+
 	def process_parsed_options(self, options):
 
 		if options.input is None:
@@ -157,6 +203,13 @@ class __FormatSudokuArgumentParser(argparse.ArgumentParser):
 					options.output_path,
 					'sudoku.txt'
 				))
+
+		if not options.max_blur_frames or options.max_blur_frames < options.min_blur_frames:
+			options.max_blur_frames = options.min_blur_frames*2
+
+		if not options.max_step_frames or options.max_step_frames < options.min_step_frames:
+			options.max_step_frames = options.min_step_frames*2
+
 		return options
 
 	def parse_args(self):
@@ -170,13 +223,53 @@ def make_argparser():
 		description="re-formats the output output of the sudoku_solver script"
 	)
 
+def get_blur_frames(options, frame_number):
+	if frame_number <= options.ease_frames:
+		beta = float(frame_number)/float(options.ease_frames)
+		alpha = 1.0 - beta
+		return int(alpha*options.min_blur_frames + beta*options.max_blur_frames)
+	else:
+		return options.max_blur_frames
+
+def get_step_frames(options, frame_number):
+	if frame_number <= options.ease_frames:
+		beta = float(frame_number)/float(options.ease_frames)
+		alpha = 1.0 - beta
+		return int(alpha*options.min_step_frames + beta*options.max_step_frames)
+	else:
+		return options.max_step_frames
+
 def format_frames(options):
-	first_frame = True
+	frame_queue = collections.deque()
+	frame_number = 0
+
 	for board, rank in get_board_and_rank(options):
 		output_options = dict()
-		if first_frame:
+		if frame_number == 0:
 			output_options["rank"] = rank
-			first_frame = False
+
+		output_options["blur_frames"] = get_blur_frames(options, frame_number)
+		output_options["step_frames"] = get_step_frames(options, frame_number)
+
+		frame_number += 1
+
+		frame_queue.append((board, rank, output_options))
+
+		if len(frame_queue) > options.ease_frames:
+			board, rank, output_options = frame_queue.popleft()
+			json.dump(output_options, options.output, ensure_ascii=False)
+			options.output.write('\n')
+			print_board(board, rank, options)
+
+	frame_number = options.ease_frames
+
+	for board, rank, output_options in frame_queue:
+		output_options = dict()
+		output_options["blur_frames"] = get_blur_frames(options, frame_number)
+		output_options["step_frames"] = get_step_frames(options, frame_number)
+
+		frame_number -= 1
+
 		json.dump(output_options, options.output, ensure_ascii=False)
 		options.output.write('\n')
 		print_board(board, rank, options)

@@ -7,6 +7,7 @@ import os
 import sys
 import cv2
 import json
+import copy
 import numpy
 import argparse
 import subprocess
@@ -15,22 +16,23 @@ import collections
 import threading
 import multiprocessing
 
-def read_frames(options):
+def read_frames(old_options):
 	table = unicode()
-	for line in options.input:
+	new_options = copy.deepcopy(old_options)
+	for line in old_options.input:
 		utf8line = line.decode('utf-8')
 		if line[0] == '{' and line.rstrip()[-1] == '}':
-			input_options = json.loads(line)
+			new_options.__dict__.update(json.loads(line))
 		else:
 			table = table + utf8line
 			if u"┛" in utf8line:
-				yield table
+				yield table, copy.deepcopy(new_options)
 				table = str()
 
-def make_asciiart(options):
+def make_asciiart(old_options):
 	width = None
 	height = None
-	for frame in read_frames(options):
+	for frame, options in read_frames(old_options):
 		lines = frame.split('\n')
 		if width is None: width = len(lines[0])
 		if height is None: height = len(lines)
@@ -41,30 +43,34 @@ def make_asciiart(options):
 		if options.use_pango:
 			yield u'<tt>%(frame)s</tt>' % {
 				"frame": frame
-			}, width*10, height*18
+			}, width*10, height*18, options
 		else:
 			yield u'text %(width)d, %(height)d "%(frame)s"' % {
 					"width": width,
 					"height": len(lines),
 					"frame": frame
-				}, width*10, height*17
+				}, width*10, height*17, options
 
 class RenderThread(threading.Thread):
-	def __init__(self, renderer, art_input):
+	def __init__(self, renderer, art_input, options):
 		self._renderer = renderer
 		self._input = art_input
+		self._options = options
 		threading.Thread.__init__(self,target=self._run)
 		threading.Thread.start(self)
 
 	def _run(self):
 		self._value = bytearray(self._renderer.communicate(self._input)[0])
 
+	def options(self):
+		return self._options
+
 	def get(self):
 		threading.Thread.join(self)
 		return self._value
 
-def render_images(options):
-	for art_input, width, height in make_asciiart(options):
+def render_images(old_options):
+	for art_input, width, height, options in make_asciiart(old_options):
 		if options.use_pango:
 			conv_cmd = [
 				"convert",
@@ -77,7 +83,7 @@ def render_images(options):
 				conv_cmd,
 				stdout=subprocess.PIPE
 			)
-			yield RenderThread(renderer, None)
+			yield RenderThread(renderer, None, options)
 		else:
 			conv_cmd = [
 				"convert",
@@ -93,55 +99,41 @@ def render_images(options):
 				stdout=subprocess.PIPE
 			)
 
-			yield RenderThread(renderer, art_input.encode('utf-8'))
+			yield RenderThread(renderer, art_input.encode('utf-8'), options)
 
-def load_image(future_img_data):
+def load_image(renderer):
 	return cv2.imdecode(
-		numpy.asarray(future_img_data.get(), dtype=numpy.uint8),
+		numpy.asarray(renderer.get(), dtype=numpy.uint8),
 		cv2.IMREAD_UNCHANGED
 	)
 
-def load_images(options):
+def load_images(old_options):
 	renderer_queue = collections.deque()
-	image_queue = collections.deque()
-	image_backlog = int(options.blur_frames*(options.head+options.tail))
-	step_frames = 1
 	first = True
 	image = None
+	options = old_options
 
-	for renderer in render_images(options):
-		renderer_queue.append(renderer)
+	for new_renderer in render_images(old_options):
+		renderer_queue.append(new_renderer)
+
 		if len(renderer_queue) >= options.queue_length:
-			image = load_image(renderer_queue.popleft())
+			renderer = renderer_queue.popleft()
+			image = load_image(renderer)
+			options = renderer.options()
 			if first:
 				for x in xrange(0, int(options.fps*options.head)):
-					yield image, 1
+					yield image, options
 				first = False
-			image_queue.append(image)
-
-		if len(image_queue) >= image_backlog:
-			image = image_queue.popleft()
-			if step_frames < options.step_frames:
-				step_frames += options.ease_in_out
-			yield image, int(step_frames)
+			else:
+				yield image, options
 
 	for renderer in renderer_queue:
-		image_queue.append(load_image(renderer))
-		if len(image_queue) >= image_backlog:
-			image = image_queue.popleft()
-			if step_frames < options.step_frames:
-				step_frames += options.ease_in_out
-			yield image, int(step_frames)
-
-	for image in image_queue:
-		if step_frames > 1:
-			step_frames -= options.ease_in_out
-		if step_frames < 1:
-			step_frames = 1
-		yield image, int(step_frames)
+			image = load_image(renderer)
+			options = renderer.options()
+			yield image, options
 
 	for x in xrange(0, int(options.fps*options.tail)):
-		yield image, 1
+		yield image, options
 
 
 def blend_images(options, imgs):
@@ -161,38 +153,42 @@ class BlenderThread(threading.Thread):
 	def _run(self):
 		self._blended = blend_images(self._options, self._images)
 
+	def options(self):
+		return self._options
+
 	def get(self):
 		threading.Thread.join(self)
 		return self._blended
 
-def blur_images(options):
-	group = list()
-	for image, step_frames in load_images(options):
-		group.append(image);
+def blur_images(old_options):
+	images = list()
+	for image, options in load_images(old_options):
+		images.append(image);
 
-		if len(group) >= options.blur_frames:
-			yield BlenderThread(options, group)
-			group = group[step_frames:]
+		if len(images) >= options.blur_frames:
+			yield BlenderThread(options, images)
+			images = images[options.step_frames:]
 
-	while len(group) > 0:
-		yield BlenderThread(options, group)
-		group = group[step_frames:]
+	while len(images) > 0:
+		yield BlenderThread(options, images)
+		images = images[options.step_frames:]
 
-def feed_video_frames(options):
+def feed_video_frames(old_options):
 	blender_queue = collections.deque()
-	for blender in blur_images(options):
-		blender_queue.append(blender)
+	for new_blender in blur_images(old_options):
+		blender_queue.append(new_blender)
 
-		if len(blender_queue) >= options.blur_threads:
-			yield blender_queue.popleft().get()
+		if len(blender_queue) >= old_options.blur_threads:
+			blender = blender_queue.popleft()
+			yield blender.get(), blender.options()
 
 	for blender in blender_queue:
-			yield blender.get()
+			yield blender.get(), blender.options()
 
 def make_video(options, size = None):
 	fourcc = cv2.VideoWriter_fourcc(*options.fourcc)
 	video = None
-	for image in feed_video_frames(options):
+	for image, image_options in feed_video_frames(options):
 		if image is not None:
 			if size is None:
 				size = image.shape[1], image.shape[0]
@@ -341,15 +337,6 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 			nargs='?',
 			type=_norm_weight,
 			default=0.6
-		)
-
-		self.add_argument(
-			'-E', '--ease',
-			dest='ease_in_out',
-			metavar='FACTOR',
-			nargs='?',
-			type=_norm_weight,
-			default=0.05
 		)
 
 		self.add_argument(
