@@ -11,6 +11,7 @@ struct sudoku_options
 	bool depth_first;
 	bool sort_cells;
 	bool randomize_cells;
+	bool print_metadata;
 	bool print_fancy;
 	bool pango_markup;
 	bool print_backtrace;
@@ -20,6 +21,7 @@ struct sudoku_options
 	 , depth_first(true)
 	 , sort_cells(true)
 	 , randomize_cells(false)
+	 , print_metadata(true)
 	 , print_fancy(false)
 	 , pango_markup(false)
 	 , print_backtrace(true)

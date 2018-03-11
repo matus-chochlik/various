@@ -25,8 +25,16 @@ public:
 	static std::ostream& print_board(
 		const sudoku_board<Rank>& board,
 		std::ostream& output,
-		const sudoku_options& options
+		const sudoku_options& options,
+		int depth,
+		bool backtrace
 	) {
+		if(options.print_metadata) {
+			output << R"({"rank":)" << Rank;
+			output << R"(,"depth":)" << depth;
+			output << R"(,"back":)" << (backtrace?"true":"false");
+			output << "}\n";
+		}
 		if(options.print_fancy) {
 			return board.print_fancy(output, options);
 		} else {
@@ -34,25 +42,31 @@ public:
 		}
 	}
 
-	std::ostream& print(std::ostream& output, const sudoku_options& options) {
-		return print_board(_board, output, options);
+	std::ostream& print(
+		std::ostream& output,
+		const sudoku_options& options,
+		int depth = 0
+	) {
+		return print_board(_board, output, options, depth, false);
 	}
 
 	bool solve_board_depth(
 		sudoku_board<Rank>& b,
-		const sudoku_options& options
+		const sudoku_options& options,
+		int depth
 	);
 
 	bool solve_board_breadth(
 		sudoku_board<Rank>& b,
-		const sudoku_options& options
+		const sudoku_options& options,
+		int depth
 	);
 
 	bool solve(const sudoku_options& options) {
 		if(options.depth_first) {
-			return solve_board_depth(_board, options);
+			return solve_board_depth(_board, options, 0);
 		} else {
-			return solve_board_breadth(_board, options);
+			return solve_board_breadth(_board, options, 0);
 		}
 	}
 };
@@ -60,9 +74,10 @@ public:
 template <int Rank>
 inline bool sudoku_solver<Rank>::solve_board_depth(
 	sudoku_board<Rank>& board,
-	const sudoku_options& options
+	const sudoku_options& options,
+	int depth
 ) {
-	print_board(board, std::cout, options) << std::endl;
+	print_board(board, std::cout, options, depth, false) << '\n';
 
 	auto reduce_result = board.reduce();
 
@@ -119,13 +134,13 @@ inline bool sudoku_solver<Rank>::solve_board_depth(
 			sudoku_board<Rank> fixed_board(board);
 			fixed_board.cell(r, c).init(value);
 
-			if(solve_board_depth(fixed_board, options)) {
+			if(solve_board_depth(fixed_board, options, depth+1)) {
 				board = fixed_board;
 				return true;
 			}
 		}
 		if(options.print_backtrace) {
-			print_board(board, std::cout, options) << std::endl;
+			print_board(board, std::cout, options, depth, true) << '\n';
 		}
 		return false;
 	}
@@ -135,9 +150,10 @@ inline bool sudoku_solver<Rank>::solve_board_depth(
 template <int Rank>
 inline bool sudoku_solver<Rank>::solve_board_breadth(
 	sudoku_board<Rank>& board,
-	const sudoku_options& options
+	const sudoku_options& options,
+	int depth
 ) {
-	print_board(board, std::cout, options) << std::endl;
+	print_board(board, std::cout, options, depth, false) << '\n';
 
 	auto reduce_result = board.reduce();
 
@@ -207,7 +223,7 @@ inline bool sudoku_solver<Rank>::solve_board_breadth(
 				sudoku_board<Rank> fixed_board(board);
 				fixed_board.cell(r, c).init(value);
 
-				if(solve_board_breadth(fixed_board, options)) {
+				if(solve_board_breadth(fixed_board, options, depth+1)) {
 					board = fixed_board;
 					return true;
 				}
@@ -215,7 +231,7 @@ inline bool sudoku_solver<Rank>::solve_board_breadth(
 				done_something = true;
 			}
 			if(options.print_backtrace) {
-				print_board(board, std::cout, options) << std::endl;
+				print_board(board, std::cout, options, depth, true) << '\n';
 			}
 		}
 		if(!done_something) {

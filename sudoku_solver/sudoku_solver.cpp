@@ -19,6 +19,10 @@ int main(int argc, const char** argv) {
 			if(argv[a]) {
 				options.variant = std::atoi(argv[a]);
 			}
+		} else if(arg == "--metadata") {
+			options.print_metadata = true;
+		} else if(arg == "--no-metadata") {
+			options.print_metadata = false;
 		} else if(arg == "--depth-first") {
 			options.depth_first = true;
 		} else if(arg == "--breadth-first") {

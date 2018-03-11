@@ -9,99 +9,162 @@ import json
 import argparse
 import collections
 
-def get_line_and_rank(options):
+def get_line_rank_and_metadata(options):
 	rank = None
+	metadata = dict()
 	counter = 0
 	for line in options.input:
-		if line.strip():
-			counter += 1
-			row = list()
-			if not rank:
-				rank = line.count('|') + line.count('+') + 1
-				yield line.replace('|', ' ').rstrip(), rank
+		line = line.strip()
+		if line:
+			if line[0] == '{' and line[-1] == '}':
+				metadata = json.loads(line);
 			else:
-				if counter % (rank + 1) == 0:
-					assert(line.count('+') + 1 == rank)
+				counter += 1
+				row = list()
+				if not rank:
+					try:
+						rank = metadata["rank"]
+					except AttributeError:
+						rank = line.count('|') + line.count('+') + 1
+					yield line.replace('|', ' '), rank, metadata
 				else:
-					assert(line.count('|') + 1 == rank)
-					yield line.replace('|', ' ').rstrip(), rank
-			if counter == (rank*rank + rank - 1):
-				counter = 0
-				yield None, rank
+					if counter % (rank + 1) == 0:
+						assert(line.count('+') + 1 == rank)
+					else:
+						assert(line.count('|') + 1 == rank)
+						yield line.replace('|', ' '), rank, metadata
+				if counter == (rank*rank + rank - 1):
+					counter = 0
+					yield None, rank, metadata
 
-def get_board_and_rank(options):
+def get_board_rank_and_metadata(options):
 	board = []
-	for line, rank in get_line_and_rank(options):
+	for line, rank, metadata in get_line_rank_and_metadata(options):
 		if not line:
 			if board:
-				yield board, rank
+				yield board, rank, metadata
 			board = []
 		else:
 			board.append(line.split(' '))
 
 
-def print_board(board, rank, options):
+def format_board(board, rank, options):
 	d = rank*rank
+
+	result = unicode()
 
 	for c in xrange(0, d):
 		if c == 0:
-			options.output.write("┏━━")
+			result += u"┏━━"
 		elif (c + 1) == d:
-			options.output.write("━┓")
+			result += u"━┓"
 		elif (c + 1) % rank == 0:
-			options.output.write("━┯")
+			result += u"━┯"
 		else:
-			options.output.write("━━")
-	options.output.write('\n')
+			result += u"━━"
+	result += u"\n"
 
 	for r in xrange(0, d):
 		if (r > 0) and (r % rank == 0):
-			options.output.write("┠")
+			result += u"┠"
 			for c in xrange(0, d):
 				if (c + 1) == d:
 					if (r + 1) == d:
-						options.output.write("━┛")
+						result += u"━┛"
 					else:
-						options.output.write("─┨")
+						result += u"─┨"
 				elif (c + 1) % rank == 0:
-					options.output.write("─┼")
+					result += u"─┼"
 				else:
-					options.output.write("──")
-			options.output.write('\n')
+					result += u"──"
+			result += u"\n"
 
-		options.output.write("┃")
+		result += u"┃"
 
 		for c in xrange(0, d):
 
 			cl = board[r][c]
 
 			if cl not in ['?', '.']:
-					options.output.write(cl)
+					result += cl
 			elif cl == '?':
-					options.output.write("×")
+					result += u"×"
 			else:
 				if ((r + c) % 2) == 0:
-					options.output.write("∴")
+					result += u"∴"
 				else:
-					options.output.write("∵")
+					result += u"∵"
 
 			if (c + 1) < d:
 				if (c + 1) % rank == 0:
-					options.output.write("│")
+					result += u"│"
 				else:
-					options.output.write(" ")
+					result += u" "
 			else:
-				options.output.write("┃\n")
+				result += u"┃\n"
 
 	for c in xrange(0, d):
 		if c == 0:
-			options.output.write("┗━━");
+			result += u"┗━━";
 		elif (c + 1) == d:
-			options.output.write("━┛\n");
+			result += u"━┛\n";
 		elif (c + 1) % rank == 0:
-			options.output.write("━┷");
+			result += u"━┷";
 		else:
-			options.output.write("━━");
+			result += u"━━";
+
+	return result
+
+def get_blur_frames(options, frame_number):
+	if frame_number <= options.ease_frames:
+		beta = float(frame_number)/float(options.ease_frames)
+		alpha = 1.0 - beta
+		return int(alpha*options.min_blur_frames + beta*options.max_blur_frames)
+	else:
+		return options.max_blur_frames
+
+def get_step_frames(options, frame_number):
+	if frame_number <= options.ease_frames:
+		beta = float(frame_number)/float(options.ease_frames)
+		alpha = 1.0 - beta
+		return int(alpha*options.min_step_frames + beta*options.max_step_frames)
+	else:
+		return options.max_step_frames
+
+def get_board_rank_and_options(options):
+	frame_queue = collections.deque()
+	frame_number = 0
+
+	for board, rank, metadata in get_board_rank_and_metadata(options):
+		output_options = metadata
+		if frame_number == 0:
+			output_options["rank"] = rank
+
+		output_options["blur_frames"] = get_blur_frames(options, frame_number)
+		output_options["step_frames"] = get_step_frames(options, frame_number)
+
+		frame_number += 1
+
+		frame_queue.append((board, rank, output_options))
+
+		if len(frame_queue) > options.ease_frames:
+			board, rank, output_options = frame_queue.popleft()
+			yield board, rank, output_options
+
+	frame_number = options.ease_frames
+
+	for board, rank, output_options in frame_queue:
+		output_options = dict()
+		output_options["blur_frames"] = get_blur_frames(options, frame_number)
+		output_options["step_frames"] = get_step_frames(options, frame_number)
+
+		frame_number -= 1
+		yield board, rank, output_options
+
+def format_frames(options):
+	for board, rank, output_options in get_board_rank_and_options(options):
+		json.dump(output_options, options.output, ensure_ascii=False)
+		options.output.write((u"\n"+format_board(board, rank, options)).encode('utf-8'))
 
 class __FormatSudokuArgumentParser(argparse.ArgumentParser):
 	def __init__(self, **kw):
@@ -222,57 +285,6 @@ def make_argparser():
 		prog="format_sudoku",
 		description="re-formats the output output of the sudoku_solver script"
 	)
-
-def get_blur_frames(options, frame_number):
-	if frame_number <= options.ease_frames:
-		beta = float(frame_number)/float(options.ease_frames)
-		alpha = 1.0 - beta
-		return int(alpha*options.min_blur_frames + beta*options.max_blur_frames)
-	else:
-		return options.max_blur_frames
-
-def get_step_frames(options, frame_number):
-	if frame_number <= options.ease_frames:
-		beta = float(frame_number)/float(options.ease_frames)
-		alpha = 1.0 - beta
-		return int(alpha*options.min_step_frames + beta*options.max_step_frames)
-	else:
-		return options.max_step_frames
-
-def format_frames(options):
-	frame_queue = collections.deque()
-	frame_number = 0
-
-	for board, rank in get_board_and_rank(options):
-		output_options = dict()
-		if frame_number == 0:
-			output_options["rank"] = rank
-
-		output_options["blur_frames"] = get_blur_frames(options, frame_number)
-		output_options["step_frames"] = get_step_frames(options, frame_number)
-
-		frame_number += 1
-
-		frame_queue.append((board, rank, output_options))
-
-		if len(frame_queue) > options.ease_frames:
-			board, rank, output_options = frame_queue.popleft()
-			json.dump(output_options, options.output, ensure_ascii=False)
-			options.output.write('\n')
-			print_board(board, rank, options)
-
-	frame_number = options.ease_frames
-
-	for board, rank, output_options in frame_queue:
-		output_options = dict()
-		output_options["blur_frames"] = get_blur_frames(options, frame_number)
-		output_options["step_frames"] = get_step_frames(options, frame_number)
-
-		frame_number -= 1
-
-		json.dump(output_options, options.output, ensure_ascii=False)
-		options.output.write('\n')
-		print_board(board, rank, options)
 
 def main():
 	format_frames(make_argparser().parse_args())

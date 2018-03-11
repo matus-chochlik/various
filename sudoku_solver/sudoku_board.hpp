@@ -143,7 +143,7 @@ std::ostream& sudoku_board<Rank>::print_plain(
 					output << "--";
 				}
 			}
-			output << std::endl;
+			output << '\n';
 		}
 
 		for(int c = 0; c < d; ++c) {
@@ -165,7 +165,7 @@ std::ostream& sudoku_board<Rank>::print_plain(
 					output << " ";
 				}
 			} else {
-				output << std::endl;
+				output << '\n';
 			}
 		}
 	}
@@ -190,7 +190,7 @@ std::ostream& sudoku_board<Rank>::print_fancy(
 			output << "━━";
 		}
 	}
-	output << std::endl;
+	output << '\n';
 
 	for(int r = 0; r < d; ++r) {
 		if((r > 0) && (r % Rank == 0)) {
@@ -208,7 +208,7 @@ std::ostream& sudoku_board<Rank>::print_fancy(
 					output << "──";
 				}
 			}
-			output << std::endl;
+			output << '\n';
 		}
 
 		output << "┃";
@@ -242,7 +242,7 @@ std::ostream& sudoku_board<Rank>::print_fancy(
 					output << " ";
 				}
 			} else {
-				output << "┃" << std::endl;
+				output << "┃" << '\n';
 			}
 		}
 	}
@@ -277,7 +277,7 @@ std::ostream& sudoku_board<Rank>::print_counts(std::ostream& output) {
 			if((c + 1) < d) {
 				output << " ";
 			} else {
-				output << std::endl;
+				output << '\n';
 			}
 		}
 	}
