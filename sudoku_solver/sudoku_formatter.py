@@ -37,12 +37,21 @@ def get_line_rank_and_metadata(options):
 					counter = 0
 					yield None, rank, metadata
 
+def should_be_printed(options, metadata):
+	if options.skip_backtrace_depth:
+		if metadata.get("depth", 0) > options.skip_backtrace_depth:
+			if metadata.get("back", False):
+				return False
+
+	return True
+
 def get_board_rank_and_metadata(options):
 	board = []
 	for line, rank, metadata in get_line_rank_and_metadata(options):
 		if not line:
 			if board:
-				yield board, rank, metadata
+				if should_be_printed(options, metadata):
+					yield board, rank, metadata
 			board = []
 		else:
 			board.append(line.split(' '))
@@ -239,6 +248,15 @@ class __FormatSudokuArgumentParser(argparse.ArgumentParser):
 			'-S', '--max-step',
 			dest='max_step_frames',
 			metavar='FRAME-COUNT',
+			nargs='?',
+			type=_positive_int,
+			default=None
+		)
+
+		self.add_argument(
+			'--skip-backtrace-depth',
+			dest='skip_backtrace_depth',
+			metavar='DEPTH',
 			nargs='?',
 			type=_positive_int,
 			default=None
