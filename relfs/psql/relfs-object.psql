@@ -29,6 +29,22 @@ ADD PRIMARY KEY(object_id);
 ALTER TABLE relfs.file_object
 ADD UNIQUE(object_id);
 
+CREATE FUNCTION relfs._fill_file_object_id()
+RETURNS TRIGGER AS
+$$
+BEGIN
+	NEW.object_id = coalesce(NEW.object_id, relfs.get_next_object_id());
+	RETURN NEW;
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE TRIGGER fill_object_id
+BEFORE INSERT ON relfs.file_object
+FOR EACH ROW
+EXECUTE PROCEDURE relfs._fill_file_object_id();
+
+
 CREATE FUNCTION relfs.to_bin_hash(relfs.STRHASH)
 RETURNS relfs.BINHASH
 AS

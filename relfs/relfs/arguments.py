@@ -2,6 +2,8 @@
 #------------------------------------------------------------------------------#
 import os
 import re
+import sys
+import imp
 import argparse
 #------------------------------------------------------------------------------#
 from .core import _version_numbers
@@ -21,6 +23,7 @@ class ArgumentSetup:
 
 		self.with_config_type = False
 
+		self.with_database_user = False
 		self.with_database_host = True
 		self.with_database_port = True
 		self.with_database_name = True
@@ -166,6 +169,16 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 					const=conf_typ
 				)
 
+		if arg_setup.with_database_user:
+			self.add_argument(
+				"--user", "-u",
+				metavar='USER-NAME',
+				nargs=1,
+				dest="db_user",
+				default=None,
+				action="store"
+			)
+
 		if arg_setup.with_database_host:
 			self.add_argument(
 				"--host", "-H",
@@ -249,9 +262,25 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 				type=str,
 				help=" or ".join(help_list)
 			)
+
+		try:
+			imp.find_module('argparse2bco')
+			self.add_argument(
+				"--print-bash-complete",
+				action="store_true",
+				default=False
+			)
+		except ImportError: pass
 	#--------------------------------------------------------------------------#
 	def process_parsed_options(self, options):
 		options.arg_setup = self.arg_setup
+
+		if options.print_bash_complete:
+			self.print_bash_complete(
+				'_complete_' + re.sub('[^0-9a-zA-Z]+', '_', self.prog),
+				sys.argv[0]
+			)
+			self.exit()
 
 		if self.arg_setup.with_repo_paths:
 			repos = list()
@@ -333,6 +362,14 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 	def parse_args(self):
 		return self.process_parsed_options(
 			argparse.ArgumentParser.parse_args(self)
+		)
+	#--------------------------------------------------------------------------#
+	def print_bash_complete(self, function_name, command):
+		import argparse2bco
+		argparse2bco.print_bash_complete_script(
+			self,
+			function_name,
+			command
 		)
 #------------------------------------------------------------------------------#
 def make_argument_parser(command, description, arg_setup = ArgumentSetup()):

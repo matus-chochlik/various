@@ -6,6 +6,8 @@ import json
 import shutil
 import hashlib
 import resource
+import getpass
+import psycopg2
 #------------------------------------------------------------------------------#
 from .config import load_config, save_config, __config
 from .error import RelFsError
@@ -31,6 +33,8 @@ class Repository(object):
 	@staticmethod
 	def make_default_config(name, options):
 		return {
+			"local_db": options.db_host is None,
+			"db_user" : options.db_user or getpass.getuser(),
 			"db_host" : options.db_host or "localhost",
 			"db_port" : options.db_port or 5432,
 			"database": options.database or "relfs",
@@ -57,7 +61,21 @@ class Repository(object):
 	#--------------------------------------------------------------------------#
 	def __init__(self, name, config):
 		self._name = name
+		self._user = getpass.getuser()
 		self._metadata = config.repositories[name]
+		self._repo_config = self.load_config()
+
+		if self._repo_config.get("local_db", False):
+			self._db_conn = psycopg2.connect(
+				database = self._repo_config.get("database", self._user)
+			)
+		else:
+			self._db_conn = psycopg2.connect(
+				database = self._repo_config.get("database", self._user),
+				user = self.repo_config.get("db_user", self._user),
+				host = self.repo_config.get("db_host", "localhost"),
+				port = self.repo_config.get("db_port", 5432)
+			)
 	#--------------------------------------------------------------------------#
 	def __repr__(self):
 		return "<relfs://%(path)s>" % {"path": self._metadata.path}
@@ -70,6 +88,16 @@ class Repository(object):
 	#--------------------------------------------------------------------------#
 	def prefix(self):
 		return self._metadata["path"]
+	#--------------------------------------------------------------------------#
+	def config_file_path(self):
+		return os.path.join(self.prefix(), "config")
+	#--------------------------------------------------------------------------#
+	def open_config(self):
+		return open(self.config_file_path(), "rt")
+	#--------------------------------------------------------------------------#
+	def load_config(self):
+		with self.open_config() as config_file:
+			return json.load(config_file)
 	#--------------------------------------------------------------------------#
 	def objects_dir_path(self):
 		return os.path.join(self.prefix(), "objects")
@@ -85,6 +113,15 @@ class Repository(object):
 			self.object_dir_path(obj_hash),
 			self.object_file_name(obj_hash)
 		)
+	#--------------------------------------------------------------------------#
+	def db_query(self, select_statement):
+		cursor = self._db_conn.cursor()
+		cursor.execute(select_statement)
+		row = cursor.fetchone()
+		while row:
+			yield row
+			row = cursor.fetchone()
+		cursor.close()
 	#--------------------------------------------------------------------------#
 	def checkin_file(self, os_path, display_name=None):
 		if not display_name:
@@ -105,7 +142,13 @@ class Repository(object):
 		return obj_hash #TODO
 	#--------------------------------------------------------------------------#
 	def change_object_display_name(self, obj_hash, display_name):
-		pass # TODO
+		cursor = self._db_conn.cursor()
+		cursor.execute("""
+			INSERT INTO relfs.file_object (object_bin_hash, display_name)
+			VALUES (%s, %s)
+		""", (str(obj_hash), display_name))
+		self._db_conn.commit()
+		cursor.close()
 #------------------------------------------------------------------------------#
 def open_repository(repo_name, config = __config()):
 	return Repository(repo_name, config)
