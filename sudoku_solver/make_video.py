@@ -166,7 +166,7 @@ def blur_images(old_options):
 		images.append(image);
 
 		if len(images) >= options.blur_frames:
-			yield BlenderThread(options, images)
+			yield BlenderThread(options, images[-options.blur_frames:])
 			images = images[options.step_frames:]
 
 	while len(images) > 0:
