@@ -26,7 +26,7 @@ if __name__ == "__main__":
 			open_repo = relfs.open_repository(repo_name)
 
 			for file_path in options.file_paths:
-				open_repo.checkin_file(file_path, os.path.basename(file_path))
+				open_repo.checkin_file(file_path)
 		except relfs.RelFsError as relfs_error:
 			relfs.print_error(relfs_error)
 #------------------------------------------------------------------------------#

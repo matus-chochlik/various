@@ -4,8 +4,8 @@ from __future__ import print_function
 import sys
 #------------------------------------------------------------------------------#
 class RelFsError(Exception):
-	pass
+    pass
 #------------------------------------------------------------------------------#
 def print_error(error):
-	print("relfs error: %s" % (str(error)), file=sys.stderr)
+    print("relfs error: %s" % (str(error)), file=sys.stderr)
 #------------------------------------------------------------------------------#

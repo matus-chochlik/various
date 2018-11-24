@@ -20,14 +20,18 @@ LANGUAGE sql;
 CREATE TABLE relfs.file_object (
 	object_id         relfs.OBJID    NOT NULL,
 	object_bin_hash   relfs.BINHASH  NOT NULL,
-	display_name      TEXT
+	object_date	      DATE,
+	size_bytes		  INTEGER,
+	display_name      TEXT,
+	extensions        TEXT,
+	mime_type		  TEXT
 );
 
 ALTER TABLE relfs.file_object
 ADD PRIMARY KEY(object_id);
 
 ALTER TABLE relfs.file_object
-ADD UNIQUE(object_id);
+ADD UNIQUE(object_bin_hash);
 
 CREATE FUNCTION relfs._fill_file_object_id()
 RETURNS TRIGGER AS

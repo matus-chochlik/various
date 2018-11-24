@@ -20,7 +20,7 @@ RETURNS relfs.YEAR_DATE AS
 $$
 BEGIN
 RETURN (
-	CAST(EXTRACT(MONTH FROM $1) AS SMALLINT),
+  	CAST(EXTRACT(MONTH FROM $1) AS SMALLINT),
 	CAST(EXTRACT(DAY FROM $1) AS SMALLINT)
 );
 END
@@ -121,3 +121,20 @@ CREATE OPERATOR >= (
 	procedure = relfs._ge_year_date,
 	commutator = >=
 );
+
+--
+-- additional functions
+--
+CREATE FUNCTION relfs.anniversary(DATE)
+RETURNS SMALLINT AS
+$$
+SELECT CASE
+	WHEN relfs.extract_year_date($1) = relfs.extract_year_date(current_date)
+	THEN CAST(
+		EXTRACT (YEAR FROM current_date) - EXTRACT(YEAR FROM $1)
+		AS SMALLINT
+	)
+	ELSE NULL
+END;
+$$
+LANGUAGE sql;
