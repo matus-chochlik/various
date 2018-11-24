@@ -5,7 +5,6 @@ import sys
 import json
 import shutil
 import hashlib
-import mimetypes
 import resource
 import datetime
 import getpass
@@ -13,6 +12,7 @@ import psycopg2
 #------------------------------------------------------------------------------#
 from .config import load_config, save_config, __config
 from .error import RelFsError
+from .metadata import add_file_metadata
 #------------------------------------------------------------------------------#
 _version_numbers= (0,1,0)
 #------------------------------------------------------------------------------#
@@ -146,36 +146,24 @@ class Repository(object):
             file_stat = os.stat(obj_path)
             cursor = self._db_conn.cursor()
             cursor.execute("""
-                INSERT INTO relfs.file_object (
-                    object_bin_hash,
-                    mime_type,
-                    display_name,
-                    extensions,
-                    size_bytes,
-                    object_date
-                ) VALUES (
-                    %(hash)s,
-                    %(type)s,
-                    %(name)s,
-                    %(exts)s,
-                    %(size)s,
-                    %(date)s
-                ) ON CONFLICT (object_bin_hash)
-                DO UPDATE SET
-                    mime_type = %(type)s,
-                    display_name = %(name)s,
-                    extensions = %(exts)s,
-                    size_bytes = %(size)s,
-                    object_date = %(date)s
-            """, {
-                "hash": str(obj_hash),
-                "type": mimetypes.guess_type(os_path)[0],
-                "name": display_name,
-                "exts": extensions,
-                "size": file_stat.st_size,
-                "date": datetime.date.fromtimestamp(file_stat.st_mtime)
-            })
+                SELECT relfs.store_object_info(%s, %s, %s, %s, %s)
+            """, (
+                str(obj_hash),
+                datetime.date.fromtimestamp(file_stat.st_mtime),
+                file_stat.st_size,
+                display_name,
+                extensions
+            ))
             self._db_conn.commit()
+
+            add_file_metadata(
+                self._db_conn,
+                cursor,
+                os_path,
+                obj_path,
+                obj_hash
+            )
+
             cursor.close()
 
             # return the object
@@ -189,8 +177,7 @@ class Repository(object):
     def change_object_display_name(self, obj_hash, display_name):
         cursor = self._db_conn.cursor()
         cursor.execute("""
-            INSERT INTO relfs.file_object (object_bin_hash, display_name)
-            VALUES (%s, %s)
+            SELECT relfs.change_object_displaY_name(%s, %s)
         """, (str(obj_hash), display_name))
         self._db_conn.commit()
         cursor.close()

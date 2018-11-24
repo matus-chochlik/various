@@ -23,8 +23,7 @@ CREATE TABLE relfs.file_object (
 	object_date	      DATE,
 	size_bytes		  INTEGER,
 	display_name      TEXT,
-	extensions        TEXT,
-	mime_type		  TEXT
+	extensions        TEXT
 );
 
 ALTER TABLE relfs.file_object
@@ -88,4 +87,57 @@ BEGIN
 END
 $$
 LANGUAGE plpgsql;
+
+CREATE FUNCTION relfs.store_object_info(
+	relfs.STRHASH,
+	DATE,
+	INTEGER,
+	TEXT,
+	TEXT
+) RETURNS relfs.OBJID
+AS
+$$
+DECLARE
+	p_obj_hash ALIAS FOR $1;
+	p_obj_date ALIAS FOR $2;
+	p_obj_size ALIAS FOR $3;
+	p_obj_name ALIAS FOR $4;
+	p_obj_exts ALIAS FOR $5;
+	v_obj_id relfs.OBJID;
+BEGIN
+	v_obj_id := relfs.get_file_object(p_obj_hash);
+
+	UPDATE relfs.file_object
+	SET
+		display_name = p_obj_name,
+		extensions = p_obj_exts,
+		size_bytes = p_obj_size,
+		object_date = p_obj_date
+	WHERE object_id = v_obj_id;
+
+	RETURN v_obj_id;
+END
+$$
+LANGUAGE plpgsql;
+
+CREATE FUNCTION relfs.change_object_display_name(relfs.STRHASH, TEXT)
+RETURNS relfs.OBJID
+AS
+$$
+DECLARE
+	p_obj_hash ALIAS FOR $1;
+	p_obj_name ALIAS FOR $2;
+	v_obj_id relfs.OBJID;
+BEGIN
+	v_obj_id := relfs.get_file_object(p_obj_hash);
+
+	UPDATE relfs.file_object
+	SET display_name = p_obj_name
+	WHERE object_id = v_obj_id;
+
+	RETURN v_obj_id;
+END
+$$
+LANGUAGE plpgsql;
+
 
