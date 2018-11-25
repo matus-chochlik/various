@@ -88,7 +88,7 @@ END
 $$
 LANGUAGE plpgsql;
 
-CREATE FUNCTION relfs.store_object_info(
+CREATE FUNCTION relfs.set_object_info(
 	relfs.STRHASH,
 	DATE,
 	INTEGER,
@@ -120,7 +120,7 @@ END
 $$
 LANGUAGE plpgsql;
 
-CREATE FUNCTION relfs.change_object_display_name(relfs.STRHASH, TEXT)
+CREATE FUNCTION relfs.set_object_display_name(relfs.STRHASH, TEXT)
 RETURNS relfs.OBJID
 AS
 $$

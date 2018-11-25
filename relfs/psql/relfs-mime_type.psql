@@ -1,16 +1,13 @@
 CREATE TABLE relfs.object_mime_type (
 	object_id         relfs.OBJID    NOT NULL,
-	mime_type TEXT,
-	mime_subtype TEXT
+	mime_type VARCHAR(32) NOT NULL,
+	mime_subtype VARCHAR(32) NOT NULL
 );
 
 ALTER TABLE relfs.object_mime_type
-ADD PRIMARY KEY(object_id);
+ADD PRIMARY KEY(object_id, mime_type, mime_subtype);
 
-ALTER TABLE relfs.object_mime_type
-ADD UNIQUE(object_id, mime_type, mime_subtype);
-
-CREATE FUNCTION relfs.store_object_mime_type(
+CREATE FUNCTION relfs.set_object_mime_type(
 	relfs.STRHASH,
 	TEXT,
 	TEXT
@@ -25,14 +22,11 @@ DECLARE
 BEGIN
 	v_obj_id := relfs.get_file_object(p_obj_hash);
 
-	IF p_mime_type IS NOT NULL OR p_mime_subtype IS NOT NULL
-	THEN
-		INSERT INTO relfs.object_mime_type
-		(object_id, mime_type, mime_subtype)
-		VALUES(v_obj_id, p_mime_type, p_mime_subtype)
-		ON CONFLICT
-		DO NOTHING;
-	END IF;
+	INSERT INTO relfs.object_mime_type
+	(object_id, mime_type, mime_subtype)
+	VALUES(v_obj_id, p_mime_type, p_mime_subtype)
+	ON CONFLICT
+	DO NOTHING;
 
 	RETURN v_obj_id;
 END

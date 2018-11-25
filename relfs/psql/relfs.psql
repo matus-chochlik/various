@@ -2,6 +2,7 @@
 \i relfs-types.psql
 \i relfs-year_date.psql
 \i relfs-object.psql
-\i relfs-mime_type.psql
 \i relfs-tags.psql
 \i relfs-attrib.psql
+\i relfs-mime_type.psql
+\i relfs-picture.psql

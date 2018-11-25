@@ -146,7 +146,7 @@ class Repository(object):
             file_stat = os.stat(obj_path)
             cursor = self._db_conn.cursor()
             cursor.execute("""
-                SELECT relfs.store_object_info(%s, %s, %s, %s, %s)
+                SELECT relfs.set_object_info(%s, %s, %s, %s, %s)
             """, (
                 str(obj_hash),
                 datetime.date.fromtimestamp(file_stat.st_mtime),
@@ -174,11 +174,24 @@ class Repository(object):
     def object_display_name(self, obj_hash):
         return obj_hash #TODO
     #--------------------------------------------------------------------------#
-    def change_object_display_name(self, obj_hash, display_name):
+    def set_object_display_name(self, obj_hash, display_name):
         cursor = self._db_conn.cursor()
         cursor.execute("""
-            SELECT relfs.change_object_displaY_name(%s, %s)
-        """, (str(obj_hash), display_name))
+            SELECT relfs.set_object_display_name(%s, %s)
+        """, (obj_hash, display_name))
+        self._db_conn.commit()
+        cursor.close()
+    #--------------------------------------------------------------------------#
+    def add_object_tags(self, obj_hash, tag_list):
+        if type(tag_list) is not list:
+            tag_list = [str(tag_list)]
+
+        cursor = self._db_conn.cursor()
+        for tag_code in tag_list:
+            cursor.execute("""
+                SELECT relfs.add_object_tag(%s, %s)
+            """, (obj_hash, tag_code))
+
         self._db_conn.commit()
         cursor.close()
 #------------------------------------------------------------------------------#
@@ -204,11 +217,14 @@ class RepositoryFileObject(object):
         }
     #--------------------------------------------------------------------------#
     def path_in_repository(self):
-        return self.repo.object_file_path(self.obj_hash)
+        return self._repo.object_file_path(self._obj_hash)
     #--------------------------------------------------------------------------#
     def display_name(self):
-        return self.repo.object_display_name(self.obj_hash)
+        return self._repo.object_display_name(self._obj_hash)
     #--------------------------------------------------------------------------#
-    def change_display_name(self, name):
-        self.repo.change_object_display_name(self.obj_hash, name)
+    def set_display_name(self, name):
+        self._repo.set_object_display_name(self._obj_hash, name)
+    #--------------------------------------------------------------------------#
+    def add_tags(self, tag_list):
+        self._repo.add_object_tags(self._obj_hash, tag_list)
 #------------------------------------------------------------------------------#
