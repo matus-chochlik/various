@@ -171,7 +171,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
         if arg_setup.with_database_user:
             self.add_argument(
-                "--user", "-u",
+                "--db-user", "-u",
                 metavar='USER-NAME',
                 nargs=1,
                 dest="db_user",
@@ -181,7 +181,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
         if arg_setup.with_database_host:
             self.add_argument(
-                "--host", "-H",
+                "--db-host", "-H",
                 metavar='HOST-NAME',
                 nargs=1,
                 dest="db_host",
@@ -191,7 +191,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
         if arg_setup.with_database_port:
             self.add_argument(
-                "--port", "-P",
+                "--db-port", "-P",
                 metavar='PORT-NUMBER',
                 type=self._port_number_value,
                 nargs=1,
@@ -275,12 +275,14 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
     def process_parsed_options(self, options):
         options.arg_setup = self.arg_setup
 
-        if options.print_bash_complete:
-            self.print_bash_complete(
-                '_complete_' + re.sub('[^0-9a-zA-Z]+', '_', self.prog),
-                sys.argv[0]
-            )
-            self.exit()
+        try:
+            if options.print_bash_complete:
+                self.print_bash_complete(
+                    '_complete_' + re.sub('[^0-9a-zA-Z]+', '_', self.prog),
+                    sys.argv[0]
+                )
+                self.exit()
+        except AttributeError: pass
 
         if self.arg_setup.with_repo_paths:
             repos = list()

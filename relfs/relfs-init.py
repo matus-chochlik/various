@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 #------------------------------------------------------------------------------#
+import os
 import relfs
 #------------------------------------------------------------------------------#
 def make_arg_parser():
@@ -14,7 +15,7 @@ def make_arg_parser():
     arg_setup.with_database_user = True
 
     parser = relfs.make_argument_parser(
-        'relfs-init',
+        os.path.basename(__file__),
         'initializes a new relfs repository',
         arg_setup
     )

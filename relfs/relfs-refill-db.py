@@ -9,12 +9,10 @@ def make_arg_parser():
     arg_setup.with_repo_names = True
     arg_setup.existing_repos = True
     arg_setup.at_least_one_repo = True
-    arg_setup.with_file_paths = True
-    arg_setup.with_tag_labels = True
 
     parser = relfs.make_argument_parser(
         os.path.basename(__file__),
-        'checks-in files into a relfs repository',
+        'rescans all repository objects fills database with metadata',
         arg_setup
     )
     return parser
@@ -26,10 +24,7 @@ if __name__ == "__main__":
     for repo_name in options.repositories:
         try:
             open_repo = relfs.open_repository(repo_name)
-
-            for file_path in options.file_paths:
-                repo_file = open_repo.checkin_file(file_path)
-                repo_file.add_tags(options.tag_labels)
+            open_repo.refill_database()
         except relfs.RelFsError as relfs_error:
             relfs.print_error(relfs_error)
 #------------------------------------------------------------------------------#

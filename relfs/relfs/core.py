@@ -64,7 +64,9 @@ class Repository(object):
     def __init__(self, name, config):
         self._name = name
         self._user = getpass.getuser()
-        self._metadata = config.repositories[name]
+        try: self._metadata = config.repositories[name]
+        except KeyError:
+            raise RelFsError("'%s' is not a relfs repository" % name)
         self._repo_config = self.load_config()
 
         if self._repo_config.get("local_db", False):
@@ -170,6 +172,32 @@ class Repository(object):
             return RepositoryFileObject(self, obj_hash)
         except IOError as io_error:
             raise RelFsError(str(io_error))
+    #--------------------------------------------------------------------------#
+    def all_objects(self):
+        obj_dir = self.objects_dir_path()
+        for prefix, dirs, files in os.walk(obj_dir):
+            for file_name in files:
+                file_path = os.path.join(prefix, file_name)
+                if os.path.isfile(file_path):
+                    rel_path = os.path.relpath(file_path, obj_dir)
+                    yield (
+                        str().join(rel_path.split('/')),
+                        file_path
+                    )
+    #--------------------------------------------------------------------------#
+    def refill_database(self):
+        cursor = self._db_conn.cursor()
+        for obj_hash, obj_path in self.all_objects():
+            add_file_metadata(
+                self._db_conn,
+                cursor,
+                obj_path,
+                obj_path,
+                obj_hash
+            )
+
+        cursor.close()
+
     #--------------------------------------------------------------------------#
     def object_display_name(self, obj_hash):
         return obj_hash #TODO

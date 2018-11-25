@@ -3,6 +3,12 @@
 import os
 import json
 #------------------------------------------------------------------------------#
+def _mkdir_p(os_path):
+    try: os.makedirs(os_path)
+    except OSError as os_error:
+        if not(os_error.errno == os.errno.EEXIST and os.path.isdir(os_path)):
+            raise
+#------------------------------------------------------------------------------#
 def system_config_dir_path():
     return os.path.expanduser('/etc/relfs/')
 #------------------------------------------------------------------------------#
@@ -62,6 +68,7 @@ def load_config(config_type):
     return load_config_file(repo_config_file_path(config_type))
 #------------------------------------------------------------------------------#
 def save_config_file(file_path, config):
+    _mkdir_p(os.path.dirname(file_path))
     assert(isinstance(config, __ConfigStruct))
     __save_config_content(file_path, config.__dict__)
 #------------------------------------------------------------------------------#
