@@ -20,7 +20,7 @@ LANGUAGE sql;
 CREATE TABLE relfs.file_object (
 	object_id         relfs.OBJID    NOT NULL,
 	object_bin_hash   relfs.BINHASH  NOT NULL,
-	object_date	      DATE,
+	object_date	      TIMESTAMP WITHOUT TIME ZONE,
 	size_bytes		  INTEGER,
 	display_name      TEXT,
 	extensions        TEXT
@@ -88,9 +88,31 @@ END
 $$
 LANGUAGE plpgsql;
 
+CREATE FUNCTION relfs.set_object_date(
+	relfs.STRHASH,
+	TIMESTAMP WITHOUT TIME ZONE
+) RETURNS relfs.OBJID
+AS
+$$
+DECLARE
+	p_obj_hash ALIAS FOR $1;
+	p_obj_date ALIAS FOR $2;
+	v_obj_id relfs.OBJID;
+BEGIN
+	v_obj_id := relfs.get_file_object(p_obj_hash);
+
+	UPDATE relfs.file_object
+	SET object_date = coalesce(p_obj_date, object_date)
+	WHERE object_id = v_obj_id;
+
+	RETURN v_obj_id;
+END
+$$
+LANGUAGE plpgsql;
+
 CREATE FUNCTION relfs.set_object_info(
 	relfs.STRHASH,
-	DATE,
+	TIMESTAMP WITHOUT TIME ZONE,
 	INTEGER,
 	TEXT,
 	TEXT
@@ -109,10 +131,10 @@ BEGIN
 
 	UPDATE relfs.file_object
 	SET
-		display_name = p_obj_name,
-		extensions = p_obj_exts,
-		size_bytes = p_obj_size,
-		object_date = p_obj_date
+		display_name = coalesce(p_obj_name, display_name),
+		extensions = coalesce(p_obj_exts, extensions),
+		size_bytes = coalesce(p_obj_size, size_bytes),
+		object_date = coalesce(p_obj_date, object_date)
 	WHERE object_id = v_obj_id;
 
 	RETURN v_obj_id;

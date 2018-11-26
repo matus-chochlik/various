@@ -188,6 +188,17 @@ class Repository(object):
     def refill_database(self):
         cursor = self._db_conn.cursor()
         for obj_hash, obj_path in self.all_objects():
+            file_stat = os.stat(obj_path)
+            cursor.execute("""
+                SELECT relfs.set_object_info(%s, %s, %s, %s, %s)
+            """, (
+                str(obj_hash),
+                datetime.date.fromtimestamp(file_stat.st_mtime),
+                file_stat.st_size,
+                None,
+                None
+            ))
+            self._db_conn.commit()
             add_file_metadata(
                 self._db_conn,
                 cursor,
