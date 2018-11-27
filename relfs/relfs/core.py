@@ -8,9 +8,9 @@ import hashlib
 import resource
 import datetime
 import getpass
-import psycopg2
 #------------------------------------------------------------------------------#
 from .config import load_config, save_config, __config
+from .database import open_database
 from .error import RelFsError
 from .metadata import add_file_metadata
 #------------------------------------------------------------------------------#
@@ -68,18 +68,8 @@ class Repository(object):
         except KeyError:
             raise RelFsError("'%s' is not a relfs repository" % name)
         self._repo_config = self.load_config()
+        self._database = open_database(self._repo_config)
 
-        if self._repo_config.get("local_db", False):
-            self._db_conn = psycopg2.connect(
-                database = self._repo_config.get("database", self._user)
-            )
-        else:
-            self._db_conn = psycopg2.connect(
-                database = self._repo_config.get("database", self._user),
-                user = self.repo_config.get("db_user", self._user),
-                host = self.repo_config.get("db_host", "localhost"),
-                port = self.repo_config.get("db_port", 5432)
-            )
     #--------------------------------------------------------------------------#
     def __repr__(self):
         return "<relfs://%(path)s>" % {"path": self._metadata.path}

@@ -1,11 +1,19 @@
 CREATE TABLE relfs.object_picture_info (
-	object_id         relfs.OBJID    NOT NULL,
+	object_id relfs.OBJID NOT NULL,
 	width INTEGER NOT NULL,
 	height INTEGER NOT NULL
 );
 
 ALTER TABLE relfs.object_picture_info
 ADD PRIMARY KEY(object_id);
+
+INSERT INTO relfs.meta_object_attribute_mapping
+(table_name, column_name, component_name)
+VALUES('object_picture_info', 'width', 'picture');
+
+INSERT INTO relfs.meta_object_attribute_mapping
+(table_name, column_name, component_name)
+VALUES('object_picture_info', 'height', 'picture');
 
 CREATE FUNCTION relfs.add_object_picture_info(
 	relfs.STRHASH,
@@ -43,4 +51,12 @@ SELECT
 	CAST(width AS FLOAT) / CAST(height AS FLOAT) AS aspect_ratio
 FROM relfs.object_picture_info;
 
+
+INSERT INTO relfs.meta_object_attribute_mapping
+(table_name, column_name, component_name, mutable)
+VALUES('picture_object', 'pixel_count', 'picture', FALSE);
+
+INSERT INTO relfs.meta_object_attribute_mapping
+(table_name, column_name, component_name, mutable)
+VALUES('picture_object', 'aspect_ratio', 'picture', FALSE);
 

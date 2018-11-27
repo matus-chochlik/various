@@ -1,8 +1,9 @@
-\i relfs-schema.psql
-\i relfs-types.psql
-\i relfs-year_date.psql
-\i relfs-object.psql
-\i relfs-tags.psql
-\i relfs-attrib.psql
-\i relfs-mime_type.psql
-\i relfs-picture.psql
+\i relfs-schema.sql
+\i relfs-types.sql
+\i relfs-metadata.sql
+\i relfs-year_date.sql
+\i relfs-object.sql
+\i relfs-tags.sql
+\i relfs-attrib.sql
+\i relfs-mime_type.sql
+\i relfs-picture.sql

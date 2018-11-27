@@ -7,6 +7,14 @@ CREATE TABLE relfs.object_mime_type (
 ALTER TABLE relfs.object_mime_type
 ADD PRIMARY KEY(object_id, mime_type, mime_subtype);
 
+INSERT INTO relfs.meta_object_attribute_mapping
+(table_name, column_name, component_name, attribute_name)
+VALUES('object_mime_type', 'mime_type', 'mime', 'type');
+
+INSERT INTO relfs.meta_object_attribute_mapping
+(table_name, column_name, component_name, attribute_name)
+VALUES('object_mime_type', 'mime_subtype', 'mime', 'subtype');
+
 CREATE FUNCTION relfs.set_object_mime_type(
 	relfs.STRHASH,
 	TEXT,
