@@ -94,23 +94,24 @@ class Database(object):
         cursor = self._db_conn.cursor()
         cursor.execute("""
             SELECT
+                key_name,
                 table_name,
                 column_name,
                 component_name,
                 attribute_name,
                 mutable
-            FROM relfs.meta_object_attribute
+            FROM relfs.meta_component_attribute
         """)
         row = cursor.fetchone()
         while row:
-            table_name, column_name, component_name, attrib_name, mutable = row
+            key_n, table_n, column_n, component_n, attrib_n, mutable = row
             try:
-                component = self._object_components[component_name]
+                component = self._object_components[component_n]
             except KeyError:
-                component = DatabaseObjectComponent(table_name)
-                self._object_components[component_name] = component
+                component = DatabaseObjectComponent(key_n, table_n)
+                self._object_components[component_n] = component
 
-            component.add_attribute(attrib_name, column_name, mutable)
+            component.add_attribute(attrib_n, column_n, mutable)
 
             row = cursor.fetchone()
         cursor.close()

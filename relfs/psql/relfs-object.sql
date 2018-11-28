@@ -32,6 +32,22 @@ ADD PRIMARY KEY(object_id);
 ALTER TABLE relfs.file_object
 ADD UNIQUE(object_bin_hash);
 
+INSERT INTO relfs.meta_component_attribute_mapping
+(table_name, column_name, component_name, attribute_name)
+VALUES('file_object', 'object_date', 'file', 'date');
+
+INSERT INTO relfs.meta_component_attribute_mapping
+(table_name, column_name, component_name, attribute_name)
+VALUES('file_object', 'size_bytes', 'file', 'size');
+
+INSERT INTO relfs.meta_component_attribute_mapping
+(table_name, column_name, component_name)
+VALUES('file_object', 'display_name', 'file');
+
+INSERT INTO relfs.meta_component_attribute_mapping
+(table_name, column_name, component_name)
+VALUES('file_object', 'extensions', 'file');
+
 CREATE FUNCTION relfs._fill_file_object_id()
 RETURNS TRIGGER AS
 $$
