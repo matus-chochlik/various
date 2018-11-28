@@ -7,18 +7,17 @@ import psycopg2
 #------------------------------------------------------------------------------#
 _picture_resolution_reg_ex = re.compile("^(\d+)\s*[Xx]\s*(\d+)$")
 #------------------------------------------------------------------------------#
-def mine_file_mime_type(db_conn, cursor, os_path, obj_path, obj_hash):
+def mine_file_mime_type(db_obj, os_path, obj_path, obj_hash):
     try:
         import mimetypes
         mimetype, encoding = mimetypes.guess_type(os_path)
         if mimetype:
             mimetype = str(mimetype).split('/')
 
-            cursor.execute("""
-                SELECT relfs.set_object_mime_type(%s, %s, %s)
-            """, (obj_hash, mimetype[0], mimetype[1]))
+            db_obj.mime.type = mimetype[0]
+            db_obj.mime.subtype = mimetype[1]
+            db_obj.apply()
 
-            db_conn.commit()
     except Exception: pass
 #------------------------------------------------------------------------------#
 def _tokenize_file_info_string(file_info):
@@ -136,14 +135,14 @@ def _structure_file_info_string(tokens):
 
     return _separate_file_info_items(_rejoin_file_info_strings(nested))
 #------------------------------------------------------------------------------#
-def _process_file_date_time(db_conn, cursor, obj_hash, attributes):
+def _process_file_date_time(db_obj, obj_hash, attributes):
     try:
         for attrib in attributes:
             if type(attrib) is list:
-                _process_file_date_time(db_conn, cursor, obj_hash, attrib)
+                _process_file_date_time(db_obj, obj_hash, attrib)
             elif type(attrib) is tuple:
                 if type(attrib[1]) is list:
-                    _process_file_date_time(db_conn, cursor, obj_hash, attrib[1])
+                    _process_file_date_time(db_obj, obj_hash, attrib[1])
                 elif type(attrib[0]) is str and attrib[0] == 'datetime':
                     if type(attrib[1]) is str:
                         dt_formats = [
@@ -152,17 +151,12 @@ def _process_file_date_time(db_conn, cursor, obj_hash, attributes):
                         ]
                         for dt_fmt in dt_formats:
                             try:
-                                st = time.strptime(attrib[1], dt_fmt)
-                                ts = time.mktime(st)
-                                dt = datetime.datetime.fromtimestamp(ts)
-                                cursor.execute("""
-                                    SELECT relfs.set_object_date(%s, %s)
-                                """, (obj_hash, dt))
+                                db_obj.file.date = time.strptime(attrib[1], dt_fmt)
+                                db_obj.apply()
                             except ValueError: pass
-        db_conn.commit()
     except: pass
 #------------------------------------------------------------------------------#
-def _process_file_picture_info(db_conn, cursor, obj_hash, attributes):
+def _process_file_picture_info(db_obj, obj_hash, attributes):
     width = None
     height = None
     is_picture = False
@@ -175,13 +169,11 @@ def _process_file_picture_info(db_conn, cursor, obj_hash, attributes):
                 height = int(match.group(2))
 
     if width and height:
-        cursor.execute("""
-            SELECT relfs.add_object_picture_info(%s, %s, %s)
-        """, (obj_hash, width, height))
-
-        db_conn.commit()
+        db_obj.picture.width = width
+        db_obj.picture.height = height
+        db_obj.apply();
 #------------------------------------------------------------------------------#
-def mine_file_metadata(db_conn, cursor, os_path, obj_path, obj_hash):
+def mine_file_metadata(db_obj, os_path, obj_path, obj_hash):
     try:
         file_proc = subprocess.Popen(
             ['file', '-b', os_path],
@@ -192,11 +184,11 @@ def mine_file_metadata(db_conn, cursor, os_path, obj_path, obj_hash):
         attributes = _structure_file_info_string(
             _tokenize_file_info_string(output))
 
-        _process_file_date_time(db_conn, cursor, obj_hash, attributes)
-        _process_file_picture_info(db_conn, cursor, obj_hash, attributes)
+        _process_file_date_time(db_obj, obj_hash, attributes)
+        _process_file_picture_info(db_obj, obj_hash, attributes)
     except Exception: pass
 #------------------------------------------------------------------------------#
-def add_file_metadata(db_conn, cursor, os_path, obj_path, obj_hash):
-    mine_file_metadata(db_conn, cursor, os_path, obj_path, obj_hash)
-    mine_file_mime_type(db_conn, cursor, os_path, obj_path, obj_hash)
+def add_file_metadata(db_obj, os_path, obj_path, obj_hash):
+    mine_file_metadata(db_obj, os_path, obj_path, obj_hash)
+    mine_file_mime_type(db_obj, os_path, obj_path, obj_hash)
 #------------------------------------------------------------------------------#

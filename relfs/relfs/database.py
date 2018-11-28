@@ -1,12 +1,14 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import os
+import time
+import datetime
 import getpass
 import psycopg2
 #------------------------------------------------------------------------------#
 class DatabaseObjectComponent(object):
     #--------------------------------------------------------------------------#
-    def __init__(self, table_name):
+    def __init__(self, key_name, table_name):
         self._table_name = table_name
         self.attributes = {}
     #--------------------------------------------------------------------------#
@@ -28,15 +30,21 @@ class DatabaseComponentModification(object):
     def _reset(self):
         for name, info in self._component.attributes.items():
             if info[1]:
-                self.__dict__[name] = DatabaseUnmodifiedValue() 
+                self.__dict__[name] = DatabaseUnmodifiedValue()
     #--------------------------------------------------------------------------#
-    def _sql_args(self, obj_hash):
+    def _adjust_value(self, value):
+        if type(value) is time.struct_time:
+            value = datetime.datetime.fromtimestamp(time.mktime(value))
+
+        return value
+    #--------------------------------------------------------------------------#
+    def _sql_args(self, obj_id):
         modified = {}
         for name, info in self._component.attributes.items():
             if info[1]:
                 attr_value = self.__dict__[name]
                 if type(attr_value) is not DatabaseUnmodifiedValue:
-                    modified[name] = attr_value
+                    modified[name] = self._adjust_value(attr_value)
 
         if len(modified) > 0:
             sql = "UPDATE relfs.%s SET" % self._component._table_name
@@ -48,9 +56,9 @@ class DatabaseComponentModification(object):
                     name
                 )
                 first = False
-            sql += " WHERE object_id = relfs.get_file_object(%(obj_hash)s)"
+            sql += " WHERE object_id = %(obj_id)s"
 
-            modified["obj_hash"] = obj_hash
+            modified["obj_id"] = obj_id
 
             return (sql, modified)
 
@@ -64,14 +72,19 @@ class DatabaseObjectModification(object):
         self._cursor = cursor
         self._obj_hash = obj_hash
         self._components = components
+
+        self._cursor.execute("""SELECT relfs.get_file_object(%s)""", (obj_hash,))
+        self._obj_id = self._cursor.fetchone()[0]
         for name, component in self._components.items():
             self.__dict__[name] = DatabaseComponentModification(component)
     #--------------------------------------------------------------------------#
     def apply(self):
         for name, component in self._components.items():
-            modification = self.__dict__[name]._sql_args(self._obj_hash)
+            modification = self.__dict__[name]._sql_args(self._obj_id)
             if modification:
-                print(modification)
+                mod_sql, mod_args = modification
+                self._cursor.execute(mod_sql, mod_args)
+                self._db_conn.commit()
 #------------------------------------------------------------------------------#
 class Database(object):
     #--------------------------------------------------------------------------#
@@ -96,6 +109,7 @@ class Database(object):
             SELECT
                 key_name,
                 table_name,
+                foreign_table_name,
                 column_name,
                 component_name,
                 attribute_name,
@@ -104,19 +118,25 @@ class Database(object):
         """)
         row = cursor.fetchone()
         while row:
-            key_n, table_n, column_n, component_n, attrib_n, mutable = row
+            key_name, \
+            table_name, \
+            foreign_table_name, \
+            column_name, \
+            component_name, \
+            attrib_name, \
+            mutable = row
             try:
-                component = self._object_components[component_n]
+                component = self._object_components[component_name]
             except KeyError:
-                component = DatabaseObjectComponent(key_n, table_n)
-                self._object_components[component_n] = component
+                component = DatabaseObjectComponent(key_name, table_name)
+                self._object_components[component_name] = component
 
-            component.add_attribute(attrib_n, column_n, mutable)
+            component.add_attribute(attrib_name, column_name, mutable)
 
             row = cursor.fetchone()
         cursor.close()
     #--------------------------------------------------------------------------#
-    def setObj(self, obj_hash):
+    def set_object(self, obj_hash):
         return DatabaseObjectModification(
             self._db_conn,
             self._db_conn.cursor(),

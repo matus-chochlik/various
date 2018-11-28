@@ -136,27 +136,15 @@ class Repository(object):
 
             # insert intial information
             file_stat = os.stat(obj_path)
-            cursor = self._db_conn.cursor()
-            cursor.execute("""
-                SELECT relfs.set_object_info(%s, %s, %s, %s, %s)
-            """, (
-                str(obj_hash),
-                datetime.date.fromtimestamp(file_stat.st_mtime),
-                file_stat.st_size,
-                display_name,
-                extensions
-            ))
-            self._db_conn.commit()
 
-            add_file_metadata(
-                self._db_conn,
-                cursor,
-                os_path,
-                obj_path,
-                obj_hash
-            )
+            new_obj = self._database.set_object(obj_hash)
+            new_obj.file.date = datetime.date.fromtimestamp(file_stat.st_mtime)
+            new_obj.file.size = file_stat.st_size
+            new_obj.file.display_name = display_name
+            new_obj.file.extensions = extensions
+            new_obj.apply()
 
-            cursor.close()
+            add_file_metadata(new_obj, os_path, obj_path, obj_hash)
 
             # return the object
             return RepositoryFileObject(self, obj_hash)
@@ -176,53 +164,28 @@ class Repository(object):
                     )
     #--------------------------------------------------------------------------#
     def refill_database(self):
-        cursor = self._db_conn.cursor()
         for obj_hash, obj_path in self.all_objects():
             file_stat = os.stat(obj_path)
-            cursor.execute("""
-                SELECT relfs.set_object_info(%s, %s, %s, %s, %s)
-            """, (
-                str(obj_hash),
-                datetime.date.fromtimestamp(file_stat.st_mtime),
-                file_stat.st_size,
-                None,
-                None
-            ))
-            self._db_conn.commit()
-            add_file_metadata(
-                self._db_conn,
-                cursor,
-                obj_path,
-                obj_path,
-                obj_hash
-            )
 
-        cursor.close()
+            db_obj = self._database.set_object(obj_hash)
+            db_obj.file.date = datetime.date.fromtimestamp(file_stat.st_mtime)
+            db_obj.file.size = file_stat.st_size
+            db_obj.apply()
+
+            add_file_metadata(db_obj, os_path, obj_path, obj_hash)
+
 
     #--------------------------------------------------------------------------#
     def object_display_name(self, obj_hash):
         return obj_hash #TODO
     #--------------------------------------------------------------------------#
     def set_object_display_name(self, obj_hash, display_name):
-        cursor = self._db_conn.cursor()
-        cursor.execute("""
-            SELECT relfs.set_object_display_name(%s, %s)
-        """, (obj_hash, display_name))
-        self._db_conn.commit()
-        cursor.close()
+        db_obj = self._database.set_object(obj_hash)
+        db_obj.file.display_name = display_name
+        db_obj.apply()
     #--------------------------------------------------------------------------#
     def add_object_tags(self, obj_hash, tag_list):
-        if type(tag_list) is not list:
-            tag_list = [str(tag_list)]
-
-        cursor = self._db_conn.cursor()
-        for tag_code in tag_list:
-            cursor.execute("""
-                SELECT relfs.add_object_tag(%s, %s)
-            """, (obj_hash, tag_code))
-
-        self._db_conn.commit()
-        cursor.close()
+        pass
 #------------------------------------------------------------------------------#
 def open_repository(repo_name, config = __config()):
     return Repository(repo_name, config)
