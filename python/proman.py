@@ -11,7 +11,7 @@ import os
 import sys
 import stat
 import signal
-import argparse 
+import argparse
 import subprocess
 import tempfile
 import json
@@ -47,7 +47,7 @@ class ArgumentParser(argparse.ArgumentParser):
     # -------------------------------------------------------------------------
     def config_search_paths(self, arg):
         return [
-            os.path.abspath(arg), 
+            os.path.abspath(arg),
             self.stable_config_path(arg),
             self.site_config_path(arg),
             self.user_config_path(arg)
