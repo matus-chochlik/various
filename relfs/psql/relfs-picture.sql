@@ -15,32 +15,6 @@ INSERT INTO relfs.meta_component_attribute_mapping
 (table_name, column_name, component_name)
 VALUES('object_picture_info', 'height', 'picture');
 
-CREATE FUNCTION relfs.add_object_picture_info(
-	relfs.STRHASH,
-	INTEGER,
-	INTEGER
-) RETURNS relfs.OBJID
-AS
-$$
-DECLARE
-	p_obj_hash ALIAS FOR $1;
-	p_width ALIAS FOR $2;
-	p_height ALIAS FOR $3;
-	v_obj_id relfs.OBJID;
-BEGIN
-	v_obj_id := relfs.get_file_object(p_obj_hash);
-
-	INSERT INTO relfs.object_picture_info
-	(object_id, width, height)
-	VALUES(v_obj_id, p_width, p_height)
-	ON CONFLICT (object_id)
-	DO UPDATE SET width = p_width, height = p_height;
-
-	RETURN v_obj_id;
-END
-$$
-LANGUAGE plpgsql;
-
 CREATE VIEW relfs.picture_object
 AS
 SELECT
