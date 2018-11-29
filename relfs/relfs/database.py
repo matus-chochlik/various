@@ -6,41 +6,38 @@ import datetime
 import getpass
 import psycopg2
 #------------------------------------------------------------------------------#
+class DatabaseObjectTable(object):
+    #--------------------------------------------------------------------------#
+    def __init__(self, name, key_column_name, mutable, associative):
+        self.name = name
+        self.mutable = mutable
+        self.associative = associative
+        self.key_column_name = key_column_name
+        self.key_column_names = set([key_column_name])
+    #--------------------------------------------------------------------------#
+    def add_key_column( self, key_column_name):
+        self.key_column_names.add(key_column_name)
+
+#------------------------------------------------------------------------------#
 class DatabaseComponentAttribute(object):
     #--------------------------------------------------------------------------#
-    def __init__(
-        self,
-        attribute_name,
-        key_name,
-        table_name,
-        column_name,
-        mutable):
-        self.attribute_name = attribute_name
-        self.key_name = key_name
-        self.table_name = table_name
+    def __init__(self, name, table, column_name):
+        self.name = name
+        self.table = table
         self.column_name = column_name
-        self.mutable = mutable
 
 #------------------------------------------------------------------------------#
 class DatabaseObjectComponent(object):
     #--------------------------------------------------------------------------#
-    def __init__(self, associative):
-        self._associative = associative
+    def __init__(self, name):
+        self.name = name
         self.attributes = {}
     #--------------------------------------------------------------------------#
-    def add_attribute(
-        self,
-        attribute_name,
-        key_name,
-        table_name,
-        column_name,
-        mutable):
+    def add_attribute(self, attribute_name, table, column_name):
         self.attributes[attribute_name] = DatabaseComponentAttribute(
             attribute_name,
-            key_name,
-            table_name,
-            column_name,
-            mutable
+            table,
+            column_name
         )
 
 #------------------------------------------------------------------------------#
@@ -51,13 +48,14 @@ class DatabaseUnmodifiedValue(object):
 #------------------------------------------------------------------------------#
 class DatabaseComponentModification(object):
     #--------------------------------------------------------------------------#
-    def __init__(self, component):
+    def __init__(self, parent, component):
+        self._parent = parent
         self._component = component
         self._reset()
     #--------------------------------------------------------------------------#
     def _reset(self):
-        for name, info in self._component.attributes.items():
-            if info.mutable:
+        for name, attribute in self._component.attributes.items():
+            if attribute.table.mutable:
                 self.__dict__[name] = DatabaseUnmodifiedValue()
     #--------------------------------------------------------------------------#
     def _adjust_value(self, value):
@@ -66,54 +64,63 @@ class DatabaseComponentModification(object):
 
         return value
     #--------------------------------------------------------------------------#
-    def _sql_args(self, obj_id):
+    def _sql_args(self, key_value):
         modified = {}
-        for name, info in self._component.attributes.items():
-            if info.mutable:
+        mod_tables = {}
+        for name, attribute in self._component.attributes.items():
+            if attribute.table.mutable:
                 attr_value = self.__dict__[name]
                 if type(attr_value) is not DatabaseUnmodifiedValue:
                     modified[name] = self._adjust_value(attr_value)
+                    ac_name = (name, attribute.column_name)
+                    try:
+                        mod_tables[attribute.table.name] += [ac_name]
+                    except KeyError:
+                        mod_tables[attribute.table.name] = [ac_name]
 
-        if len(modified) > 0:
-
-            sql = "UPDATE relfs.%s SET" % self._component._table_name
-            first = True
-            for name in modified:
-                sql += "%s%s = %%(%s)s" % (
-                    " " if first else ", ",
-                    self._component.attributes[name][0],
-                    name
+        if len(mod_tables) > 0:
+            modified["_key"] = key_value
+            for table_name, ac_names in mod_tables.items():
+                table = self._parent._tables[table_name]
+                ack_names = [("_key", table.key_column_name)] + ac_names
+                sql = "INSERT INTO relfs.%s (%s) VALUES(%s) " % (
+                    table_name,
+                    ",".join([cn for an, cn in ack_names]),
+                    ",".join(["%%(%s)s" % an for an, cn in ack_names])
                 )
-                first = False
-            sql += " WHERE object_id = %(obj_id)s"
+                sql += "ON CONFLICT(%s) DO " % (
+                    ",".join(table.key_column_names)
+                )
+                sql += "UPDATE SET %s" % (
+                    ",".join(["%s = %%(%s)s" % (cn, an) for an, cn in ac_names])
+                )
 
-            modified["obj_id"] = obj_id
 
-            return (sql, modified)
 
-        return None
+            print(sql, modified)
+            yield (sql, modified)
 
 #------------------------------------------------------------------------------#
 class DatabaseObjectModification(object):
     #--------------------------------------------------------------------------#
-    def __init__(self, db_conn, cursor, obj_hash, components):
+    def __init__(self, db_conn, cursor, obj_hash, tables, components):
         self._db_conn = db_conn
         self._cursor = cursor
         self._obj_hash = obj_hash
+        self._tables = tables
         self._components = components
 
         self._cursor.execute("""SELECT relfs.get_file_object(%s)""", (obj_hash,))
         self._obj_id = self._cursor.fetchone()[0]
         for name, component in self._components.items():
-            self.__dict__[name] = DatabaseComponentModification(component)
+            self.__dict__[name] = DatabaseComponentModification(self, component)
     #--------------------------------------------------------------------------#
     def apply(self):
         for name, component in self._components.items():
-            modification = self.__dict__[name]._sql_args(self._obj_id)
-            if modification:
+            for modification in self.__dict__[name]._sql_args(self._obj_id):
                 mod_sql, mod_args = modification
                 self._cursor.execute(mod_sql, mod_args)
-                self._db_conn.commit()
+        self._db_conn.commit()
 #------------------------------------------------------------------------------#
 class Database(object):
     #--------------------------------------------------------------------------#
@@ -131,52 +138,75 @@ class Database(object):
                 port = repo_config.get("db_port", 5432)
             )
 
-        self._object_components = {}
+        self._tables = {}
+        self._components = {}
 
         cursor = self._db_conn.cursor()
+
+        # load table metadata
         cursor.execute("""
-            SELECT
-                component_name,
+            SELECT table_name, key_column_name, mutable, associative
+            FROM relfs.meta_table
+        """)
+        row = cursor.fetchone()
+        while row:
+            table_name, key_column_name, mutable, associative = row
+            table = DatabaseObjectTable(
+                table_name,
+                key_column_name,
+                mutable,
                 associative
+            )
+            self._tables[table_name] = table
+            row = cursor.fetchone()
+
+        # load table key metadata
+        cursor.execute("""
+            SELECT table_name, key_column_name
+            FROM relfs.meta_table_key
+        """)
+        row = cursor.fetchone()
+        while row:
+            table_name, key_column_name = row
+            self._tables[table_name].add_key_column(key_column_name)
+            row = cursor.fetchone()
+
+        # load component metadata
+        cursor.execute("""
+            SELECT component_name
             FROM relfs.meta_component
         """)
         row = cursor.fetchone()
         while row:
-            component_name, \
-            associative = row
-            component = DatabaseObjectComponent(associative)
-            self._object_components[component_name] = component
+            (component_name,) = row
+            component = DatabaseObjectComponent(component_name)
+            self._components[component_name] = component
             row = cursor.fetchone()
 
-        cursor = self._db_conn.cursor()
+        # load component attribute metadata
         cursor.execute("""
             SELECT
-                key_name,
                 table_name,
-                foreign_table_name,
                 column_name,
                 component_name,
                 attribute_name,
-                mutable
+                foreign_table_name
             FROM relfs.meta_component_attribute
         """)
         row = cursor.fetchone()
         while row:
-            key_name, \
             table_name, \
-            foreign_table_name, \
             column_name, \
             component_name, \
             attribute_name, \
-            mutable = row
-            self._object_components[component_name].add_attribute(
+            foreign_table_name = row
+            self._components[component_name].add_attribute(
                 attribute_name,
-                key_name,
-                table_name,
-                column_name,
-                mutable)
-
+                self._tables[table_name],
+                column_name)
             row = cursor.fetchone()
+
+        # done loading metadata
         cursor.close()
     #--------------------------------------------------------------------------#
     def set_object(self, obj_hash):
@@ -184,7 +214,8 @@ class Database(object):
             self._db_conn,
             self._db_conn.cursor(),
             obj_hash,
-            self._object_components
+            self._tables,
+            self._components
         )
 
 #------------------------------------------------------------------------------#

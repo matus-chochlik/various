@@ -7,9 +7,25 @@ CREATE TABLE relfs.object_mime_type (
 ALTER TABLE relfs.object_mime_type
 ADD PRIMARY KEY(object_id, mime_type, mime_subtype);
 
+INSERT INTO relfs.meta_table
+(table_name, associative, mutable)
+VALUES('object_mime_type', TRUE, TRUE);
+
+INSERT INTO relfs.meta_table_key
+(table_name, key_column_name)
+VALUES('object_mime_type', 'object_id');
+
+INSERT INTO relfs.meta_table_key
+(table_name, key_column_name)
+VALUES('object_mime_type', 'mime_type');
+
+INSERT INTO relfs.meta_table_key
+(table_name, key_column_name)
+VALUES('object_mime_type', 'mime_subtype');
+
 INSERT INTO relfs.meta_component
-(component_name, associative)
-VALUES('mime', TRUE);
+(component_name)
+VALUES('mime');
 
 INSERT INTO relfs.meta_component_attribute_mapping
 (table_name, column_name, component_name, attribute_name)
