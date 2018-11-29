@@ -7,6 +7,10 @@ CREATE TABLE relfs.object_picture_info (
 ALTER TABLE relfs.object_picture_info
 ADD PRIMARY KEY(object_id);
 
+INSERT INTO relfs.meta_component
+(component_name, associative)
+VALUES('picture', FALSE);
+
 INSERT INTO relfs.meta_component_attribute_mapping
 (table_name, column_name, component_name)
 VALUES('object_picture_info', 'width', 'picture');
@@ -24,7 +28,6 @@ SELECT
 	width * height AS pixel_count,
 	CAST(width AS FLOAT) / CAST(height AS FLOAT) AS aspect_ratio
 FROM relfs.object_picture_info;
-
 
 INSERT INTO relfs.meta_component_attribute_mapping
 (table_name, column_name, component_name, mutable)

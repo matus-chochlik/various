@@ -6,14 +6,42 @@ import datetime
 import getpass
 import psycopg2
 #------------------------------------------------------------------------------#
+class DatabaseComponentAttribute(object):
+    #--------------------------------------------------------------------------#
+    def __init__(
+        self,
+        attribute_name,
+        key_name,
+        table_name,
+        column_name,
+        mutable):
+        self.attribute_name = attribute_name
+        self.key_name = key_name
+        self.table_name = table_name
+        self.column_name = column_name
+        self.mutable = mutable
+
+#------------------------------------------------------------------------------#
 class DatabaseObjectComponent(object):
     #--------------------------------------------------------------------------#
-    def __init__(self, key_name, table_name):
-        self._table_name = table_name
+    def __init__(self, associative):
+        self._associative = associative
         self.attributes = {}
     #--------------------------------------------------------------------------#
-    def add_attribute(self, attribute_name, column_name, mutable):
-        self.attributes[attribute_name] = (column_name, mutable)
+    def add_attribute(
+        self,
+        attribute_name,
+        key_name,
+        table_name,
+        column_name,
+        mutable):
+        self.attributes[attribute_name] = DatabaseComponentAttribute(
+            attribute_name,
+            key_name,
+            table_name,
+            column_name,
+            mutable
+        )
 
 #------------------------------------------------------------------------------#
 class DatabaseUnmodifiedValue(object):
@@ -29,7 +57,7 @@ class DatabaseComponentModification(object):
     #--------------------------------------------------------------------------#
     def _reset(self):
         for name, info in self._component.attributes.items():
-            if info[1]:
+            if info.mutable:
                 self.__dict__[name] = DatabaseUnmodifiedValue()
     #--------------------------------------------------------------------------#
     def _adjust_value(self, value):
@@ -41,12 +69,13 @@ class DatabaseComponentModification(object):
     def _sql_args(self, obj_id):
         modified = {}
         for name, info in self._component.attributes.items():
-            if info[1]:
+            if info.mutable:
                 attr_value = self.__dict__[name]
                 if type(attr_value) is not DatabaseUnmodifiedValue:
                     modified[name] = self._adjust_value(attr_value)
 
         if len(modified) > 0:
+
             sql = "UPDATE relfs.%s SET" % self._component._table_name
             first = True
             for name in modified:
@@ -107,6 +136,21 @@ class Database(object):
         cursor = self._db_conn.cursor()
         cursor.execute("""
             SELECT
+                component_name,
+                associative
+            FROM relfs.meta_component
+        """)
+        row = cursor.fetchone()
+        while row:
+            component_name, \
+            associative = row
+            component = DatabaseObjectComponent(associative)
+            self._object_components[component_name] = component
+            row = cursor.fetchone()
+
+        cursor = self._db_conn.cursor()
+        cursor.execute("""
+            SELECT
                 key_name,
                 table_name,
                 foreign_table_name,
@@ -123,15 +167,14 @@ class Database(object):
             foreign_table_name, \
             column_name, \
             component_name, \
-            attrib_name, \
+            attribute_name, \
             mutable = row
-            try:
-                component = self._object_components[component_name]
-            except KeyError:
-                component = DatabaseObjectComponent(key_name, table_name)
-                self._object_components[component_name] = component
-
-            component.add_attribute(attrib_name, column_name, mutable)
+            self._object_components[component_name].add_attribute(
+                attribute_name,
+                key_name,
+                table_name,
+                column_name,
+                mutable)
 
             row = cursor.fetchone()
         cursor.close()

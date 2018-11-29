@@ -172,7 +172,7 @@ class Repository(object):
             db_obj.file.size = file_stat.st_size
             db_obj.apply()
 
-            add_file_metadata(db_obj, os_path, obj_path, obj_hash)
+            add_file_metadata(db_obj, obj_path, obj_path, obj_hash)
 
 
     #--------------------------------------------------------------------------#

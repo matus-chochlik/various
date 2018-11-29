@@ -32,6 +32,11 @@ ADD PRIMARY KEY(object_id);
 ALTER TABLE relfs.file_object
 ADD UNIQUE(object_bin_hash);
 
+INSERT INTO relfs.meta_component
+(component_name, associative)
+VALUES('file', FALSE);
+
+
 INSERT INTO relfs.meta_component_attribute_mapping
 (table_name, column_name, component_name, attribute_name)
 VALUES('file_object', 'object_date', 'file', 'date');
