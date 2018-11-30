@@ -34,8 +34,8 @@ ADD UNIQUE(object_bin_hash);
 
 
 INSERT INTO relfs.meta_table
-(table_name, associative, mutable)
-VALUES('file_object', FALSE, TRUE);
+(table_name, is_root, is_mutable)
+VALUES('file_object', TRUE, TRUE);
 
 INSERT INTO relfs.meta_component
 (component_name)

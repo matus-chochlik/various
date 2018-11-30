@@ -8,7 +8,7 @@ ALTER TABLE relfs.object_mime_type
 ADD PRIMARY KEY(object_id, mime_type, mime_subtype);
 
 INSERT INTO relfs.meta_table
-(table_name, associative, mutable)
+(table_name, is_associative, is_mutable)
 VALUES('object_mime_type', TRUE, TRUE);
 
 INSERT INTO relfs.meta_table_key

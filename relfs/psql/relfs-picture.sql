@@ -8,8 +8,8 @@ ALTER TABLE relfs.object_picture_info
 ADD PRIMARY KEY(object_id);
 
 INSERT INTO relfs.meta_table
-(table_name, associative, mutable)
-VALUES('object_picture_info', FALSE, TRUE);
+(table_name, is_mutable)
+VALUES('object_picture_info', TRUE);
 
 INSERT INTO relfs.meta_table_key
 (table_name)
@@ -38,8 +38,8 @@ SELECT
 FROM relfs.object_picture_info;
 
 INSERT INTO relfs.meta_table
-(table_name, associative, mutable)
-VALUES('picture_object', FALSE, FALSE);
+(table_name, is_mutable)
+VALUES('picture_object', FALSE);
 
 INSERT INTO relfs.meta_table_key
 (table_name)

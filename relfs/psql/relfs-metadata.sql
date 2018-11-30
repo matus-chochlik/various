@@ -1,8 +1,9 @@
 CREATE TABLE relfs.meta_table (
 	table_name NAME NOT NULL,
 	key_column_name NAME NOT NULL DEFAULT 'object_id',
-	mutable BOOL NOT NULL,
-	associative BOOL NOT NULL
+	is_mutable BOOL NOT NULL,
+	is_root BOOL NOT NULL DEFAULT FALSE,
+	is_associative BOOL NOT NULL DEFAULT FALSE
 );
 
 ALTER TABLE relfs.meta_table

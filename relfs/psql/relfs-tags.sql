@@ -209,28 +209,5 @@ CREATE TABLE relfs.object_tags (
 ALTER TABLE relfs.object_tags
 ADD PRIMARY KEY(object_id, tag_id);
 
-CREATE FUNCTION relfs.add_object_tag(relfs.STRHASH, relfs.STR_CODE)
-RETURNS relfs.OBJID
-AS
-$$
-DECLARE
-	p_obj_hash ALIAS FOR $1;
-	p_tag_code ALIAS FOR $2;
-	v_obj_id relfs.OBJID;
-	v_tag_id relfs.OBJID;
-BEGIN
-	v_obj_id := relfs.get_file_object(p_obj_hash);
-	v_tag_id := relfs.get_tag(p_tag_code);
-
-	INSERT INTO relfs.object_tags
-	(object_id, tag_id)
-	VALUES(v_obj_id, v_tag_id)
-	ON CONFLICT
-	DO NOTHING;
-
-	RETURN v_obj_id;
-END
-$$
-LANGUAGE plpgsql;
 
 

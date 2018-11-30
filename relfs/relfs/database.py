@@ -8,10 +8,11 @@ import psycopg2
 #------------------------------------------------------------------------------#
 class DatabaseObjectTable(object):
     #--------------------------------------------------------------------------#
-    def __init__(self, name, key_column_name, mutable, associative):
+    def __init__(self, name, key_column_name, is_root, is_mutable, is_associative):
         self.name = name
-        self.mutable = mutable
-        self.associative = associative
+        self.is_root = is_root
+        self.is_mutable = is_mutable
+        self.is_associative = is_associative
         self.key_column_name = key_column_name
         self.key_column_names = set([key_column_name])
     #--------------------------------------------------------------------------#
@@ -55,7 +56,7 @@ class DatabaseComponentModification(object):
     #--------------------------------------------------------------------------#
     def _reset(self):
         for name, attribute in self._component.attributes.items():
-            if attribute.table.mutable:
+            if attribute.table.is_mutable:
                 self.__dict__[name] = DatabaseUnmodifiedValue()
     #--------------------------------------------------------------------------#
     def _adjust_value(self, value):
@@ -68,7 +69,7 @@ class DatabaseComponentModification(object):
         modified = {}
         mod_tables = {}
         for name, attribute in self._component.attributes.items():
-            if attribute.table.mutable:
+            if attribute.table.is_mutable:
                 attr_value = self.__dict__[name]
                 if type(attr_value) is not DatabaseUnmodifiedValue:
                     modified[name] = self._adjust_value(attr_value)
@@ -83,21 +84,28 @@ class DatabaseComponentModification(object):
             for table_name, ac_names in mod_tables.items():
                 table = self._parent._tables[table_name]
                 ack_names = [("_key", table.key_column_name)] + ac_names
-                sql = "INSERT INTO relfs.%s (%s) VALUES(%s) " % (
-                    table_name,
-                    ",".join([cn for an, cn in ack_names]),
-                    ",".join(["%%(%s)s" % an for an, cn in ack_names])
-                )
-                sql += "ON CONFLICT(%s) DO " % (
-                    ",".join(table.key_column_names)
-                )
-                sql += "UPDATE SET %s" % (
-                    ",".join(["%s = %%(%s)s" % (cn, an) for an, cn in ac_names])
-                )
 
+                if table.is_root:
+                    sql = "UPDATE relfs.%s SET %s " % (
+                        table_name,
+                        ",".join(["%s = %%(%s)s" % (cn, an) for an, cn in ac_names])
+                    )
+                    sql += "WHERE %s" % (
+                        " AND ".join(["%s = %%(%s)s" % (cn, an) for an, cn in ac_names])
+                    )
+                else:
+                    sql = "INSERT INTO relfs.%s (%s) VALUES(%s) " % (
+                        table_name,
+                        ",".join([cn for an, cn in ack_names]),
+                        ",".join(["%%(%s)s" % an for an, cn in ack_names])
+                    )
+                    sql += "ON CONFLICT(%s) DO " % (
+                        ",".join(table.key_column_names)
+                    )
+                    sql += "UPDATE SET %s" % (
+                        ",".join(["%s = %%(%s)s" % (cn, an) for an, cn in ac_names])
+                    )
 
-
-            print(sql, modified)
             yield (sql, modified)
 
 #------------------------------------------------------------------------------#
@@ -145,17 +153,22 @@ class Database(object):
 
         # load table metadata
         cursor.execute("""
-            SELECT table_name, key_column_name, mutable, associative
+            SELECT table_name, key_column_name, is_root, is_mutable, is_associative
             FROM relfs.meta_table
         """)
         row = cursor.fetchone()
         while row:
-            table_name, key_column_name, mutable, associative = row
+            table_name, \
+            key_column_name, \
+            is_root, \
+            is_mutable, \
+            is_associative = row
             table = DatabaseObjectTable(
                 table_name,
                 key_column_name,
-                mutable,
-                associative
+                is_root,
+                is_mutable,
+                is_associative
             )
             self._tables[table_name] = table
             row = cursor.fetchone()
