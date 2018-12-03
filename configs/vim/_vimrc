@@ -4,6 +4,7 @@ set rtp+=~/.vim/bundle/Vundle.vim
 
 call vundle#begin()
 Plugin 'VundleVim/Vundle.vim'
+Plugin 'vim-airline/vim-airline'
 Plugin 'scrooloose/nerdtree'
 Plugin 'ctrlpvim/ctrlp.vim'
 Plugin 'easymotion/vim-easymotion'
@@ -13,18 +14,41 @@ Plugin 'tpope/vim-fugitive'
 Plugin 'tpope/vim-abolish'
 Plugin 'airblade/vim-gitgutter'
 Plugin 'davidhalter/jedi-vim'
+Plugin 'rhysd/vim-clang-format'
+Plugin 'Valloric/YouCompleteMe'
+
 call vundle#end()
 
-let g:ycm_extra_conf_globlist = ['~/Devel/*/*','!~/*']
 let g:ycm_filetype_whitelist = {'cpp':1, 'c':1, 'python':1}
+let g:ycm_confirm_extra_conf = 0
+
+nmap \fi :YcmCompleter FixIt<CR>
+nmap \gt :YcmCompleter GoTo<CR>
+
+let g:clang_format#auto_format = 1
+
+nmap \cf :ClangFormat<CR>
 
 filetype plugin indent on
 set autoindent
 set noexpandtab
+set tabstop=4
+set shiftwidth=4
 set relativenumber
 
 syntax on
-let &colorcolumn="80,".join(range(100,999),",")
-highlight ColorColumn ctermbg=darkgray
-
 colorscheme desert
+
+highlight clear SpellBad
+highlight SpellBad cterm=underline ctermfg=red ctermbg=white
+
+highlight ExtraWhitespace ctermbg=cyan
+match ExtraWhitespace /\s\+$\| \+\ze\t/
+
+highlight OverLength ctermbg=white
+match OverLength /\%>80v./
+
+if exists('+colorcolumn')
+  highlight ColorColumn ctermbg=white
+  set colorcolumn=80
+endif
