@@ -1,6 +1,7 @@
 PY_MODULES = \
 	argparse2bco \
 	argparse2man \
+	make_jobsrvr \
 	os_path_utils
 
 PY_EXECUTABLES = \
@@ -43,3 +44,4 @@ $(USER_PROCFGDIR)/%.procfg: %.procfg | $(USER_PROCFGDIR)
 
 $(USER_PYMODDIR) $(USER_BINDIR) $(USER_PROCFGDIR):
 	mkdir -p $@
+
