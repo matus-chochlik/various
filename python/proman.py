@@ -9,6 +9,7 @@
 from __future__ import print_function
 import os
 import sys
+import glob
 import stat
 import signal
 import argparse
@@ -55,7 +56,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
     # -------------------------------------------------------------------------
     def config_search_exts(self):
-        return [".procfg", ".json", ""]
+        return [".procfg", ".json"]
 
     # -------------------------------------------------------------------------
     def find_config_path(self, arg):
@@ -66,13 +67,16 @@ class ArgumentParser(argparse.ArgumentParser):
                     return tmp
 
     # -------------------------------------------------------------------------
-    def find_config_names(self, arg):
+    def config_basename(self, path):
+        return os.path.splitext(os.path.basename(path))[0]
+
+    # -------------------------------------------------------------------------
+    def find_config_names(self):
         result = []
-        for path in self.config_search_paths(arg):
+        for path in self.config_search_paths(os.path.curdir):
             for ext in self.config_search_exts():
-                if os.path.isfile(path + ext):
-                    result.append(os.path.basename(path))
-        return result
+                for filepath in glob.glob(os.path.join(path, "*"+ext)):
+                    yield filepath
 
     # -------------------------------------------------------------------------
     def __init__(self, **kw):
@@ -98,7 +102,7 @@ class ArgumentParser(argparse.ArgumentParser):
             """ % {
                 "paths": "', `".join(self.config_search_paths("config")),
                 "exts": "', `".join(self.config_search_exts()),
-                "configs": "', `".join(self.find_config_names('config'))
+                "configs": "', `".join([self.config_basename(x) for x in self.find_config_names()])
             }
         )
 
@@ -135,8 +139,35 @@ class ArgumentParser(argparse.ArgumentParser):
             help="""Does not actually start anything just prints selected information."""
         )
 
+        self.add_argument(
+            "-l", "--list",
+            dest="list_paths",
+            action="store_true",
+            default=False,
+            help="""Print list of visible configuration file paths and quit."""
+        )
+
+        self.add_argument(
+            "-L", "--list-names",
+            dest="list_names",
+            action="store_true",
+            default=False,
+            help="""Print list of visible configuration file names and quit."""
+        )
+
     # -------------------------------------------------------------------------
     def process_parsed_options(self, options):
+
+        if options.list_paths:
+            for path in self.find_config_names():
+                print(path)
+            self.exit()
+
+        if options.list_names:
+            for path in self.find_config_names():
+                print(self.config_basename(path))
+            self.exit()
+
         for config_path in options.config_paths:
             if not os.path.isfile(config_path):
                 self.error("'%s' is not a config file name or path" % (config_path))
@@ -307,13 +338,14 @@ class ProcessConfig(object):
 
         if options.config_paths:
             for config_path in options.config_paths:
+                implicit = {
+                    "THIS_DIR": os.path.dirname(os.path.realpath(config_path)),
+                    "THIS_CFG": os.path.splitext(os.path.basename(config_path))[0],
+                    "THIS_EXT": "".join(os.path.splitext(os.path.basename(config_path))[1:])
+                }
                 try:
                     with open(config_path) as config_file:
                         partial_config = json.load(config_file)
-                        implicit = {
-                            "THIS_DIR": os.path.dirname(config_path),
-                            "THIS_CFG": os.path.basename(config_path)
-                        }
                         for proc in partial_config.get("processes", []):
                             try:
                                 proc["variables"].update(implicit)
