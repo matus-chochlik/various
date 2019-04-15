@@ -310,6 +310,16 @@ class ProcessConfig(object):
                 try:
                     with open(config_path) as config_file:
                         partial_config = json.load(config_file)
+                        implicit = {
+                            "THIS_DIR": os.path.dirname(config_path),
+                            "THIS_CFG": os.path.basename(config_path)
+                        }
+                        for proc in partial_config.get("processes", []):
+                            try:
+                                proc["variables"].update(implicit)
+                            except KeyError:
+                                proc["variables"] = implicit
+
                         self.full_config = merge_configs(
                             partial_config,
                             self.full_config)
