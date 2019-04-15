@@ -250,6 +250,11 @@ class ProcessConfig(object):
         return name
 
     # -------------------------------------------------------------------------
+    def _resolve_cmd_wildcard(self, pattern):
+        print(pattern)
+        return [os.path.realpath(x) for x in glob.glob(pattern)]
+
+    # -------------------------------------------------------------------------
     def _resolve_cmd_pathid(self, name):
         return int(hash(name))
 
@@ -367,6 +372,10 @@ class ProcessConfig(object):
             "which": (
                 re.compile(".*(\$\(which (\w*)\)).*"),
                 lambda match : self._resolve_cmd_which(match.group(2))
+            ),
+            "wildcard": (
+                re.compile(".*(\$\(wildcard (.*)\)).*"),
+                lambda match : self._resolve_cmd_wildcard(match.group(2))
             ),
             "pathid": (
                 re.compile(".*(\$\(pathid (([/]\w*)*)\)).*"),
