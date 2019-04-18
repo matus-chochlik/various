@@ -202,6 +202,50 @@ def merge_configs(source, destination):
     return destination
 
 # ------------------------------------------------------------------------------
+class ExpansionRegExes(object):
+
+    # -------------------------------------------------------------------------
+    def _resolve_cmd_which(self, name):
+        search_dirs = os.environ.get("PATH", "").split(':')
+        search_dirs += os.path.dirname(__file__)
+        for dir_path in search_dirs:
+            cmd_path = os.path.join(dir_path, name)
+            if os.path.isfile(cmd_path):
+                if stat.S_IXUSR & os.stat(cmd_path)[stat.ST_MODE]:
+                    return cmd_path
+        return name
+
+    # -------------------------------------------------------------------------
+    def _resolve_cmd_wildcard(self, pattern):
+        print(pattern)
+        return [os.path.realpath(x) for x in glob.glob(pattern)]
+
+    # -------------------------------------------------------------------------
+    def _resolve_cmd_pathid(self, name):
+        return int(hash(name))
+
+    # -------------------------------------------------------------------------
+    def __init__(self):
+        self.commands = {
+            "which": (
+                re.compile(".*(\$\(which (\w*)\)).*"),
+                lambda match : self._resolve_cmd_which(match.group(2))
+            ),
+            "wildcard": (
+                re.compile(".*(\$\(wildcard (.*)\)).*"),
+                lambda match : self._resolve_cmd_wildcard(match.group(2))
+            ),
+            "pathid": (
+                re.compile(".*(\$\(pathid (([/]\w*)*)\)).*"),
+                lambda match : self._resolve_cmd_pathid(match.group(2))
+            )
+        }
+
+        self.variable = re.compile(".*(\${([A-Za-z][A-Za-z_0-9]*)}).*")
+        self.list_exp = re.compile(".*(\$\[([A-Za-z][A-Za-z_0-9]*)\.\.\.\]).*")
+        self.eval_exp = re.compile(".*(\$\(([0-9+*/%-]*)\)).*")
+
+# ------------------------------------------------------------------------------
 class ProcessConfig(object):
 
     # -------------------------------------------------------------------------
@@ -238,38 +282,17 @@ class ProcessConfig(object):
 
         return name
 
-    # -------------------------------------------------------------------------
-    def _resolve_cmd_which(self, name):
-        search_dirs = os.environ.get("PATH", "").split(':')
-        search_dirs += os.path.dirname(__file__)
-        for dir_path in search_dirs:
-            cmd_path = os.path.join(dir_path, name)
-            if os.path.isfile(cmd_path):
-                if stat.S_IXUSR & os.stat(cmd_path)[stat.ST_MODE]:
-                    return cmd_path
-        return name
 
     # -------------------------------------------------------------------------
-    def _resolve_cmd_wildcard(self, pattern):
-        print(pattern)
-        return [os.path.realpath(x) for x in glob.glob(pattern)]
-
-    # -------------------------------------------------------------------------
-    def _resolve_cmd_pathid(self, name):
-        return int(hash(name))
-
-    # -------------------------------------------------------------------------
-    def _do_resolve_env_vars(self, cmd_res, var_re, eval_re, name, variables):
+    def _do_resolve_env_vars(self, res, name, variables):
         value = str(variables.get(name, os.environ.get(name, self._fallback(name))))
 
         while True:
-            found = re.match(var_re, value)
+            found = re.match(res.variable, value)
             if found:
                 prev = value[:found.start(1)]
                 repl = self._do_resolve_env_vars(
-                    cmd_res,
-                    var_re,
-                    eval_re,
+                    res,
                     found.group(2),
                     variables)
                 folw = value[found.end(1):]
@@ -277,7 +300,7 @@ class ProcessConfig(object):
             else: break
 
         while True:
-            found = re.match(eval_re, value)
+            found = re.match(res.eval_exp, value)
             if found:
                 prev = value[:found.start(1)]
                 repl = str(eval(found.group(2)))
@@ -287,7 +310,7 @@ class ProcessConfig(object):
 
         while True:
             found_cmd = None
-            for cmd_name, cmd_re_func in cmd_res.items():
+            for cmd_name, cmd_re_func in res.commands.items():
                 cmd_re, cmd_func = cmd_re_func
                 found = re.match(cmd_re, value)
                 if found:
@@ -304,21 +327,16 @@ class ProcessConfig(object):
         return value
 
     # -------------------------------------------------------------------------
-    def _resolve_env_vars(self, cmd_res, var_re, list_re, eval_re, names, variables, info):
+    def _resolve_env_vars(self, res, names, variables, info):
         tmp_env = variables.copy()
         tmp_env.update(info.get("variables", {}))
         if type(names) is not list:
             names = [names]
 
         for name in names:
-            value = self._do_resolve_env_vars(
-                cmd_res,
-                var_re,
-                eval_re,
-                name,
-                tmp_env)
+            value = self._do_resolve_env_vars(res, name, tmp_env)
 
-            found = re.match(list_re, value)
+            found = re.match(res.list_exp, value)
             if found:
                 prev = value[:found.start(1)]
                 repl = variables.get(found.group(2), [])
@@ -327,10 +345,7 @@ class ProcessConfig(object):
                     repl = [repl]
 
                 for nested_value in self._resolve_env_vars(
-                    cmd_res,
-                    var_re,
-                    list_re,
-                    eval_re,
+                    res,
                     [prev+name+folw for name in repl],
                     tmp_env,
                     info): yield nested_value
@@ -368,34 +383,11 @@ class ProcessConfig(object):
         for key, value in options.overrides:
             self.full_config["variables"][key] = value
 
-        cmd_res = {
-            "which": (
-                re.compile(".*(\$\(which (\w*)\)).*"),
-                lambda match : self._resolve_cmd_which(match.group(2))
-            ),
-            "wildcard": (
-                re.compile(".*(\$\(wildcard (.*)\)).*"),
-                lambda match : self._resolve_cmd_wildcard(match.group(2))
-            ),
-            "pathid": (
-                re.compile(".*(\$\(pathid (([/]\w*)*)\)).*"),
-                lambda match : self._resolve_cmd_pathid(match.group(2))
-            )
-        }
+        res = ExpansionRegExes()
 
-        var_re = re.compile(".*(\${([A-Za-z][A-Za-z_0-9]*)}).*")
-        list_re = re.compile(".*(\$\[([A-Za-z][A-Za-z_0-9]*)\.\.\.\]).*")
-        eval_re = re.compile(".*(\$\(([0-9+*/%-]*)\)).*")
         env = self.full_config.get("variables", {})
-        resolve = lambda args, info : self._resolve_env_vars(
-            cmd_res,
-            var_re,
-            list_re,
-            eval_re,
-            args,
-            env,
-            info
-        )
+
+        resolve = lambda args, info : self._resolve_env_vars(res, args, env, info)
 
         for info in self.full_config.get("processes", []):
             info["cmd"] = [x for x in resolve(info["args"], info)]
