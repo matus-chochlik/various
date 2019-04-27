@@ -47,32 +47,6 @@ class Entity(persistent.Persistent):
             return None
 
 #------------------------------------------------------------------------------#
-class UserRatings(persistent.Persistent):
-    #--------------------------------------------------------------------------#
-    def __init__(self):
-        persistent.Persistent.__init__(self)
-        self._ratings = BTrees.OOBTree.BTree()
-
-    #--------------------------------------------------------------------------#
-    def add(self, user, rating):
-        assert(type(user) == User)
-        assert(type(rating) == float)
-        assert(0.0 <= rating and rating <= 1.0)
-        self._ratings[user] = rating
-
-    def high(self):
-        try: return max(self._ratings.values())
-        except ValueError: pass
-
-    def low(self):
-        try: return min(self._ratings.values())
-        except ValueError: pass
-
-    def average(self):
-        try: return sum(self._ratings.values()) / len(self._ratings)
-        except ZeroDivisionError: pass
-
-#------------------------------------------------------------------------------#
 class FileObject(Entity):
     #--------------------------------------------------------------------------#
     def __init__(self, obj_hash, display_name, extensions):
@@ -121,13 +95,17 @@ class ObjectRoot(persistent.Persistent):
         for obj in self._objects:
             if unary_predicate(obj):
                 yield obj
+    #--------------------------------------------------------------------------#
+    @staticmethod
+    def _return_repacked(*args):
+        return args
 
     #--------------------------------------------------------------------------#
     def filter_having(self, *args):
         for obj in self._objects:
             components = obj.get_all_components(*args)
             if components is not None:
-                yield obj, components
+                yield self._return_repacked(obj, *components)
 
     #--------------------------------------------------------------------------#
     def for_each_object(self, unary_function):
