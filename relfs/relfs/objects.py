@@ -4,30 +4,6 @@ import ZODB, ZODB.FileStorage
 import BTrees.OOBTree
 import persistent
 #------------------------------------------------------------------------------#
-class Entity(persistent.Persistent):
-    #--------------------------------------------------------------------------#
-    def __init__(self):
-        persistent.Persistent.__init__(self)
-        self._components = BTrees.OOBTree.BTree()
-
-    #--------------------------------------------------------------------------#
-    def has_component(self, name):
-        return self._components.has_key(name);
-
-    #--------------------------------------------------------------------------#
-    def add_component(self, name, component):
-        assert(isinstance(component, type(persistent.Persistent)))
-        self._components[name] = component
-        self_p_changed = True
-
-    #--------------------------------------------------------------------------#
-    def get_all_components(self, *args):
-        try:
-            return tuple(self._components[name] for name in args)
-        except KeyError:
-            return None
-
-#------------------------------------------------------------------------------#
 class User(persistent.Persistent):
     #--------------------------------------------------------------------------#
     def __init__(self, user_id):
@@ -45,6 +21,56 @@ class User(persistent.Persistent):
     #--------------------------------------------------------------------------#
     def __lt__(self, that):
         return self._user_id < that._user_id
+
+#------------------------------------------------------------------------------#
+class Entity(persistent.Persistent):
+    #--------------------------------------------------------------------------#
+    def __init__(self):
+        persistent.Persistent.__init__(self)
+        self._components = BTrees.OOBTree.BTree()
+
+    #--------------------------------------------------------------------------#
+    def has_component(self, name):
+        return self._components.has_key(name);
+
+    #--------------------------------------------------------------------------#
+    def add_component(self, component):
+        assert(isinstance(component, persistent.Persistent))
+        self._components[type(component)] = component
+        self_p_changed = True
+
+    #--------------------------------------------------------------------------#
+    def get_all_components(self, *args):
+        try:
+            return tuple(self._components[cls] for cls in args)
+        except KeyError:
+            return None
+
+#------------------------------------------------------------------------------#
+class UserRatings(persistent.Persistent):
+    #--------------------------------------------------------------------------#
+    def __init__(self):
+        persistent.Persistent.__init__(self)
+        self._ratings = BTrees.OOBTree.BTree()
+
+    #--------------------------------------------------------------------------#
+    def add(self, user, rating):
+        assert(type(user) == User)
+        assert(type(rating) == float)
+        assert(0.0 <= rating and rating <= 1.0)
+        self._ratings[user] = rating
+
+    def high(self):
+        try: return max(self._ratings.values())
+        except ValueError: pass
+
+    def low(self):
+        try: return min(self._ratings.values())
+        except ValueError: pass
+
+    def average(self):
+        try: return sum(self._ratings.values()) / len(self._ratings)
+        except ZeroDivisionError: pass
 
 #------------------------------------------------------------------------------#
 class FileObject(Entity):
@@ -68,8 +94,8 @@ class FileObject(Entity):
         self._display_name = display_name
 
     #--------------------------------------------------------------------------#
-    def ratings(self):
-        return self._user_ratings
+    def extensions(self):
+        return self._extensions
 
 #------------------------------------------------------------------------------#
 class ObjectRoot(persistent.Persistent):
@@ -95,6 +121,13 @@ class ObjectRoot(persistent.Persistent):
         for obj in self._objects:
             if unary_predicate(obj):
                 yield obj
+
+    #--------------------------------------------------------------------------#
+    def filter_having(self, *args):
+        for obj in self._objects:
+            components = obj.get_all_components(*args)
+            if components is not None:
+                yield obj, components
 
     #--------------------------------------------------------------------------#
     def for_each_object(self, unary_function):
