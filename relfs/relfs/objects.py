@@ -1,6 +1,7 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import ZODB, ZODB.FileStorage
+import zc.zlibstorage
 import BTrees.OOBTree
 import persistent
 #------------------------------------------------------------------------------#
@@ -122,8 +123,10 @@ class ObjectRoot(persistent.Persistent):
 #------------------------------------------------------------------------------#
 class Database:
     #--------------------------------------------------------------------------#
-    def __init__(self, storage_path):
+    def __init__(self, storage_path, compress=True):
         self._zodb_storage = ZODB.FileStorage.FileStorage(storage_path)
+        if compress:
+            self._zodb_storage = zc.zlibstorage.ZlibStorage(self._zodb_storage)
         self._zodb_database = ZODB.DB(self._zodb_storage)
         self._zodb_connection = self._zodb_database.open()
         self._zodb_root = self._zodb_connection.root()
