@@ -46,13 +46,21 @@ class Tags(persistent.Persistent):
         self._tags = set()
 
     #--------------------------------------------------------------------------#
+    def has_tag(self, label):
+        for tag in self._tags:
+            if tag.label() == label:
+                return True
+        return False
+
+    #--------------------------------------------------------------------------#
     def add_tag(self, tag):
         self._tags.add(tag)
         self._p_changed = True
 
     #--------------------------------------------------------------------------#
-    def remove_tag(self, tag):
-        self._tags.remove(tag)
+    def remove_tag(self, label):
+        self._tags.symmetric_difference_update(
+            tag for tag in self._tags if tag.label() == label)
         self._p_changed = True
 
 #------------------------------------------------------------------------------#
@@ -66,3 +74,12 @@ def add_tags(context, entity, labels):
     elif isinstance(labels, str):
         tags.add_tag(all_tags.get_tag(labels))
 
+#------------------------------------------------------------------------------#
+def has_tag(context, entity, label):
+    tags =  entity.find_component(Tags)
+    if tags:
+        return tags.has_tag(label)
+
+    return False
+
+#------------------------------------------------------------------------------#

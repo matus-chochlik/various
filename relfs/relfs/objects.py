@@ -62,7 +62,7 @@ class ObjectRoot(EntityContext):
     def __init__(self):
         EntityContext.__init__(self)
         self._mime_types = BTrees.OOBTree.BTree()
-        self._objects = list()
+        self._objects = BTrees.OOBTree.BTree()
 
     #--------------------------------------------------------------------------#
     def get_mime_type(self, mime_type_and_subtype):
@@ -79,7 +79,7 @@ class ObjectRoot(EntityContext):
 
     #--------------------------------------------------------------------------#
     def filter_objects(self, unary_predicate):
-        for obj in self._objects:
+        for obj in self._objects.values():
             if unary_predicate(obj):
                 yield obj
     #--------------------------------------------------------------------------#
@@ -89,14 +89,14 @@ class ObjectRoot(EntityContext):
 
     #--------------------------------------------------------------------------#
     def filter_having(self, *args):
-        for obj in self._objects:
+        for obj in self._objects.values():
             components = obj.get_all_components(*args)
             if components is not None:
                 yield self._return_repacked(obj, *components)
 
     #--------------------------------------------------------------------------#
     def for_each_object(self, unary_function):
-        for obj in self._objects:
+        for obj in self._objects.values():
             unary_function(obj)
 
     #--------------------------------------------------------------------------#
@@ -107,14 +107,21 @@ class ObjectRoot(EntityContext):
         extensions,
         mime_type_and_subtype):
 
-        new_obj = FileObject(
-            obj_hash,
-            display_name,
-            extensions,
-            self.get_mime_type(mime_type_and_subtype))
-        self._objects.append(new_obj)
-        self._p_changed = True
-        return new_obj
+        try:
+            obj = self._objects[obj_hash]
+            obj._display_name = display_name
+            obj._extensions = extensions
+            self._p_changed = True
+            return obj
+        except KeyError:
+            new_obj = FileObject(
+                obj_hash,
+                display_name,
+                extensions,
+                self.get_mime_type(mime_type_and_subtype))
+            self._objects[obj_hash] = new_obj
+            self._p_changed = True
+            return new_obj
 
 #------------------------------------------------------------------------------#
 class Database:
