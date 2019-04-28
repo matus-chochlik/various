@@ -3,6 +3,7 @@
 #------------------------------------------------------------------------------#
 import os
 import relfs
+from relfs.components.tags import add_tags
 #------------------------------------------------------------------------------#
 def make_arg_parser():
     arg_setup = relfs.ArgumentSetup()
@@ -28,8 +29,11 @@ if __name__ == "__main__":
             open_repo = relfs.open_repository(repo_name)
 
             for file_path in options.file_paths:
-                repo_file = open_repo.checkin_file(file_path)
-                # TODO: repo_file.add_tags(options.tag_labels)
+                new_obj = open_repo.checkin_file(file_path)
+                add_tags(open_repo.context(), new_obj, options.tag_labels)
+
+            # commit all changes
+            open_repo.commit()
         except relfs.RelFsError as relfs_error:
             relfs.print_error(relfs_error)
 #------------------------------------------------------------------------------#

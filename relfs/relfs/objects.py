@@ -5,25 +5,7 @@ import zc.zlibstorage
 import BTrees.OOBTree
 import transaction
 import persistent
-#------------------------------------------------------------------------------#
-class User(persistent.Persistent):
-    #--------------------------------------------------------------------------#
-    def __init__(self, user_id):
-        persistent.Persistent.__init__(self)
-        self._user_id = user_id
-
-    #--------------------------------------------------------------------------#
-    def has_id(self, some_id):
-        return self._user_id == some_id
-
-    #--------------------------------------------------------------------------#
-    def __eq__(self, that):
-        return self._user_id == that._user_id
-
-    #--------------------------------------------------------------------------#
-    def __lt__(self, that):
-        return self._user_id < that._user_id
-
+from components.entity import EntityContext, Entity
 #------------------------------------------------------------------------------#
 class MimeType(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -43,31 +25,6 @@ class MimeType(persistent.Persistent):
     #--------------------------------------------------------------------------#
     def __lt__(self, that):
         return self.tie() < that.tie()
-
-
-#------------------------------------------------------------------------------#
-class Entity(persistent.Persistent):
-    #--------------------------------------------------------------------------#
-    def __init__(self):
-        persistent.Persistent.__init__(self)
-        self._components = BTrees.OOBTree.BTree()
-
-    #--------------------------------------------------------------------------#
-    def has_component(self, name):
-        return self._components.has_key(name);
-
-    #--------------------------------------------------------------------------#
-    def add_component(self, component):
-        assert(isinstance(component, persistent.Persistent))
-        self._components[type(component)] = component
-        self_p_changed = True
-
-    #--------------------------------------------------------------------------#
-    def get_all_components(self, *args):
-        try:
-            return tuple(self._components[cls] for cls in args)
-        except KeyError:
-            return None
 
 #------------------------------------------------------------------------------#
 class FileObject(Entity):
@@ -100,20 +57,12 @@ class FileObject(Entity):
         return self._mime_type
 
 #------------------------------------------------------------------------------#
-class ObjectRoot(persistent.Persistent):
+class ObjectRoot(EntityContext):
     #--------------------------------------------------------------------------#
     def __init__(self):
-        persistent.Persistent.__init__(self)
-        self._users = list()
-        self._users.append(User("root"))
+        EntityContext.__init__(self)
         self._mime_types = BTrees.OOBTree.BTree()
         self._objects = list()
-
-    #--------------------------------------------------------------------------#
-    def find_user(self, user_id):
-        for user in self._users:
-            if user.has_id(user_id):
-                return user
 
     #--------------------------------------------------------------------------#
     def get_mime_type(self, mime_type_and_subtype):
@@ -188,11 +137,13 @@ class Database:
             self._relfs_root = self._zodb_root["relfs"] = ObjectRoot()
 
     #--------------------------------------------------------------------------#
-    def root(self):
+    def context(self):
         return self._relfs_root
 
+    #--------------------------------------------------------------------------#
     def commit(self):
         transaction.commit()
+
 #------------------------------------------------------------------------------#
 def open_database(repo_path, options):
     return Database(repo_path, options)

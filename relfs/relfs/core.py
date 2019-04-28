@@ -114,15 +114,15 @@ class Repository(object):
             self.object_dir_path(obj_hash),
             self.object_file_name(obj_hash)
         )
+
     #--------------------------------------------------------------------------#
-    def db_query(self, select_statement):
-        cursor = self._db_conn.cursor()
-        cursor.execute(select_statement)
-        row = cursor.fetchone()
-        while row:
-            yield row
-            row = cursor.fetchone()
-        cursor.close()
+    def context(self):
+        return self._database.context()
+
+    #--------------------------------------------------------------------------#
+    def commit(self):
+        self._database.commit()
+
     #--------------------------------------------------------------------------#
     def checkin_file(self, os_path, display_name=None):
         name_parts = os.path.splitext(os.path.basename(os_path))
@@ -144,17 +144,17 @@ class Repository(object):
             # insert intial information
             file_stat = os.stat(obj_path)
 
-            self._database.root().add_file_object_info(
+            new_obj = self.context().add_file_object_info(
                 obj_hash,
                 display_name,
                 extensions,
                 get_file_mime_type(os_path))
 
-            # TODO: tags
-            self._database.commit()
+            return new_obj
 
         except IOError as io_error:
             raise RelFsError(str(io_error))
+
     #--------------------------------------------------------------------------#
     def all_objects(self):
         obj_dir = self.objects_dir_path()
@@ -167,15 +167,6 @@ class Repository(object):
                         str().join(rel_path.split('/')),
                         file_path
                     )
-
-    #--------------------------------------------------------------------------#
-    def object_display_name(self, obj_hash):
-        return obj_hash #TODO
-    #--------------------------------------------------------------------------#
-    def set_object_display_name(self, obj_hash, display_name):
-        db_obj = self._database.set_object(obj_hash)
-        db_obj.file.display_name = display_name
-        db_obj.apply()
 
 #------------------------------------------------------------------------------#
 def open_repository(repo_name, config = __config()):
