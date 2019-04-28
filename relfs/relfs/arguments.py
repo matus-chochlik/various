@@ -22,12 +22,8 @@ class ArgumentSetup:
         self.at_least_one_repo = self.with_repo_names
 
         self.with_config_type = False
+        self.with_repo_options = False
 
-        self.with_database_user = False
-        self.with_database_host = True
-        self.with_database_port = True
-        self.with_database_name = True
-        self.with_schema_name = True
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
     #--------------------------------------------------------------------------#
@@ -169,60 +165,18 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
                     const=conf_typ
                 )
 
-        if arg_setup.with_database_user:
+        if arg_setup.with_repo_options:
             self.add_argument(
-                "--db-user", "-u",
-                metavar='USER-NAME',
-                nargs=1,
-                dest="db_user",
-                default=None,
+                "--compress", "-c",
+                type=bool,
+                metavar='BOOL',
+                nargs='?',
+                dest="compress",
+                default=True,
                 action="store"
             )
 
-        if arg_setup.with_database_host:
-            self.add_argument(
-                "--db-host", "-H",
-                metavar='HOST-NAME',
-                nargs=1,
-                dest="db_host",
-                default=None,
-                action="store"
-            )
-
-        if arg_setup.with_database_port:
-            self.add_argument(
-                "--db-port", "-P",
-                metavar='PORT-NUMBER',
-                type=self._port_number_value,
-                nargs=1,
-                dest="db_port",
-                default=None,
-                action="store"
-            )
-
-        if arg_setup.with_database_name:
-            self.add_argument(
-                "--database", "-D",
-                type=self._database_name_value,
-                metavar='DB-NAME',
-                nargs=1,
-                dest="database",
-                default=None,
-                action="store"
-            )
-
-        if arg_setup.with_schema_name:
-            self.add_argument(
-                "--schema", "-S",
-                type=self._schema_name_value,
-                metavar='SCHEMA-NAME',
-                nargs=1,
-                dest="schema",
-                default=None,
-                action="store"
-            )
-
-        if    arg_setup.with_repo_names or\
+        if  arg_setup.with_repo_names or\
             arg_setup.with_tag_labels or\
             arg_setup.with_obj_hashes or\
             arg_setup.with_file_paths:

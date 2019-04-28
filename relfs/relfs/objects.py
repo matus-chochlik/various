@@ -3,7 +3,9 @@
 import ZODB, ZODB.FileStorage
 import zc.zlibstorage
 import BTrees.OOBTree
+import transaction
 import persistent
+import mimetypes
 #------------------------------------------------------------------------------#
 class User(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -22,6 +24,26 @@ class User(persistent.Persistent):
     #--------------------------------------------------------------------------#
     def __lt__(self, that):
         return self._user_id < that._user_id
+
+#------------------------------------------------------------------------------#
+class MimeType(persistent.Persistent):
+    #--------------------------------------------------------------------------#
+    def __init__(self, mime_type, mime_subtype):
+        persistent.Persistent.__init__(self)
+        self._type = mime_type
+        self._subtype = mime_subtype
+
+    #--------------------------------------------------------------------------#
+    def tie(self):
+        return (self._type, self._subtype)
+
+    #--------------------------------------------------------------------------#
+    def __eq__(self, that):
+        return self.tie() == that.tie()
+
+    #--------------------------------------------------------------------------#
+    def __lt__(self, that):
+        return self.tie() < that.tie()
 
 #------------------------------------------------------------------------------#
 class Entity(persistent.Persistent):
@@ -77,9 +99,10 @@ class ObjectRoot(persistent.Persistent):
     #--------------------------------------------------------------------------#
     def __init__(self):
         persistent.Persistent.__init__(self)
-        self._objects = list()
         self._users = list()
         self._users.append(User("root"))
+        self._mime_types = BTrees.OOBTree.BTree()
+        self._objects = list()
 
     #--------------------------------------------------------------------------#
     def find_user(self, user_id):
@@ -114,7 +137,13 @@ class ObjectRoot(persistent.Persistent):
             unary_function(obj)
 
     #--------------------------------------------------------------------------#
-    def add_file_object(self, obj_hash, display_name, extensions):
+    def add_file_object_info(
+        self,
+        obj_hash,
+        display_name,
+        extensions,
+        mime_type):
+
         new_obj = FileObject(obj_hash, display_name, extensions)
         self._objects.append(new_obj)
         self._p_changed = True
@@ -123,10 +152,14 @@ class ObjectRoot(persistent.Persistent):
 #------------------------------------------------------------------------------#
 class Database:
     #--------------------------------------------------------------------------#
-    def __init__(self, storage_path, compress=True):
+    def __init__(self, repo_path, options):
+        import os
+        storage_path = os.path.join(repo_path, 'relfs.zodb')
+
         self._zodb_storage = ZODB.FileStorage.FileStorage(storage_path)
-        if compress:
+        if options.get("compress", True):
             self._zodb_storage = zc.zlibstorage.ZlibStorage(self._zodb_storage)
+
         self._zodb_database = ZODB.DB(self._zodb_storage)
         self._zodb_connection = self._zodb_database.open()
         self._zodb_root = self._zodb_connection.root()
@@ -139,5 +172,12 @@ class Database:
     #--------------------------------------------------------------------------#
     def root(self):
         return self._relfs_root
+#------------------------------------------------------------------------------#
+def open_database(repo_path, options):
+    return Database(repo_path, options)
+#------------------------------------------------------------------------------#
+def init_database(repo_path, options):
+    Database(repo_path, options)
+    transaction.commit()
 #------------------------------------------------------------------------------#
 

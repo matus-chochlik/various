@@ -10,7 +10,7 @@ import datetime
 import getpass
 #------------------------------------------------------------------------------#
 from .config import load_config, save_config, __config
-from .database import open_database
+from .objects import init_database, open_database
 from .error import RelFsError
 from .metadata import add_file_metadata
 #------------------------------------------------------------------------------#
@@ -35,12 +35,7 @@ class Repository(object):
     @staticmethod
     def make_default_config(name, options):
         return {
-            "local_db": options.db_host is None,
-            "db_user" : options.db_user or getpass.getuser(),
-            "db_host" : options.db_host or "localhost",
-            "db_port" : options.db_port or 5432,
-            "database": options.database or "relfs",
-            "schema": options.schema or "relfs"
+            "compress": options.compress
         }
     #--------------------------------------------------------------------------#
     @staticmethod
@@ -48,18 +43,27 @@ class Repository(object):
         if os.path.exists(os_path):
             if os.path.isdir(os_path):
                 if len(os.listdir(os_path)) > 0:
-                    raise RelFsError("repository directory '%s' is not empty" % os_path)
+                    raise RelFsError(
+                        "repository directory '%s' is not empty" %
+                        os_path)
             else:
-                raise RelFsError("file '%s' exists and is not a directory" % os_path)
+                raise RelFsError(
+                        "file '%s' exists and is not a directory" %
+                        os_path)
         else:
             _mkdir_p(os_path)
 
+        repo_config = Repository.make_default_config(name, options)
+
         with open(os.path.join(os_path, "config"), "wt") as config_file:
-            json.dump(Repository.make_default_config(name, options), config_file)
+            json.dump(repo_config, config_file)
+
+        init_database(os_path, repo_config)
 
         global_config = load_config(config_type)
         global_config.repositories[name] = {"path": os_path}
         save_config(config_type, global_config)
+
     #--------------------------------------------------------------------------#
     def __init__(self, name, config):
         self._name = name
@@ -67,8 +71,9 @@ class Repository(object):
         try: self._metadata = config.repositories[name]
         except KeyError:
             raise RelFsError("'%s' is not a relfs repository" % name)
+
         self._repo_config = self.load_config()
-        self._database = open_database(self._repo_config)
+        self._database = open_database(self._metadata.path, self._repo_config)
 
     #--------------------------------------------------------------------------#
     def __repr__(self):
@@ -137,17 +142,8 @@ class Repository(object):
             # insert intial information
             file_stat = os.stat(obj_path)
 
-            new_obj = self._database.set_object(obj_hash)
-            new_obj.file.date = datetime.date.fromtimestamp(file_stat.st_mtime)
-            new_obj.file.size = file_stat.st_size
-            new_obj.file.display_name = display_name
-            new_obj.file.extensions = extensions
-            new_obj.apply()
+            # TODO
 
-            add_file_metadata(new_obj, os_path, obj_path, obj_hash)
-
-            # return the object
-            return RepositoryFileObject(self, obj_hash)
         except IOError as io_error:
             raise RelFsError(str(io_error))
     #--------------------------------------------------------------------------#
@@ -162,18 +158,6 @@ class Repository(object):
                         str().join(rel_path.split('/')),
                         file_path
                     )
-    #--------------------------------------------------------------------------#
-    def refill_database(self):
-        for obj_hash, obj_path in self.all_objects():
-            file_stat = os.stat(obj_path)
-
-            db_obj = self._database.set_object(obj_hash)
-            db_obj.file.size = file_stat.st_size
-            db_obj.file.date = datetime.date.fromtimestamp(file_stat.st_mtime)
-            db_obj.apply()
-
-            add_file_metadata(db_obj, obj_path, obj_path, obj_hash)
-
 
     #--------------------------------------------------------------------------#
     def object_display_name(self, obj_hash):
@@ -183,40 +167,8 @@ class Repository(object):
         db_obj = self._database.set_object(obj_hash)
         db_obj.file.display_name = display_name
         db_obj.apply()
-    #--------------------------------------------------------------------------#
-    def add_object_tags(self, obj_hash, tag_list):
-        pass
+
 #------------------------------------------------------------------------------#
 def open_repository(repo_name, config = __config()):
     return Repository(repo_name, config)
-#------------------------------------------------------------------------------#
-class RepositoryFileObject(object):
-    #--------------------------------------------------------------------------#
-    def __init__(self, repo, obj_hash):
-        self._repo = repo
-        self._obj_hash = obj_hash
-    #--------------------------------------------------------------------------#
-    def __repr__(self):
-        return "<relfs://%(repo)s/%(hash)s>" % {
-            "repo": self._repo.objects_dir_path(),
-            "hash": self._obj_hash
-        }
-    #--------------------------------------------------------------------------#
-    def __str__(self):
-        return "<relfs:%(repo)s/%(name)s>" % {
-            "repo": self._repo.name(),
-            "name": self.display_name()
-        }
-    #--------------------------------------------------------------------------#
-    def path_in_repository(self):
-        return self._repo.object_file_path(self._obj_hash)
-    #--------------------------------------------------------------------------#
-    def display_name(self):
-        return self._repo.object_display_name(self._obj_hash)
-    #--------------------------------------------------------------------------#
-    def set_display_name(self, name):
-        self._repo.set_object_display_name(self._obj_hash, name)
-    #--------------------------------------------------------------------------#
-    def add_tags(self, tag_list):
-        self._repo.add_object_tags(self._obj_hash, tag_list)
 #------------------------------------------------------------------------------#
