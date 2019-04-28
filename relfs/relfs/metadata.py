@@ -7,16 +7,6 @@ import psycopg2
 #------------------------------------------------------------------------------#
 _picture_resolution_reg_ex = re.compile("^(\d+)\s*[Xx]\s*(\d+)$")
 #------------------------------------------------------------------------------#
-def get_file_mime_type(os_path):
-    try:
-        import mimetypes
-        mimetype, encoding = mimetypes.guess_type(os_path)
-        if mimetype:
-            return tuple(x for x in str(mimetype).split('/'))
-    except Exception: pass
-
-    return ("application", "octet-stream")
-#------------------------------------------------------------------------------#
 def mine_file_mime_type(db_obj, os_path, obj_path, obj_hash):
     try:
         import mimetypes

@@ -4,6 +4,7 @@
 import os
 import relfs
 from relfs.components.tags import add_tags
+from relfs.components.mime import add_file_mime_type
 #------------------------------------------------------------------------------#
 def make_arg_parser():
     arg_setup = relfs.ArgumentSetup()
@@ -27,10 +28,12 @@ if __name__ == "__main__":
     for repo_name in options.repositories:
         try:
             open_repo = relfs.open_repository(repo_name)
+            ctx = open_repo.context()
 
             for file_path in options.file_paths:
                 new_obj = open_repo.checkin_file(file_path)
-                add_tags(open_repo.context(), new_obj, options.tag_labels)
+                add_file_mime_type(ctx, new_obj, file_path)
+                add_tags(ctx, new_obj, options.tag_labels)
 
             # commit all changes
             open_repo.commit()

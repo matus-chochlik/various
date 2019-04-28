@@ -7,34 +7,13 @@ import transaction
 import persistent
 from components.entity import EntityContext, Entity
 #------------------------------------------------------------------------------#
-class MimeType(persistent.Persistent):
-    #--------------------------------------------------------------------------#
-    def __init__(self, mime_type_and_subtype):
-        persistent.Persistent.__init__(self)
-        self._type = mime_type_and_subtype[0]
-        self._subtype = mime_type_and_subtype[1]
-
-    #--------------------------------------------------------------------------#
-    def tie(self):
-        return (self._type, self._subtype)
-
-    #--------------------------------------------------------------------------#
-    def __eq__(self, that):
-        return self.tie() == that.tie()
-
-    #--------------------------------------------------------------------------#
-    def __lt__(self, that):
-        return self.tie() < that.tie()
-
-#------------------------------------------------------------------------------#
 class FileObject(Entity):
     #--------------------------------------------------------------------------#
-    def __init__(self, obj_hash, display_name, extensions, mime_type):
+    def __init__(self, obj_hash, display_name, extensions):
         Entity.__init__(self)
         self._obj_hash = obj_hash
         self._display_name = display_name
         self._extensions = extensions
-        self._mime_type = mime_type
 
     #--------------------------------------------------------------------------#
     def hash(self):
@@ -52,26 +31,12 @@ class FileObject(Entity):
     def extensions(self):
         return self._extensions
 
-    #--------------------------------------------------------------------------#
-    def mime_type(self):
-        return self._mime_type
-
 #------------------------------------------------------------------------------#
 class ObjectRoot(EntityContext):
     #--------------------------------------------------------------------------#
     def __init__(self):
         EntityContext.__init__(self)
-        self._mime_types = BTrees.OOBTree.BTree()
         self._objects = BTrees.OOBTree.BTree()
-
-    #--------------------------------------------------------------------------#
-    def get_mime_type(self, mime_type_and_subtype):
-        try:
-            return self._mime_types[mime_type_and_subtype]
-        except KeyError:
-            self._mime_types[mime_type_and_subtype] =\
-                MimeType(mime_type_and_subtype)
-            return self._mime_types[mime_type_and_subtype]
 
     #--------------------------------------------------------------------------#
     def object_count(self):
@@ -100,12 +65,7 @@ class ObjectRoot(EntityContext):
             unary_function(obj)
 
     #--------------------------------------------------------------------------#
-    def add_file_object_info(
-        self,
-        obj_hash,
-        display_name,
-        extensions,
-        mime_type_and_subtype):
+    def add_file_object_info(self, obj_hash, display_name, extensions):
 
         try:
             obj = self._objects[obj_hash]
@@ -114,11 +74,7 @@ class ObjectRoot(EntityContext):
             self._p_changed = True
             return obj
         except KeyError:
-            new_obj = FileObject(
-                obj_hash,
-                display_name,
-                extensions,
-                self.get_mime_type(mime_type_and_subtype))
+            new_obj = FileObject(obj_hash, display_name, extensions)
             self._objects[obj_hash] = new_obj
             self._p_changed = True
             return new_obj

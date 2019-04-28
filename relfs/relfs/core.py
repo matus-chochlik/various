@@ -12,7 +12,6 @@ import getpass
 from .config import load_config, save_config, __config
 from .objects import init_database, open_database
 from .error import RelFsError
-from .metadata import get_file_mime_type
 #------------------------------------------------------------------------------#
 _version_numbers= (0,1,0)
 #------------------------------------------------------------------------------#
@@ -147,8 +146,7 @@ class Repository(object):
             new_obj = self.context().add_file_object_info(
                 obj_hash,
                 display_name,
-                extensions,
-                get_file_mime_type(os_path))
+                extensions)
 
             return new_obj
 
