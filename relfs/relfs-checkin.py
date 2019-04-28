@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
             for file_path in options.file_paths:
                 repo_file = open_repo.checkin_file(file_path)
-                repo_file.add_tags(options.tag_labels)
+                # TODO: repo_file.add_tags(options.tag_labels)
         except relfs.RelFsError as relfs_error:
             relfs.print_error(relfs_error)
 #------------------------------------------------------------------------------#

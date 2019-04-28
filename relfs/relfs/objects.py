@@ -5,7 +5,6 @@ import zc.zlibstorage
 import BTrees.OOBTree
 import transaction
 import persistent
-import mimetypes
 #------------------------------------------------------------------------------#
 class User(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -28,10 +27,10 @@ class User(persistent.Persistent):
 #------------------------------------------------------------------------------#
 class MimeType(persistent.Persistent):
     #--------------------------------------------------------------------------#
-    def __init__(self, mime_type, mime_subtype):
+    def __init__(self, mime_type_and_subtype):
         persistent.Persistent.__init__(self)
-        self._type = mime_type
-        self._subtype = mime_subtype
+        self._type = mime_type_and_subtype[0]
+        self._subtype = mime_type_and_subtype[1]
 
     #--------------------------------------------------------------------------#
     def tie(self):
@@ -44,6 +43,7 @@ class MimeType(persistent.Persistent):
     #--------------------------------------------------------------------------#
     def __lt__(self, that):
         return self.tie() < that.tie()
+
 
 #------------------------------------------------------------------------------#
 class Entity(persistent.Persistent):
@@ -72,11 +72,12 @@ class Entity(persistent.Persistent):
 #------------------------------------------------------------------------------#
 class FileObject(Entity):
     #--------------------------------------------------------------------------#
-    def __init__(self, obj_hash, display_name, extensions):
+    def __init__(self, obj_hash, display_name, extensions, mime_type):
         Entity.__init__(self)
         self._obj_hash = obj_hash
         self._display_name = display_name
         self._extensions = extensions
+        self._mime_type = mime_type
 
     #--------------------------------------------------------------------------#
     def hash(self):
@@ -94,6 +95,10 @@ class FileObject(Entity):
     def extensions(self):
         return self._extensions
 
+    #--------------------------------------------------------------------------#
+    def mime_type(self):
+        return self._mime_type
+
 #------------------------------------------------------------------------------#
 class ObjectRoot(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -109,6 +114,15 @@ class ObjectRoot(persistent.Persistent):
         for user in self._users:
             if user.has_id(user_id):
                 return user
+
+    #--------------------------------------------------------------------------#
+    def get_mime_type(self, mime_type_and_subtype):
+        try:
+            return self._mime_types[mime_type_and_subtype]
+        except KeyError:
+            self._mime_types[mime_type_and_subtype] =\
+                MimeType(mime_type_and_subtype)
+            return self._mime_types[mime_type_and_subtype]
 
     #--------------------------------------------------------------------------#
     def object_count(self):
@@ -142,9 +156,13 @@ class ObjectRoot(persistent.Persistent):
         obj_hash,
         display_name,
         extensions,
-        mime_type):
+        mime_type_and_subtype):
 
-        new_obj = FileObject(obj_hash, display_name, extensions)
+        new_obj = FileObject(
+            obj_hash,
+            display_name,
+            extensions,
+            self.get_mime_type(mime_type_and_subtype))
         self._objects.append(new_obj)
         self._p_changed = True
         return new_obj
@@ -172,6 +190,9 @@ class Database:
     #--------------------------------------------------------------------------#
     def root(self):
         return self._relfs_root
+
+    def commit(self):
+        transaction.commit()
 #------------------------------------------------------------------------------#
 def open_database(repo_path, options):
     return Database(repo_path, options)

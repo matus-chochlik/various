@@ -12,7 +12,7 @@ import getpass
 from .config import load_config, save_config, __config
 from .objects import init_database, open_database
 from .error import RelFsError
-from .metadata import add_file_metadata
+from .metadata import get_file_mime_type
 #------------------------------------------------------------------------------#
 _version_numbers= (0,1,0)
 #------------------------------------------------------------------------------#
@@ -73,11 +73,13 @@ class Repository(object):
             raise RelFsError("'%s' is not a relfs repository" % name)
 
         self._repo_config = self.load_config()
-        self._database = open_database(self._metadata.path, self._repo_config)
+        self._database = open_database(
+            self._metadata["path"],
+            self._repo_config)
 
     #--------------------------------------------------------------------------#
     def __repr__(self):
-        return "<relfs://%(path)s>" % {"path": self._metadata.path}
+        return "<relfs://%(path)s>" % {"path": self._metadata["path"]}
     #--------------------------------------------------------------------------#
     def __str__(self):
         return "<relfs:%(name)s>" % {"name": self._name}
@@ -142,7 +144,14 @@ class Repository(object):
             # insert intial information
             file_stat = os.stat(obj_path)
 
-            # TODO
+            self._database.root().add_file_object_info(
+                obj_hash,
+                display_name,
+                extensions,
+                get_file_mime_type(os_path))
+
+            # TODO: tags
+            self._database.commit()
 
         except IOError as io_error:
             raise RelFsError(str(io_error))
