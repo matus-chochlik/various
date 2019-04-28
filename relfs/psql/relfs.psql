@@ -1,9 +1,0 @@
-\i relfs-schema.sql
-\i relfs-types.sql
-\i relfs-metadata.sql
-\i relfs-year_date.sql
-\i relfs-object.sql
-\i relfs-tags.sql
-\i relfs-attrib.sql
-\i relfs-mime_type.sql
-\i relfs-picture.sql
