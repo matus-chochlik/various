@@ -135,27 +135,6 @@ def _structure_file_info_string(tokens):
 
     return _separate_file_info_items(_rejoin_file_info_strings(nested))
 #------------------------------------------------------------------------------#
-def _process_file_date_time(db_obj, obj_hash, attributes):
-    try:
-        for attrib in attributes:
-            if type(attrib) is list:
-                _process_file_date_time(db_obj, obj_hash, attrib)
-            elif type(attrib) is tuple:
-                if type(attrib[1]) is list:
-                    _process_file_date_time(db_obj, obj_hash, attrib[1])
-                elif type(attrib[0]) is str and attrib[0] == 'datetime':
-                    if type(attrib[1]) is str:
-                        dt_formats = [
-                            "%Y-%m-%d %H:%M:%S",
-                            "%Y:%m:%d %H:%M:%S"
-                        ]
-                        for dt_fmt in dt_formats:
-                            try:
-                                db_obj.file.date = time.strptime(attrib[1], dt_fmt)
-                                db_obj.apply()
-                            except ValueError: pass
-    except: pass
-#------------------------------------------------------------------------------#
 def _process_file_picture_info(db_obj, obj_hash, attributes):
     width = None
     height = None
@@ -173,22 +152,32 @@ def _process_file_picture_info(db_obj, obj_hash, attributes):
         db_obj.picture.height = height
         db_obj.apply();
 #------------------------------------------------------------------------------#
-def mine_file_metadata(db_obj, os_path, obj_path, obj_hash):
-    try:
+def get_file_metadata(os_path):
         file_proc = subprocess.Popen(
             ['file', '-b', os_path],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
         output, errors = file_proc.communicate()
 
-        attributes = _structure_file_info_string(
-            _tokenize_file_info_string(output))
+        return _structure_file_info_string(_tokenize_file_info_string(output))
+#------------------------------------------------------------------------------#
+def get_date_time(attributes):
+    try:
+        for attrib in attributes:
+            if type(attrib) is list:
+                return get_date_time(attrib)
+            elif type(attrib) is tuple:
+                if type(attrib[1]) is list:
+                    return get_date_time(attrib[1])
+                elif type(attrib[0]) is str and attrib[0] == 'datetime':
+                    if type(attrib[1]) is str:
+                        dt_formats = [
+                            "%Y-%m-%d %H:%M:%S",
+                            "%Y:%m:%d %H:%M:%S"
+                        ]
+                        for dt_fmt in dt_formats:
+                            try: return time.strptime(attrib[1], dt_fmt)
+                            except ValueError: pass
+    except: pass
+#------------------------------------------------------------------------------#
 
-        _process_file_date_time(db_obj, obj_hash, attributes)
-        _process_file_picture_info(db_obj, obj_hash, attributes)
-    except Exception: pass
-#------------------------------------------------------------------------------#
-def add_file_metadata(db_obj, os_path, obj_path, obj_hash):
-    mine_file_metadata(db_obj, os_path, obj_path, obj_hash)
-    mine_file_mime_type(db_obj, os_path, obj_path, obj_hash)
-#------------------------------------------------------------------------------#
