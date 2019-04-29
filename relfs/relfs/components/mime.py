@@ -11,8 +11,6 @@ def get_file_mime_type(os_path):
             return tuple(x for x in str(mimetype).split('/'))
     except Exception: pass
 
-    return ("application", "octet-stream")
-
 #------------------------------------------------------------------------------#
 class MimeType(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -43,7 +41,6 @@ class MimeType(persistent.Persistent):
     #--------------------------------------------------------------------------#
     def __hash__(self):
         return hash(self.tie())
-
 
 #------------------------------------------------------------------------------#
 class AllMimeTypes(persistent.Persistent):
@@ -81,8 +78,9 @@ class AllMimeTypes(persistent.Persistent):
 
 #------------------------------------------------------------------------------#
 def add_mime_type(context, entity, mime_type_and_subtype):
-    all_mt = context.get_component(AllMimeTypes)
-    entity.add_component(all_mt.get_mime_type(mime_type_and_subtype))
+    if mime_type_and_subtype is not None:
+        all_mt = context.get_component(AllMimeTypes)
+        entity.add_component(all_mt.get_mime_type(mime_type_and_subtype))
 
 #------------------------------------------------------------------------------#
 def add_file_mime_type(context, entity, os_path):

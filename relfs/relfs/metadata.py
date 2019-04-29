@@ -135,6 +135,34 @@ def _structure_file_info_string(tokens):
 
     return _separate_file_info_items(_rejoin_file_info_strings(nested))
 #------------------------------------------------------------------------------#
+def get_file_metadata(os_path):
+        file_proc = subprocess.Popen(
+            ['file', '-b', os_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+        output, errors = file_proc.communicate()
+
+        return _structure_file_info_string(_tokenize_file_info_string(output))
+#------------------------------------------------------------------------------#
+def get_file_metadata_date_time(attributes):
+    try:
+        for attrib in attributes:
+            if type(attrib) is list:
+                return get_file_metadata_date_time(attrib)
+            elif type(attrib) is tuple:
+                if type(attrib[1]) is list:
+                    return get_file_metadata_date_time(attrib[1])
+                elif type(attrib[0]) is str and attrib[0] == 'datetime':
+                    if type(attrib[1]) is str:
+                        dt_formats = [
+                            "%Y-%m-%d %H:%M:%S",
+                            "%Y:%m:%d %H:%M:%S"
+                        ]
+                        for dt_fmt in dt_formats:
+                            try: return time.strptime(attrib[1], dt_fmt)
+                            except ValueError: pass
+    except: pass
+#------------------------------------------------------------------------------#
 def _process_file_picture_info(db_obj, obj_hash, attributes):
     width = None
     height = None
@@ -151,33 +179,5 @@ def _process_file_picture_info(db_obj, obj_hash, attributes):
         db_obj.picture.width = width
         db_obj.picture.height = height
         db_obj.apply();
-#------------------------------------------------------------------------------#
-def get_file_metadata(os_path):
-        file_proc = subprocess.Popen(
-            ['file', '-b', os_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        output, errors = file_proc.communicate()
-
-        return _structure_file_info_string(_tokenize_file_info_string(output))
-#------------------------------------------------------------------------------#
-def get_date_time(attributes):
-    try:
-        for attrib in attributes:
-            if type(attrib) is list:
-                return get_date_time(attrib)
-            elif type(attrib) is tuple:
-                if type(attrib[1]) is list:
-                    return get_date_time(attrib[1])
-                elif type(attrib[0]) is str and attrib[0] == 'datetime':
-                    if type(attrib[1]) is str:
-                        dt_formats = [
-                            "%Y-%m-%d %H:%M:%S",
-                            "%Y:%m:%d %H:%M:%S"
-                        ]
-                        for dt_fmt in dt_formats:
-                            try: return time.strptime(attrib[1], dt_fmt)
-                            except ValueError: pass
-    except: pass
 #------------------------------------------------------------------------------#
 
