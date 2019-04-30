@@ -1,6 +1,7 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import persistent
+from .component import Component
 #------------------------------------------------------------------------------#
 class User(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -21,16 +22,16 @@ class User(persistent.Persistent):
         return self._user_id < that._user_id
 
 #------------------------------------------------------------------------------#
-class Users(persistent.Persistent):
+class Users(Component):
     #--------------------------------------------------------------------------#
     def __init__(self):
-        persistent.Persistent.__init__(self)
+        Component.__init__(self)
         self._users = list()
         self._users.append(User("root"))
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def name(): return "Users"
+    def _unique_id(): return "Users"
 
     #--------------------------------------------------------------------------#
     def find(self, name):

@@ -1,17 +1,18 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import persistent
+from .component import Component
 from .users import User, Users
 #------------------------------------------------------------------------------#
-class UserRatings(persistent.Persistent):
+class UserRatings(Component):
     #--------------------------------------------------------------------------#
     def __init__(self):
-        persistent.Persistent.__init__(self)
+        Component.__init__(self)
         self._ratings = list()
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def name(): return "UserRatings"
+    def _unique_id(): return "UserRatings"
 
     #--------------------------------------------------------------------------#
     def add(self, user, rating):

@@ -2,6 +2,7 @@
 #------------------------------------------------------------------------------#
 import BTrees.OOBTree
 import persistent
+from .component import Component
 #------------------------------------------------------------------------------#
 class Tag(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -22,15 +23,15 @@ class Tag(persistent.Persistent):
         return self._label < that._label
 
 #------------------------------------------------------------------------------#
-class AllTags(persistent.Persistent):
+class AllTags(Component):
     #--------------------------------------------------------------------------#
     def __init__(self):
-        persistent.Persistent.__init__(self)
+        Component.__init__(self)
         self._tags = BTrees.OOBTree.BTree()
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def name(): return "AllTags"
+    def _unique_id(): return "AllTags"
 
     #--------------------------------------------------------------------------#
     def get_tag(self, label):
@@ -43,15 +44,15 @@ class AllTags(persistent.Persistent):
             return result
 
 #------------------------------------------------------------------------------#
-class Tags(persistent.Persistent):
+class Tags(Component):
     #--------------------------------------------------------------------------#
     def __init__(self):
-        persistent.Persistent.__init__(self)
+        Component.__init__(self)
         self._tags = set()
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def name(): return "Tags"
+    def _unique_id(): return "Tags"
 
     #--------------------------------------------------------------------------#
     def has_tag(self, label):

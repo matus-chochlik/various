@@ -2,6 +2,7 @@
 #------------------------------------------------------------------------------#
 import BTrees.OOBTree
 import persistent
+from .component import Component
 #------------------------------------------------------------------------------#
 class EntityBase(persistent.Persistent):
     #--------------------------------------------------------------------------#
@@ -10,25 +11,29 @@ class EntityBase(persistent.Persistent):
         self._components = BTrees.OOBTree.BTree()
 
     #--------------------------------------------------------------------------#
-    def has_component(self, name):
-        return self._components.has_key(name);
+    def has_component(self, SomeComponent):
+        assert(isinstance(SomeComponent, type))
+        assert(issubclass(SomeComponent, Component))
+        return self._components.has_key(SomeComponent._unique_id())
 
     #--------------------------------------------------------------------------#
-    def get_component(self, Component):
-        assert(isinstance(Component, type))
+    def get_component(self, SomeComponent):
+        assert(isinstance(SomeComponent, type))
+        assert(issubclass(SomeComponent, Component))
         try:
-            return self._components[Component.name()]
+            return self._components[SomeComponent._unique_id()]
         except KeyError:
-            result = Component()
-            self._components[Component.name()] = result
+            result = SomeComponent()
+            self._components[SomeComponent._unique_id()] = result
             self_p_changed = True
             return result
 
     #--------------------------------------------------------------------------#
-    def find_component(self, Component):
-        assert(isinstance(Component, type))
+    def find_component(self, SomeComponent):
+        assert(isinstance(SomeComponent, type))
+        assert(issubclass(SomeComponent, Component))
         try:
-            return self._components[Component.name()]
+            return self._components[SomeComponent._unique_id()]
         except KeyError:
             return None
 
@@ -39,9 +44,9 @@ class Entity(EntityBase):
         EntityBase.__init__(self)
 
     #--------------------------------------------------------------------------#
-    def add_component(self, component):
-        assert(isinstance(component, persistent.Persistent))
-        self._components[component.name()] = component
+    def add_component(self, some_component):
+        assert(isinstance(some_component, Component))
+        self._components[some_component._unique_id()] = some_component
         self_p_changed = True
 
     #--------------------------------------------------------------------------#

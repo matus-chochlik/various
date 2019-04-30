@@ -1,19 +1,19 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import BTrees.OOBTree
-import persistent
 import time
+from .component import Component
 #------------------------------------------------------------------------------#
-class DateTime(persistent.Persistent):
+class DateTime(Component):
     #--------------------------------------------------------------------------#
     def __init__(self, struct_time):
-        persistent.Persistent.__init__(self)
+        Component.__init__(self)
         assert(isinstance(struct_time, time.struct_time))
         self._struct_time = struct_time
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def name(): return "DateTime"
+    def _unique_id(): return "DateTime"
 
     #--------------------------------------------------------------------------#
     def __eq__(self, that):

@@ -1,8 +1,8 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import BTrees.OOBTree
-import persistent
 import mimetypes
+from .component import Component
 #------------------------------------------------------------------------------#
 def get_file_mime_type(os_path):
     try:
@@ -12,15 +12,15 @@ def get_file_mime_type(os_path):
     except Exception: pass
 
 #------------------------------------------------------------------------------#
-class MimeType(persistent.Persistent):
+class MimeType(Component):
     #--------------------------------------------------------------------------#
     def __init__(self, mime_type_and_subtype):
-        persistent.Persistent.__init__(self)
+        Component.__init__(self)
         self._mime_type_and_subtype = mime_type_and_subtype
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def name(): return "MimeType"
+    def _unique_id(): return "MimeType"
 
     #--------------------------------------------------------------------------#
     def has_type(self, name):
@@ -47,15 +47,15 @@ class MimeType(persistent.Persistent):
         return hash(self.tie())
 
 #------------------------------------------------------------------------------#
-class AllMimeTypes(persistent.Persistent):
+class AllMimeTypes(Component):
     #--------------------------------------------------------------------------#
     def __init__(self):
-        persistent.Persistent.__init__(self)
+        Component.__init__(self)
         self._types = BTrees.OOBTree.BTree()
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def name(): return "AllMimeTypes"
+    def _unique_id(): return "AllMimeTypes"
 
     #--------------------------------------------------------------------------#
     def get_mime_type(self, mime_type_and_subtype):
