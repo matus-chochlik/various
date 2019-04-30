@@ -17,10 +17,10 @@ class EntityBase(persistent.Persistent):
     def get_component(self, Component):
         assert(isinstance(Component, type))
         try:
-            return self._components[Component]
+            return self._components[Component.name()]
         except KeyError:
             result = Component()
-            self._components[Component] = result
+            self._components[Component.name()] = result
             self_p_changed = True
             return result
 
@@ -28,7 +28,7 @@ class EntityBase(persistent.Persistent):
     def find_component(self, Component):
         assert(isinstance(Component, type))
         try:
-            return self._components[Component]
+            return self._components[Component.name()]
         except KeyError:
             return None
 
@@ -41,7 +41,7 @@ class Entity(EntityBase):
     #--------------------------------------------------------------------------#
     def add_component(self, component):
         assert(isinstance(component, persistent.Persistent))
-        self._components[type(component)] = component
+        self._components[component.name()] = component
         self_p_changed = True
 
     #--------------------------------------------------------------------------#

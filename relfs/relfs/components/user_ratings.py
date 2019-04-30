@@ -10,6 +10,10 @@ class UserRatings(persistent.Persistent):
         self._ratings = list()
 
     #--------------------------------------------------------------------------#
+    @staticmethod
+    def name(): return "UserRatings"
+
+    #--------------------------------------------------------------------------#
     def add(self, user, rating):
         assert(type(user) == User)
         assert(type(rating) == float)

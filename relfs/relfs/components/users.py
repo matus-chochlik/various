@@ -29,6 +29,10 @@ class Users(persistent.Persistent):
         self._users.append(User("root"))
 
     #--------------------------------------------------------------------------#
+    @staticmethod
+    def name(): return "Users"
+
+    #--------------------------------------------------------------------------#
     def find(self, name):
         for user in self._users:
             if user.has_id(user_id):

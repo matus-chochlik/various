@@ -12,6 +12,10 @@ class DateTime(persistent.Persistent):
         self._struct_time = struct_time
 
     #--------------------------------------------------------------------------#
+    @staticmethod
+    def name(): return "DateTime"
+
+    #--------------------------------------------------------------------------#
     def __eq__(self, that):
         return self._struct_time == that._struct_time
 

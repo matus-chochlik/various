@@ -19,6 +19,10 @@ class MimeType(persistent.Persistent):
         self._mime_type_and_subtype = mime_type_and_subtype
 
     #--------------------------------------------------------------------------#
+    @staticmethod
+    def name(): return "MimeType"
+
+    #--------------------------------------------------------------------------#
     def has_type(self, name):
         return self._mime_type_and_subtype[0] == name
 
@@ -48,6 +52,10 @@ class AllMimeTypes(persistent.Persistent):
     def __init__(self):
         persistent.Persistent.__init__(self)
         self._types = BTrees.OOBTree.BTree()
+
+    #--------------------------------------------------------------------------#
+    @staticmethod
+    def name(): return "AllMimeTypes"
 
     #--------------------------------------------------------------------------#
     def get_mime_type(self, mime_type_and_subtype):

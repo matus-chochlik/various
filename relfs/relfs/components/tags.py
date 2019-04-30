@@ -29,6 +29,10 @@ class AllTags(persistent.Persistent):
         self._tags = BTrees.OOBTree.BTree()
 
     #--------------------------------------------------------------------------#
+    @staticmethod
+    def name(): return "AllTags"
+
+    #--------------------------------------------------------------------------#
     def get_tag(self, label):
         try:
             return self._tags[label]
@@ -44,6 +48,10 @@ class Tags(persistent.Persistent):
     def __init__(self):
         persistent.Persistent.__init__(self)
         self._tags = set()
+
+    #--------------------------------------------------------------------------#
+    @staticmethod
+    def name(): return "Tags"
 
     #--------------------------------------------------------------------------#
     def has_tag(self, label):
