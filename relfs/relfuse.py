@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
+#
+# requires fusepy
 #------------------------------------------------------------------------------#
 
 import os
@@ -9,6 +11,8 @@ import fuse
 import errno
 import operator
 from functools import reduce
+#
+import relfs
 
 # ------------------------------------------------------------------------------
 # RelFs setting
@@ -326,44 +330,28 @@ class RelFsFuse(fuse.Operations):
 
 # ------------------------------------------------------------------------------
 def make_arg_parser():
-    import argparse
 
-    argparser = argparse.ArgumentParser(
-        prog="relfuse",
-        description="""
-            FUSE RelFs relational filesystem driver.
-        """
+    arg_setup = relfs.ArgumentSetup()
+    arg_setup.with_repo_names = True
+    arg_setup.existing_repos = True
+    arg_setup.at_least_one_repo = True
+    arg_setup.with_mount_point = True
+
+    parser = relfs.make_argument_parser(
+        os.path.basename(__file__),
+        'relfs fuse filesystem driver',
+        arg_setup
     )
-
-    def default_mount_point():
-        return os.path.join(
-            os.environ.get("HOME", os.path.expanduser("~")),
-            "RelFs")
-
-    def mountable_directory(arg):
-        if not os.path.isdir(arg):
-            msg = "'%s' is not a directory path" % (arg)
-            raise argparse.ArgumentTypeError(msg)
-        return os.path.realpath(arg)
-
-    argparser.add_argument(
-        "-m", "--mount-point",
-        dest="mountPoint",
-        type=mountable_directory,
-        default=default_mount_point(),
-        action="store",
-        help="""Specifies the relational filesystem mount-point path"""
-    )
-
-    return argparser
+    return parser
 
 # ------------------------------------------------------------------------------
 def main():
     options = make_arg_parser().parse_args()
     fuse.FUSE(
         RelFsFuse(options),
-        options.mountPoint,
+        options.mount_point,
         nothreads=True,
+        nonempty=True,
         foreground=True)
 
 # ------------------------------------------------------------------------------

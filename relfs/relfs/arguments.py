@@ -24,6 +24,8 @@ class ArgumentSetup:
         self.with_config_type = False
         self.with_repo_options = False
 
+        self.with_mount_point = False
+
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
     #--------------------------------------------------------------------------#
@@ -66,6 +68,17 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
             self.error(msg_fmt % arg)
 
         return arg
+    #--------------------------------------------------------------------------#
+    def _default_mount_point(self):
+        return os.path.join(
+            os.environ.get("HOME", os.path.expanduser("~")),
+            "RelFs")
+    #--------------------------------------------------------------------------#
+    def _mountable_directory(self, arg):
+        if not os.path.isdir(arg):
+            msg = "'%s' is not a directory path" % (arg)
+            raise argparse.ArgumentTypeError(msg)
+        return os.path.realpath(arg)
     #--------------------------------------------------------------------------#
     def __init__(self, arg_setup = ArgumentSetup(), **kw):
         argparse.ArgumentParser.__init__(self, **kw)
@@ -176,6 +189,16 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
                 action="store"
             )
 
+        if arg_setup.with_mount_point:
+            self.add_argument(
+                "-m", "--mount-point",
+                dest="mount_point",
+                type=self._mountable_directory,
+                default=self._default_mount_point(),
+                action="store",
+                help="""Specifies the relational filesystem mount-point path"""
+            )
+
         if  arg_setup.with_repo_names or\
             arg_setup.with_tag_labels or\
             arg_setup.with_obj_hashes or\
@@ -256,6 +279,7 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
         else:
             repos  = [x[1:] for x in options.arguments if x[0] == '@']
+
         tags   = [x[1:] for x in options.arguments if x[0] == ':']
         hashes = [x[1:] for x in options.arguments if x[0] == '^']
         files  = [x for x in options.arguments if x[0] not in ['@',':','^']]
