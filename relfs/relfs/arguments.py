@@ -78,7 +78,12 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
         if not os.path.isdir(arg):
             msg = "'%s' is not a directory path" % (arg)
             raise argparse.ArgumentTypeError(msg)
-        return os.path.realpath(arg)
+        dir_path = os.path.realpath(arg)
+        for entry in os.listdir(dir_path):
+            if entry != '.relfs':
+                msg = "directory '%s' is not empty" % (arg)
+                raise argparse.ArgumentTypeError(msg)
+        return dir_path
     #--------------------------------------------------------------------------#
     def __init__(self, arg_setup = ArgumentSetup(), **kw):
         argparse.ArgumentParser.__init__(self, **kw)
