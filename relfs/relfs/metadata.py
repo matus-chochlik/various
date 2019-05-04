@@ -5,8 +5,6 @@ import datetime
 import subprocess
 import psycopg2
 #------------------------------------------------------------------------------#
-_picture_resolution_reg_ex = re.compile("^(\d+)\s*[Xx]\s*(\d+)$")
-#------------------------------------------------------------------------------#
 def mine_file_mime_type(db_obj, os_path, obj_path, obj_hash):
     try:
         import mimetypes
@@ -163,7 +161,9 @@ def get_file_metadata_date_time(attributes):
                             except ValueError: pass
     except: pass
 #------------------------------------------------------------------------------#
-def _process_file_picture_info(db_obj, obj_hash, attributes):
+_picture_resolution_reg_ex = re.compile("^(\d+)\s*[Xx]\s*(\d+)$")
+#------------------------------------------------------------------------------#
+def get_file_metadata_picture_info(attributes):
     width = None
     height = None
     is_picture = False
@@ -176,8 +176,6 @@ def _process_file_picture_info(db_obj, obj_hash, attributes):
                 height = int(match.group(2))
 
     if width and height:
-        db_obj.picture.width = width
-        db_obj.picture.height = height
-        db_obj.apply();
+        return (width, height)
 #------------------------------------------------------------------------------#
 
