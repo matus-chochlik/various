@@ -5,84 +5,60 @@
 #------------------------------------------------------------------------------#
 
 import os
-import sys
 import time
 import fuse
 import errno
 import operator
+import logging
 from functools import reduce
 #
-import relfs
+import relfs.fuse as relfuse
+from relfs import open_repository, RelFsError, print_error
+from relfs.arguments import ArgumentSetup, make_argument_parser
 
 # ------------------------------------------------------------------------------
-# RelFs setting
+# Wrapped RelFuse repository
 # ------------------------------------------------------------------------------
-class RelFsSetting(object):
+class RelFuseRepo(object):
     # --------------------------------------------------------------------------
-    def __init__(self, initial):
-        self._setting = initial 
+    def __init__(self, repos_dir, repo_name):
+        self._repository = open_repository(repo_name)
 
-    # --------------------------------------------------------------------------
-    def set_value(self, newValue):
-        self._setting = type(self._setting)(newValue)
+        repo_dir = repos_dir.add(
+            repo_name,
+            relfuse.StaticDirectory())
 
-    # --------------------------------------------------------------------------
-    def get_value(self):
-        return self._setting
+        repo_dir.add(
+            "object_count",
+            relfuse.Readout(self._repository.context().object_count))
+
 # ------------------------------------------------------------------------------
-# RelFs readout
-# ------------------------------------------------------------------------------
-class RelFsReadout(object):
+class RelFuse(object):
     # --------------------------------------------------------------------------
-    def __init__(self, function):
-        self._function = function
+    def __init__(self, options):
 
-    # --------------------------------------------------------------------------
-    def get_value(self):
-        return self._function()
-# ------------------------------------------------------------------------------
-# RelFs readouts
-# ------------------------------------------------------------------------------
-class RelFs(object):
-    # --------------------------------------------------------------------------
-    def __init__(self):
-        self._test_value = RelFsSetting(10)
-
-        self._settings = {
-            "test": self._test_value
-        }
-
-        self._readouts = {
-            "test": RelFsReadout(self._test_value.get_value)
-        }
-
-        self._items = {
-            ".relfs": {
-                "settings": self._settings,
-                "stats": self._readouts
-            }
-        }
+        self._root = relfuse.MountRoot()
+        self._repos = dict()
+        for repo_name in options.repositories:
+            try:
+                self._repos[repo_name] = RelFuseRepo(
+                    self._root.repos_dir(),
+                    repo_name)
+            except RelFsError as relfs_error:
+                print_error(relfs_error)
 
     # --------------------------------------------------------------------------
-    def update(self):
-        pass
-
-    # --------------------------------------------------------------------------
-    def find_item(self, entries):
-        try:
-            return reduce(operator.getitem, entries, self._items)
-        except KeyError:
-            return None
+    def find_item(self, split_path):
+        return self._root.find_item(split_path)
 
 # ------------------------------------------------------------------------------
 # Filesystem driver
 # ------------------------------------------------------------------------------
-class RelFsFuse(fuse.Operations):
+class RelFuseDriver(fuse.Operations):
 
     # --------------------------------------------------------------------------
     def __init__(self, options):
-        self._relfs = RelFs()
-        self._mount_time = time.time()
+        self._relfs = RelFuse(options)
         self._open_files = dict()
 
     # --------------------------------------------------------------------------
@@ -94,92 +70,42 @@ class RelFsFuse(fuse.Operations):
         raise fuse.FuseOSError(errno.ENOENT)
 
     # --------------------------------------------------------------------------
-    def _update(self):
-        self._relfs.update()
-
-    # --------------------------------------------------------------------------
     # Filesystem methods
     # --------------------------------------------------------------------------
     def access(self, path, mode):
-        self._update()
-        item = self._find_dir_entry(path)
-        if mode & os.R_OK:
-            return 0
-        if mode & os.W_OK:
-            if type(item) is RelFsSetting:
-                return 0
-        if mode & os.X_OK:
-            if type(item) is dict:
-                return 0
-        raise fuse.FuseOSError(errno.EACCES)
+        return self._find_dir_entry(path).access(mode)
 
     # --------------------------------------------------------------------------
     def chmod(self, path, mode):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def chown(self, path, uid, gid):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
-    def _getMode(self, item):
-        if type(item) is RelFsSetting:
-            return 0o100640
-        if type(item) is RelFsReadout:
-            return 0o100440
-        return 0o40550
-
-    # --------------------------------------------------------------------------
-    def _getSize(self, item):
-        if type(item) is RelFsSetting:
-            return len(str(item.get_value()))
-        if type(item) is RelFsReadout:
-            return len(str(item.get_value()))+1
-        return 0
-
-    # --------------------------------------------------------------------------
     def getattr(self, path, fh=None):
-        self._update()
-        item = self._find_dir_entry(path)
-        return {
-            "st_size": self._getSize(item),
-            "st_mode": self._getMode(item),
-            "st_uid": os.getuid(),
-            "st_gid": os.getgid(),
-            "st_nlink": 1,
-            "st_atime": time.time(),
-            "st_mtime": time.time(),
-            "st_ctime": self._mount_time}
+        return self._find_dir_entry(path).getattr(fh)
 
     # --------------------------------------------------------------------------
     def readdir(self, path, fh):
-        self._update()
-        yield "."
-        yield ".."
-
-        for name in self._find_dir_entry(path):
-            yield name
+        for item in self._find_dir_entry(path).readdir(fh):
+            yield item
 
     # --------------------------------------------------------------------------
     def readlink(self, path):
-        self._update()
         raise fuse.FuseOSError(errno.EINVAL)
 
     # --------------------------------------------------------------------------
     def mknod(self, path, mode, dev):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def rmdir(self, path):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def mkdir(self, path, mode):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
@@ -199,45 +125,35 @@ class RelFsFuse(fuse.Operations):
 
     # --------------------------------------------------------------------------
     def unlink(self, path):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def symlink(self, name, target):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def rename(self, old, new):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def link(self, target, name):
-        self._update()
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def utimens(self, path, times=None):
-        self._update()
         return time.time()
 
     # --------------------------------------------------------------------------
     # File methods
     # --------------------------------------------------------------------------
-
-    # --------------------------------------------------------------------------
     class OpenFileInfo(object):
-        # ----------------------------------------------------------------------
+        # ---------------------------------------------------------------------
         def __init__(self, item):
-            self.item = item
-            self.dirty = False
-            if type(item) is RelFsSetting:
-                self.content = str(item.get_value())
-            elif type(item) is RelFsReadout:
-                self.content = str(item.get_value())+'\n'
-            else:
-                self.content = None
+            self._item = item
+
+        # ---------------------------------------------------------------------
+        def __del__(self):
+            self._item.release()
 
     # --------------------------------------------------------------------------
     def _get_free_fd(self):
@@ -253,91 +169,57 @@ class RelFsFuse(fuse.Operations):
             raise fuse.FuseOSError(errno.EBADF)
     # --------------------------------------------------------------------------
     def _remove_open_file(self, fh):
-        del self._open_files[fh]
+        try:
+            del self._open_files[fh]
+        except:
+            raise fuse.FuseOSError(errno.EBADF)
+
+    # --------------------------------------------------------------------------
+    def create(self, path, mode, fi=None):
+        raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
     def open(self, path, flags):
-        self._update()
         item = self._find_dir_entry(path)
-
-        if type(item) is dict:
-            raise fuse.FuseOSError(errno.EISDIR)
-
+        item.open(flags)
         fd = self._get_free_fd()
         self._open_files[fd] = self.OpenFileInfo(item)
         return fd
 
     # --------------------------------------------------------------------------
-    def create(self, path, mode, fi=None):
-        self._update()
-        raise fuse.FuseOSError(errno.EROFS)
-
-    # --------------------------------------------------------------------------
     def read(self, path, length, offset, fh):
-        self._update()
-        return self._get_open_file(fh).content[offset:offset+length]
+        return self._get_open_file(fh)._item.read(length, offset)
 
     # --------------------------------------------------------------------------
     def write(self, path, buf, offset, fh):
-        self._update()
-        fileInfo = self._get_open_file(fh)
-        if type(fileInfo.item) is RelFsSetting:
-            fileInfo.dirty = True
-            fileInfo.content = fileInfo.content[0:offset] + buf
-            return len(buf)
-        raise fuse.FuseOSError(errno.EPERM)
+        return self._get_open_file(fh)._item.write(buf, offset)
 
     # --------------------------------------------------------------------------
     def truncate(self, path, length, fh=None):
-        self._update()
-        if fh is None:
-            fh = self.open(path, 0)
-
-        fileInfo = self._get_open_file(fh)
-        if type(fileInfo.item) is RelFsSetting:
-            fileInfo.dirty = True
-            fileInfo.content = fileInfo.content[0:length]
-        else:
-            raise fuse.FuseOSError(errno.EPERM)
-
-    # --------------------------------------------------------------------------
-    def release(self, path, fh):
-        self._update()
-        fileInfo = self._get_open_file(fh)
-        if type(fileInfo.item) is RelFsSetting:
-            if fileInfo.dirty:
-                try:
-                    fileInfo.item.set_value(fileInfo.content)
-                except ValueError:
-                    raise fuse.FuseOSError(errno.EINVAL)
-        self._remove_open_file(fh)
+        return self._get_open_file(fh)._item.truncate(length)
 
     # --------------------------------------------------------------------------
     def flush(self, path, fh):
-        self._update()
-        fileInfo = self._get_open_file(fh)
-        if type(fileInfo.item) is RelFsSetting:
-            if fileInfo.dirty and len(fileInfo.content) > 0:
-                try:
-                    fileInfo.item.set_value(fileInfo.content)
-                    fileInfo.dirty = False
-                except ValueError:
-                    raise fuse.FuseOSError(errno.EINVAL)
+        return self._get_open_file(fh)._item.flush()
 
     # --------------------------------------------------------------------------
     def fsync(self, path, fdatasync, fh):
-        self._update()
+        return self._get_open_file(fh)._item.fsync()
+
+    # --------------------------------------------------------------------------
+    def release(self, path, fh):
+        return self._remove_open_file(fh)
 
 # ------------------------------------------------------------------------------
 def make_arg_parser():
 
-    arg_setup = relfs.ArgumentSetup()
+    arg_setup = ArgumentSetup()
     arg_setup.with_repo_names = True
     arg_setup.existing_repos = True
     arg_setup.at_least_one_repo = True
     arg_setup.with_mount_point = True
 
-    parser = relfs.make_argument_parser(
+    parser = make_argument_parser(
         os.path.basename(__file__),
         'relfs fuse filesystem driver',
         arg_setup
@@ -346,9 +228,10 @@ def make_arg_parser():
 
 # ------------------------------------------------------------------------------
 def main():
+    logging.basicConfig()
     options = make_arg_parser().parse_args()
     fuse.FUSE(
-        RelFsFuse(options),
+        RelFuseDriver(options),
         options.mount_point,
         nothreads=True,
         nonempty=True,
