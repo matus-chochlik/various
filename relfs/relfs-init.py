@@ -3,6 +3,7 @@
 #------------------------------------------------------------------------------#
 import os
 import relfs
+import logging
 #------------------------------------------------------------------------------#
 def make_arg_parser():
     arg_setup = relfs.ArgumentSetup()
@@ -21,6 +22,7 @@ def make_arg_parser():
     return parser
 #------------------------------------------------------------------------------#
 if __name__ == "__main__":
+    logging.basicConfig()
     argparser = make_arg_parser()
     options = argparser.parse_args()
 

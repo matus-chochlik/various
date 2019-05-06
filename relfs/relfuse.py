@@ -8,8 +8,8 @@ import os
 import time
 import fuse
 import errno
-import operator
 import logging
+import operator
 from functools import reduce
 #
 import relfs.fuse as relfuse
@@ -31,6 +31,10 @@ class RelFuseRepo(object):
         repo_dir.add(
             "object_count",
             relfuse.Readout(self._repository.context().object_count))
+
+        repo_dir.add(
+            "storage",
+            relfuse.Symlink(self._repository.prefix))
 
 # ------------------------------------------------------------------------------
 class RelFuse(object):
@@ -94,7 +98,7 @@ class RelFuseDriver(fuse.Operations):
 
     # --------------------------------------------------------------------------
     def readlink(self, path):
-        raise fuse.FuseOSError(errno.EINVAL)
+        return self._find_dir_entry(path).readlink()
 
     # --------------------------------------------------------------------------
     def mknod(self, path, mode, dev):

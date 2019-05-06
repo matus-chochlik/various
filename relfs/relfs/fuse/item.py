@@ -83,6 +83,10 @@ class RelFuseItem(object):
         raise fuse.FuseOSError(errno.EROFS)
 
     # --------------------------------------------------------------------------
+    def readlink(self):
+        raise fuse.FuseOSError(errno.EINVAL)
+
+    # --------------------------------------------------------------------------
     def open(self, flags):
         raise fuse.FuseOSError(errno.EINVAL)
 

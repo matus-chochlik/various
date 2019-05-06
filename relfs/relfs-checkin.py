@@ -2,6 +2,7 @@
 # coding=utf-8
 #------------------------------------------------------------------------------#
 import os
+import logging
 from relfs import open_repository, RelFsError, print_error
 #
 from relfs.metadata import \
@@ -31,6 +32,7 @@ def make_arg_parser():
     return parser
 #------------------------------------------------------------------------------#
 if __name__ == "__main__":
+    logging.basicConfig()
     argparser = make_arg_parser()
     options = argparser.parse_args()
 
