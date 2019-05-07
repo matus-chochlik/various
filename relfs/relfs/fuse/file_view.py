@@ -6,42 +6,43 @@ import fuse
 import errno
 from .item import RelFuseItem
 #------------------------------------------------------------------------------#
-class Readout(RelFuseItem):
+class FileView(RelFuseItem):
     # --------------------------------------------------------------------------
-    def __init__(self, getter):
+    def __init__(self, path_getter):
         RelFuseItem.__init__(self)
-        self._getter = getter
-        self._content = None
+        self._path_getter = path_getter
+        self._fd = None
 
     # --------------------------------------------------------------------------
     def _get_mode(self):
         return 0o100440
 
     # --------------------------------------------------------------------------
-    def open(self, flags):
-        self._content = str(self._getter())+'\n'
-        return 0
+    def _get_size(self):
+        if not self._fd:
+            return os.stat(self._path_getter()).st_size
+        return os.fstat(self._fd).st_size
 
     # --------------------------------------------------------------------------
-    def _get_size(self):
-        if not self._content:
-            self.open(0)
-        return len(self._content)
+    def open(self, flags):
+        if flags & (os.O_CREAT | os.O_WRONLY | os.O_APPEND | os.O_TRUNC):
+            raise fuse.FuseOSError(errno.EACCES)
+
+        self._fd = os.open(self._path_getter(), (os.O_RDONLY | flags))
+        return self._fd
 
     # --------------------------------------------------------------------------
     def read(self, length, offset):
-        return self._content[offset:length]
+        if not self._fd:
+            raise fuse.FuseOSError(errno.EBADFD)
 
-    # --------------------------------------------------------------------------
-    def write(self, buf, offset):
-        raise fuse.FuseOSError(errno.EPERM)
-
-    # --------------------------------------------------------------------------
-    def truncate(self, length):
-        raise fuse.FuseOSError(errno.EPERM)
+        os.lseek(self._fd, offset, os.SEEK_SET)
+        return os.read(self._fd, length)
 
     # --------------------------------------------------------------------------
     def release(self):
-        self._content = None
+        fd = self._fd
+        self._fd = None
+        return os.close(fd)
 
 #------------------------------------------------------------------------------#

@@ -8,16 +8,16 @@ from .item import RelFuseItem
 #------------------------------------------------------------------------------#
 class Symlink(RelFuseItem):
     # --------------------------------------------------------------------------
-    def __init__(self, getter):
+    def __init__(self, path_getter):
         RelFuseItem.__init__(self)
-        self._getter = getter
+        self._path_getter = path_getter
 
     # --------------------------------------------------------------------------
     def _get_mode(self):
-        return 0o120640
+        return 0o120440
 
     # --------------------------------------------------------------------------
     def readlink(self):
-        return self._getter()
+        return self._path_getter()
 
 #------------------------------------------------------------------------------#

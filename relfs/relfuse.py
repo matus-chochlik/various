@@ -36,6 +36,10 @@ class RelFuseRepo(object):
             "storage",
             relfuse.Symlink(self._repository.prefix))
 
+        repo_dir.add(
+            "config",
+            relfuse.FileView(self._repository.config_file_path))
+
 # ------------------------------------------------------------------------------
 class RelFuse(object):
     # --------------------------------------------------------------------------
