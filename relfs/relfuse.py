@@ -225,6 +225,7 @@ def make_arg_parser():
     arg_setup.with_repo_names = True
     arg_setup.existing_repos = True
     arg_setup.at_least_one_repo = True
+    arg_setup.with_mount_source = True
     arg_setup.with_mount_point = True
 
     parser = make_argument_parser(

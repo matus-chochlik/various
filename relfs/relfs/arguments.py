@@ -24,6 +24,7 @@ class ArgumentSetup:
         self.with_config_type = False
         self.with_repo_options = False
 
+        self.with_mount_source = False
         self.with_mount_point = False
 
 #------------------------------------------------------------------------------#
@@ -74,7 +75,17 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
             os.environ.get("HOME", os.path.expanduser("~")),
             "RelFs")
     #--------------------------------------------------------------------------#
-    def _mountable_directory(self, arg):
+    def _valid_mount_source(self, arg):
+        if not os.path.isdir(arg):
+            msg = "'%s' is not a directory path" % (arg)
+            raise argparse.ArgumentTypeError(msg)
+        dir_path = os.path.realpath(arg)
+        if not os.path.isfile(os.path.join(dir_path, ".relfs", "config")):
+            msg = "'%s' is not a relfs mountable directory" % (arg)
+            raise argparse.ArgumentTypeError(msg)
+        return dir_path
+    #--------------------------------------------------------------------------#
+    def _valid_mount_point(self, arg):
         if not os.path.isdir(arg):
             msg = "'%s' is not a directory path" % (arg)
             raise argparse.ArgumentTypeError(msg)
@@ -194,11 +205,21 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
                 action="store"
             )
 
+        if arg_setup.with_mount_source:
+            self.add_argument(
+                "-M", "--mount-source",
+                dest="mount_source",
+                type=self._valid_mount_source,
+                default=None,
+                action="store",
+                help="""Specifies the relational filesystem mount-source path"""
+            )
+
         if arg_setup.with_mount_point:
             self.add_argument(
                 "-m", "--mount-point",
                 dest="mount_point",
-                type=self._mountable_directory,
+                type=self._valid_mount_point,
                 default=self._default_mount_point(),
                 action="store",
                 help="""Specifies the relational filesystem mount-point path"""
@@ -207,7 +228,8 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
         if  arg_setup.with_repo_names or\
             arg_setup.with_tag_labels or\
             arg_setup.with_obj_hashes or\
-            arg_setup.with_file_paths:
+            arg_setup.with_file_paths or\
+            arg_setup.with_mount_source:
             mvar_list = list()
             help_list = list()
 
@@ -287,7 +309,22 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
         tags   = [x[1:] for x in options.arguments if x[0] == ':']
         hashes = [x[1:] for x in options.arguments if x[0] == '^']
-        files  = [x for x in options.arguments if x[0] not in ['@',':','^']]
+        other  = [x for x in options.arguments if x[0] not in ['@',':','^']]
+        files  = [x for x in other if os.path.isfile(x)]
+
+        if self.arg_setup.with_mount_source:
+            sources = [x for x in other if self._valid_mount_source(x)]
+            sources = list(dict.fromkeys(sources))
+            if options.mount_source:
+                if len(sources) > 0:
+                    self.error("too many mount source directories specified")
+            else:
+                if len(sources) < 1:
+                    self.error("a mount source directory is required")
+                elif len(sources) > 1:
+                    self.error("too many mount source directories specified")
+            # TODO: try getting repositories from mount source config
+            pass
 
         if self.arg_setup.with_repo_names:
             options.repositories += repos
