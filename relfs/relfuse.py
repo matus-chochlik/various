@@ -15,28 +15,32 @@ from functools import reduce
 import relfs.fuse as relfuse
 from relfs import open_repository, RelFsError, print_error
 from relfs.arguments import ArgumentSetup, make_argument_parser
-
+from relfs.config import load_mount_source_config
 # ------------------------------------------------------------------------------
 # Wrapped RelFuse repository
 # ------------------------------------------------------------------------------
 class RelFuseRepo(object):
     # --------------------------------------------------------------------------
-    def __init__(self, repos_dir, repo_name):
+    def __init__(self, repo_name, mount_root, mount_source_config):
         self._repository = open_repository(repo_name)
 
-        repo_dir = repos_dir.add(
+        repo_root = mount_root.add_repo_root(
+            repo_name,
+            relfuse.MountedDirRepo(mount_source_config.source_path))
+
+        repo_backstage = mount_root.repos_backstage().add(
             repo_name,
             relfuse.StaticDirectory())
 
-        repo_dir.add(
+        repo_backstage .add(
             "object_count",
             relfuse.Readout(self._repository.context().object_count))
 
-        repo_dir.add(
+        repo_backstage .add(
             "storage",
             relfuse.Symlink(self._repository.prefix))
 
-        repo_dir.add(
+        repo_backstage .add(
             "config",
             relfuse.FileView(self._repository.config_file_path))
 
@@ -50,8 +54,9 @@ class RelFuse(object):
         for repo_name in options.repositories:
             try:
                 self._repos[repo_name] = RelFuseRepo(
-                    self._root.repos_dir(),
-                    repo_name)
+                    repo_name,
+                    self._root,
+                    load_mount_source_config(options))
             except RelFsError as relfs_error:
                 print_error(relfs_error)
 
@@ -66,13 +71,13 @@ class RelFuseDriver(fuse.Operations):
 
     # --------------------------------------------------------------------------
     def __init__(self, options):
-        self._relfs = RelFuse(options)
+        self._relfuse = RelFuse(options)
         self._open_files = dict()
 
     # --------------------------------------------------------------------------
     def _find_dir_entry(self, path):
         path_entries = filter(bool, path.lstrip(os.sep).split(os.sep))
-        item = self._relfs.find_item(path_entries)
+        item = self._relfuse.find_item(path_entries)
         if item is not None:
             return item
         raise fuse.FuseOSError(errno.ENOENT)

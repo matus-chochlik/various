@@ -7,7 +7,7 @@ import imp
 import argparse
 #------------------------------------------------------------------------------#
 from .core import _version_numbers
-from .config import config_types, _existing_repo_names
+from .config import config_types, load_mount_source_config, _existing_repo_names
 #------------------------------------------------------------------------------#
 class ArgumentSetup:
     #--------------------------------------------------------------------------#
@@ -323,13 +323,19 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
                     self.error("a mount source directory is required")
                 elif len(sources) > 1:
                     self.error("too many mount source directories specified")
-            # TODO: try getting repositories from mount source config
-            pass
+                else:
+                    options.mount_source = sources[0]
+
+            try:
+                mnt_src_config = load_mount_source_config(options)
+                repos += mnt_src_config.repositories
+            except Exception as bla: print(bla)
 
         if self.arg_setup.with_repo_names:
             options.repositories += repos
 
-            if self.arg_setup.at_least_one_repo and len(options.repositories) == 0:
+            if self.arg_setup.at_least_one_repo and\
+                len(options.repositories) == 0:
                 self.error("at least one repository name must be specified")
             if self.arg_setup.with_repo_paths:
                 options.repositories = {

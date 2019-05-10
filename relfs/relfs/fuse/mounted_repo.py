@@ -5,48 +5,29 @@ import time
 import fuse
 import errno
 from .item import RelFuseItem
-from .static_dir import StaticDirectory
 #------------------------------------------------------------------------------#
-class MountRoot(RelFuseItem):
+class MountedDirRepoItem(RelFuseItem):
     # --------------------------------------------------------------------------
-    def __init__(self):
+    def __init__(self, item_source_path):
         RelFuseItem.__init__(self)
-        self._mount_time = time.time()
-        self._relfs_dir = StaticDirectory()
-        self._repos_backstage = self._relfs_dir.add("repos", StaticDirectory())
-        self._repos = dict()
-
-    # --------------------------------------------------------------------------
-    def add_repo_root(self, name, item):
-        self._repos[name] = item
-
-    # --------------------------------------------------------------------------
-    def repos_backstage(self):
-        return self._repos_backstage
+        self._source_path = item_source_path
 
     # --------------------------------------------------------------------------
     def find_item(self, split_path):
         if not split_path or split_path == ["."]:
             return self
-        if split_path[0] == ".relfs":
-            return self._relfs_dir.find_item(split_path[1:])
-        try:
-            repo = self._repos[split_path[0]]
-            return repo.find_item(split_path[1:])
-        except KeyError:
-            pass
+        sub_path = os.path.join(self._source_path, split_path[0])
+        if os.path.isdir(sub_path):
+            return MountedDirRepoItem(sub_path).find_item(split_path[1:])
 
     # --------------------------------------------------------------------------
     def readdir(self, fh):
         yield ".."
         yield "."
-        yield ".relfs"
-        for name in self._repos:
-            yield name
-
-    # --------------------------------------------------------------------------
-    def _modify_time(self):
-        return self._mount_time
+        for name in os.listdir(self._source_path):
+            if os.path.isdir(os.path.join(self._source_path, name)):
+                if not name.startswith('.'):
+                    yield name
 
     # --------------------------------------------------------------------------
     def access(self, mode):
@@ -58,4 +39,9 @@ class MountRoot(RelFuseItem):
     def _get_mode(self):
         return 0o40550
 
+#------------------------------------------------------------------------------#
+class MountedDirRepo(MountedDirRepoItem):
+    # --------------------------------------------------------------------------
+    def __init__(self, mount_source_path):
+        MountedDirRepoItem.__init__(self, mount_source_path)
 #------------------------------------------------------------------------------#

@@ -3,11 +3,28 @@
 import os
 import json
 #------------------------------------------------------------------------------#
+# Helpers
+#------------------------------------------------------------------------------#
 def _mkdir_p(os_path):
     try: os.makedirs(os_path)
     except OSError as os_error:
         if not(os_error.errno == os.errno.EEXIST and os.path.isdir(os_path)):
             raise
+#------------------------------------------------------------------------------#
+def __load_config_content(file_path):
+    try:
+        config_file = open(file_path, 'rt')
+        return json.load(config_file)
+    except IOError as io_error:
+        if io_error.errno == os.errno.ENOENT:
+            return dict()
+        else: raise
+#------------------------------------------------------------------------------#
+def __save_config_content(file_path, content):
+    config_file = open(file_path, 'wt')
+    json.dump(content, config_file, indent=2)
+#------------------------------------------------------------------------------#
+# Global configuration
 #------------------------------------------------------------------------------#
 def system_config_dir_path():
     return os.path.expanduser('/etc/relfs/')
@@ -36,20 +53,7 @@ def repo_config_file_path(config_type):
 def repo_config_file_paths():
     return [__make_repo_config_file_path(x) for x in config_dir_paths()]
 #------------------------------------------------------------------------------#
-def __load_config_content(file_path):
-    try:
-        config_file = open(file_path, 'rt')
-        return json.load(config_file)
-    except IOError as io_error:
-        if io_error.errno == os.errno.ENOENT:
-            return dict()
-        else: raise
-#------------------------------------------------------------------------------#
-def __save_config_content(file_path, content):
-    config_file = open(file_path, 'wt')
-    json.dump(content, config_file, indent=2)
-#------------------------------------------------------------------------------#
-class __ConfigStruct(object):
+class __RelFsConfigStruct(object):
     def __init__(self, entries):
         self.repositories = dict()
         self.__dict__.update(entries)
@@ -59,17 +63,17 @@ def load_all_configs():
     for file_path in repo_config_file_paths():
         config.update(__load_config_content(file_path))
 
-    return __ConfigStruct(config)
+    return __RelFsConfigStruct(config)
 #------------------------------------------------------------------------------#
 def load_config_file(file_path):
-    return __ConfigStruct(__load_config_content(file_path))
+    return __RelFsConfigStruct(__load_config_content(file_path))
 #------------------------------------------------------------------------------#
 def load_config(config_type):
     return load_config_file(repo_config_file_path(config_type))
 #------------------------------------------------------------------------------#
 def save_config_file(file_path, config):
     _mkdir_p(os.path.dirname(file_path))
-    assert(isinstance(config, __ConfigStruct))
+    assert(isinstance(config, __RelFsConfigStruct))
     __save_config_content(file_path, config.__dict__)
 #------------------------------------------------------------------------------#
 def save_config(config_type, config):
@@ -85,3 +89,23 @@ def __config():
 def _existing_repo_names():
     return list(__config().repositories.keys())
 #------------------------------------------------------------------------------#
+# Mount source configuration
+#------------------------------------------------------------------------------#
+class __MountSourceConfigStruct(object):
+    def __init__(self, entries):
+        self.repositories = dict()
+        self.__dict__.update(entries)
+#------------------------------------------------------------------------------#
+def load_mount_source_config_file(file_path):
+    return __MountSourceConfigStruct(__load_config_content(file_path))
+#------------------------------------------------------------------------------#
+def mount_source_config_path(options):
+    return os.path.join(options.mount_source, ".relfs", "config")
+#------------------------------------------------------------------------------#
+def load_mount_source_config(options):
+    file_path = mount_source_config_path(options)
+    result = load_mount_source_config_file(file_path)
+    result.source_path = options.mount_source
+    return result
+#------------------------------------------------------------------------------#
+
