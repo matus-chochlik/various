@@ -47,17 +47,18 @@ class ObjectRoot(EntityContext):
         for obj in self._objects.values():
             if unary_predicate(obj):
                 yield obj
-    #--------------------------------------------------------------------------#
-    @staticmethod
-    def _return_repacked(*args):
-        return args
 
     #--------------------------------------------------------------------------#
-    def filter_having(self, *args):
-        for obj in self._objects.values():
-            components = obj.get_all_components(*args)
+    def all_objects(self):
+        for obj_hash, obj in self._objects.items():
+            yield obj_hash, obj
+
+    #--------------------------------------------------------------------------#
+    def filter_having_by_name(self, *component_names):
+        for obj_hash, obj in self._objects.items():
+            components = obj.find_all_components_by_name(*component_names)
             if components is not None:
-                yield self._return_repacked(obj, *components)
+                yield (obj_hash, obj, components)
 
     #--------------------------------------------------------------------------#
     def for_each_object(self, unary_function):

@@ -37,6 +37,13 @@ class EntityBase(persistent.Persistent):
         except KeyError:
             return None
 
+    #--------------------------------------------------------------------------#
+    def find_all_components_by_name(self, *component_names):
+        try:
+            return tuple(self._components[name] for name in component_names)
+        except KeyError:
+            return None
+
 #------------------------------------------------------------------------------#
 class Entity(EntityBase):
     #--------------------------------------------------------------------------#
@@ -48,13 +55,6 @@ class Entity(EntityBase):
         assert(isinstance(some_component, Component))
         self._components[some_component._unique_id()] = some_component
         self_p_changed = True
-
-    #--------------------------------------------------------------------------#
-    def find_all_components(self, *args):
-        try:
-            return tuple(self._components[cls] for cls in args)
-        except KeyError:
-            return None
 
 #------------------------------------------------------------------------------#
 class EntityContext(EntityBase):

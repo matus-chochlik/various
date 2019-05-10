@@ -26,7 +26,9 @@ class RelFuseRepo(object):
 
         repo_root = mount_root.add_repo_root(
             repo_name,
-            relfuse.MountedDirRepo(mount_source_config.source_path))
+            relfuse.MountedDirRepo(
+                self._repository,
+                mount_source_config))
 
         repo_backstage = mount_root.repos_backstage().add(
             repo_name,
@@ -123,7 +125,6 @@ class RelFuseDriver(fuse.Operations):
 
     # --------------------------------------------------------------------------
     def statfs(self, path):
-        self._update()
         return {
             'f_bsize': 32,
             'f_frsize': 32,
