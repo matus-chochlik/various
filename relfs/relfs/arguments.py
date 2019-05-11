@@ -53,12 +53,6 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
 
         return arg
     #--------------------------------------------------------------------------#
-    def _database_name_value(self, arg):
-        return self._identifier_value(arg, 'database')
-    #--------------------------------------------------------------------------#
-    def _schema_name_value(self, arg):
-        return self._identifier_value(arg, 'schema')
-    #--------------------------------------------------------------------------#
     def _repo_name_value(self, arg):
         return self._identifier_value(arg, 'repository')
     #--------------------------------------------------------------------------#
@@ -289,6 +283,17 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
             )
         except ImportError: pass
     #--------------------------------------------------------------------------#
+    def _normalize_list(self, lst):
+        result = set()
+        for item in lst:
+            if type(item) is list:
+                for subitem in self._normalize_list(item):
+                    result.add(subitem)
+            else:
+                result.add(item)
+        return list(result)
+
+    #--------------------------------------------------------------------------#
     def process_parsed_options(self, options):
         options.arg_setup = self.arg_setup
 
@@ -350,6 +355,9 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
             if self.arg_setup.at_least_one_repo and\
                 len(options.repositories) == 0:
                 self.error("at least one repository name must be specified")
+
+            options.repositories = self._normalize_list(options.repositories)
+
             if self.arg_setup.with_repo_paths:
                 options.repositories = {
                     self._repo_name_value(repo): path

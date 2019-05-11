@@ -23,18 +23,20 @@ if __name__ == "__main__":
     logging.basicConfig()
     argparser = make_arg_parser()
     options = argparser.parse_args()
-    indent = "  "
+
+    i1 = "  " if len(options.repositories) > 1 else ""
+    i2 = "  " if len(options.shared_component_names) > 1 else ""
 
     for repo_name in options.repositories:
         try:
-            print("repository: %s" % (repo_name,))
+            if i1: print("repository: %s" % (repo_name,))
             repository = relfs.open_repository(repo_name)
             context = repository.context()
             names = options.shared_component_names
             for name, component in context.only_components(names):
-                print("%scomponent: %s" % (indent,name))
+                if i2: print("%scomponent: %s" % (i1,name))
                 for item in component.items():
-                    print("%s%s%s" % (indent, indent, str(item)))
+                    print("%s%s%s" % (i1, i2, str(item)))
         except relfs.RelFsError as relfs_error:
             relfs.print_error(relfs_error)
 #------------------------------------------------------------------------------#
