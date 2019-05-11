@@ -15,6 +15,10 @@ class Tag(persistent.Persistent):
         return self._label
 
     #--------------------------------------------------------------------------#
+    def __str__(self):
+        return self.label()
+
+    #--------------------------------------------------------------------------#
     def __eq__(self, that):
         return self._label == that._label
 
@@ -42,6 +46,11 @@ class AllTags(Component):
             self._tags[label] = result
             self._p_changed = True
             return result
+
+    #--------------------------------------------------------------------------#
+    def items(self):
+        for tag in self._tags.values():
+            yield tag
 
 #------------------------------------------------------------------------------#
 class Tags(Component):

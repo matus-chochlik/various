@@ -35,6 +35,10 @@ class MimeType(Component):
         return self._mime_type_and_subtype
 
     #--------------------------------------------------------------------------#
+    def __str__(self):
+        return "%s/%s" % self.tie()
+
+    #--------------------------------------------------------------------------#
     def __eq__(self, that):
         return self.tie() == that.tie()
 
@@ -56,6 +60,12 @@ class AllMimeTypes(Component):
     #--------------------------------------------------------------------------#
     @staticmethod
     def _unique_id(): return "AllMimeTypes"
+
+    #--------------------------------------------------------------------------#
+    def items(self):
+        for tree in self._types.values():
+            for mime_type_and_subtype in tree.values():
+                yield mime_type_and_subtype
 
     #--------------------------------------------------------------------------#
     def get_mime_type(self, mime_type_and_subtype):

@@ -44,6 +44,15 @@ class EntityBase(persistent.Persistent):
         except KeyError:
             return None
 
+    #--------------------------------------------------------------------------#
+    def only_components(self, component_names):
+        for component_name in component_names:
+            try:
+                yield component_name, self._components[component_name]
+            except KeyError:
+                pass
+
+
 #------------------------------------------------------------------------------#
 class Entity(EntityBase):
     #--------------------------------------------------------------------------#

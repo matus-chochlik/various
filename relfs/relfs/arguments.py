@@ -8,6 +8,7 @@ import argparse
 #------------------------------------------------------------------------------#
 from .core import _version_numbers
 from .config import config_types, load_mount_source_config, _existing_repo_names
+from .components import shared_component_names
 #------------------------------------------------------------------------------#
 class ArgumentSetup:
     #--------------------------------------------------------------------------#
@@ -26,6 +27,8 @@ class ArgumentSetup:
 
         self.with_mount_source = False
         self.with_mount_point = False
+
+        self.with_shared_components = False
 
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
@@ -266,6 +269,16 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
                 type=str,
                 help=" or ".join(help_list)
             )
+
+        if arg_setup.with_shared_components:
+            self.add_argument(
+                "--shared-components", "-S",
+                dest="shared_component_names",
+                choices=shared_component_names(),
+                default=[],
+                action="append"
+            )
+
 
         try:
             imp.find_module('argparse2bco')
