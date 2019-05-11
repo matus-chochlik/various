@@ -3,7 +3,7 @@
 import os
 import imp
 #------------------------------------------------------------------------------#
-class FolderMachinery(object):
+class DirMachinery(object):
     # --------------------------------------------------------------------------
     def __init__(self, source_path):
         self._source_path = source_path
@@ -42,13 +42,24 @@ class FolderMachinery(object):
         imp.release_lock()
 
     # --------------------------------------------------------------------------
-    def required_components(self):
-        return self._required_components
+    def allowed_entities(self, context):
+        names = self._required_components
+        if names is not None:
+            for obj_hash, entity, insts in context.filter_having_by_name(*names):
+                if self._allow_entity(context, entity, *insts):
+                    yield obj_hash, entity
+        else:
+            for obj_hash, entity in context.all_objects():
+                if self._allow_entity(context, entity):
+                    yield obj_hash, entity
 
     # --------------------------------------------------------------------------
-    def allow_entity(self, context, entity, *components):
+    def _allow_entity(self, context, entity, *components):
         if self._filter_function:
             return self._filter_function(context, entity, *components)
         return False
+#------------------------------------------------------------------------------#
+def get_folder_machinery(source_root, split_path):
+    return DirMachinery(os.path.join(source_root, *split_path))
 #------------------------------------------------------------------------------#
 
