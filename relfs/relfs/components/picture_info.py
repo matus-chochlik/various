@@ -16,6 +16,11 @@ class PictureInfo(Component):
     @staticmethod
     def _unique_id(): return "PictureInfo"
 
+    #--------------------------------------------------------------------------#
+    @staticmethod
+    def public_attribs():
+        return ["width", "height"]
+
 #------------------------------------------------------------------------------#
 def add_picture_info(context, entity, info):
     if info is not None:

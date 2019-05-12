@@ -43,6 +43,12 @@ class ObjectRoot(EntityContext):
         return len(self._objects)
 
     #--------------------------------------------------------------------------#
+    def find_object(self, obj_hash):
+        try:
+            return self._objects[obj_hash]
+        except KeyError:
+            pass
+    #--------------------------------------------------------------------------#
     def filter_objects(self, unary_predicate):
         for obj in self._objects.values():
             if unary_predicate(obj):
@@ -83,11 +89,13 @@ class ObjectRoot(EntityContext):
 #------------------------------------------------------------------------------#
 class Database:
     #--------------------------------------------------------------------------#
-    def __init__(self, repo_path, options):
+    def __init__(self, repo_path, options, read_only):
         import os
         storage_path = os.path.join(repo_path, 'relfs.zodb')
 
-        self._zodb_storage = ZODB.FileStorage.FileStorage(storage_path)
+        self._zodb_storage = ZODB.FileStorage.FileStorage(
+            storage_path,
+            read_only = read_only)
         if options.get("compress", True):
             self._zodb_storage = zc.zlibstorage.ZlibStorage(self._zodb_storage)
 
@@ -109,8 +117,8 @@ class Database:
         transaction.commit()
 
 #------------------------------------------------------------------------------#
-def open_database(repo_path, options):
-    return Database(repo_path, options)
+def open_database(repo_path, options, read_only=False):
+    return Database(repo_path, options, read_only=read_only)
 #------------------------------------------------------------------------------#
 def init_database(repo_path, options):
     Database(repo_path, options)

@@ -64,7 +64,7 @@ class Repository(object):
         save_config(config_type, global_config)
 
     #--------------------------------------------------------------------------#
-    def __init__(self, name, config):
+    def __init__(self, name, config, read_only):
         self._name = name
         self._user = getpass.getuser()
         try: self._metadata = config.repositories[name]
@@ -74,7 +74,8 @@ class Repository(object):
         self._repo_config = self.load_config()
         self._database = open_database(
             self._metadata["path"],
-            self._repo_config)
+            self._repo_config,
+            read_only)
 
     #--------------------------------------------------------------------------#
     def __repr__(self):
@@ -114,6 +115,21 @@ class Repository(object):
             self.object_file_name(obj_hash)
         )
 
+    #--------------------------------------------------------------------------#
+    @staticmethod
+    def obj_hash_regex():
+        import re
+        return re.compile("^\s*([0-9a-f]+)\s*$")
+    #--------------------------------------------------------------------------#
+    def valid_object_hash(self, something):
+        try:
+            _regex = self._obj_hash_reg_ex
+        except AttributeError:
+            _regex = self._obj_hash_reg_ex = self.obj_hash_regex()
+
+        match = _regex.match(something)
+        if match:
+            return match.group(1)
     #--------------------------------------------------------------------------#
     def context(self):
         return self._database.context()
@@ -168,5 +184,8 @@ class Repository(object):
 
 #------------------------------------------------------------------------------#
 def open_repository(repo_name, config = __config()):
-    return Repository(repo_name, config)
+    return Repository(repo_name, config, read_only=False)
+#-------------------------------------------------------------------------------
+def read_repository(repo_name, config = __config()):
+    return Repository(repo_name, config, read_only=True)
 #------------------------------------------------------------------------------#

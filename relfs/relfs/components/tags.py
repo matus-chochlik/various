@@ -64,6 +64,10 @@ class Tags(Component):
     def _unique_id(): return "Tags"
 
     #--------------------------------------------------------------------------#
+    def public_values(self):
+        return [tag.label() for tag in self._tags]
+
+    #--------------------------------------------------------------------------#
     def has_tag(self, label):
         for tag in self._tags:
             if tag.label() == label:

@@ -45,6 +45,11 @@ class EntityBase(persistent.Persistent):
             return None
 
     #--------------------------------------------------------------------------#
+    def all_components(self):
+        for name, component in self._components.items():
+            yield name, component
+
+    #--------------------------------------------------------------------------#
     def only_components(self, component_names):
         for component_name in component_names:
             try:

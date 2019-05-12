@@ -31,7 +31,7 @@ if __name__ == "__main__":
     for repo_name in options.repositories:
         try:
             if i1: print("repository: %s" % (repo_name,))
-            repository = relfs.open_repository(repo_name)
+            repository = relfs.read_repository(repo_name)
             context = repository.context()
             names = options.shared_component_names
             for name, component in context.only_components(names):

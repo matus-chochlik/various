@@ -23,6 +23,12 @@ class MimeType(Component):
     def _unique_id(): return "MimeType"
 
     #--------------------------------------------------------------------------#
+    def public_values(self):
+        return {
+            "type": self._mime_type_and_subtype[0],
+            "subtype": self._mime_type_and_subtype[1]
+        }
+    #--------------------------------------------------------------------------#
     def has_type(self, name):
         return self._mime_type_and_subtype[0] == name
 

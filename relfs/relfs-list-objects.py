@@ -18,6 +18,13 @@ def make_arg_parser():
         arg_setup
     )
 
+    parser.add_argument(
+        "--brief", "-b",
+        dest="brief",
+        default=False,
+        action="store_true"
+    )
+
     return parser
 #------------------------------------------------------------------------------#
 if __name__ == "__main__":
@@ -25,20 +32,20 @@ if __name__ == "__main__":
     argparser = make_arg_parser()
     options = argparser.parse_args()
 
-    indent = "  " if options.print_repo_names() else ""
+    prefix = "%(r)s:" if options.print_repo_names() else ""
+    fmtstr = prefix+("%(h)s" if options.brief else "s%(h)s:%(d)s%(e)s")
 
     for repo_name in options.repositories:
         try:
-            if indent: print("repository: %s" % (repo_name,))
-            repository = relfs.open_repository(repo_name)
+            repository = relfs.read_repository(repo_name)
             context = repository.context()
             for obj_hash, entity in context.all_objects():
-                print("%s%s:%s:%s" % (
-                    indent,
-                    obj_hash,
-                    entity.display_name(),
-                    entity.extensions()
-                ))
+                print(fmtstr % {
+                    "r": repo_name,
+                    "h": obj_hash,
+                    "d": entity.display_name(),
+                    "e": entity.extensions()
+                })
         except relfs.RelFsError as relfs_error:
             relfs.print_error(relfs_error)
 #------------------------------------------------------------------------------#
