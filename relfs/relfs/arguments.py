@@ -30,6 +30,8 @@ class ArgumentSetup:
 
         self.with_shared_components = False
 
+        self.with_print_repo_name = False
+
 #------------------------------------------------------------------------------#
 class __RelfsArgumentParser(argparse.ArgumentParser):
     #--------------------------------------------------------------------------#
@@ -273,6 +275,18 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
                 action="append"
             )
 
+        if arg_setup.with_print_repo_name:
+            self.add_argument(
+                "--print-repo", "-pr",
+                dest="do_print_repo_name",
+                default=None,
+                action="store_true"
+            )
+            self.add_argument(
+                "--dont-print-repo", "-PR",
+                dest="do_print_repo_name",
+                action="store_false"
+            )
 
         try:
             imp.find_module('argparse2bco')
@@ -406,7 +420,26 @@ class __RelfsArgumentParser(argparse.ArgumentParser):
                 }
 
         options.__dict__.pop("arguments", None)
+
+        Options = options.__class__
+
+        if self.arg_setup.with_print_repo_name:
+            def __opts_print_repo_names(options, hint = None):
+                if hint is None:
+                    hint = len(options.repositories) > 1
+                if options.do_print_repo_name is not None:
+                    return options.do_print_repo_name
+                else:
+                    return hint
+
+            setattr(
+                options,
+                "print_repo_names",
+                __opts_print_repo_names.__get__(options, Options)
+            )
+
         return options
+    #--------------------------------------------------------------------------#
     #--------------------------------------------------------------------------#
     def parse_args(self):
         return self.process_parsed_options(

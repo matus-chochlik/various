@@ -10,7 +10,6 @@ def make_arg_parser():
     arg_setup.with_repo_names = True
     arg_setup.existing_repos = True
     arg_setup.at_least_one_repo = True
-    arg_setup.with_shared_components = True
     arg_setup.with_print_repo_name = True
 
     parser = relfs.make_argument_parser(
@@ -18,6 +17,7 @@ def make_arg_parser():
         'lists shared components for each relfs repository',
         arg_setup
     )
+
     return parser
 #------------------------------------------------------------------------------#
 if __name__ == "__main__":
@@ -25,19 +25,20 @@ if __name__ == "__main__":
     argparser = make_arg_parser()
     options = argparser.parse_args()
 
-    i1 = "  " if options.print_repo_names() else ""
-    i2 = "  " if len(options.shared_component_names) > 1 else ""
+    indent = "  " if options.print_repo_names() else ""
 
     for repo_name in options.repositories:
         try:
-            if i1: print("repository: %s" % (repo_name,))
+            if indent: print("repository: %s" % (repo_name,))
             repository = relfs.open_repository(repo_name)
             context = repository.context()
-            names = options.shared_component_names
-            for name, component in context.only_components(names):
-                if i2: print("%scomponent: %s" % (i1,name))
-                for item in component.items():
-                    print("%s%s%s" % (i1, i2, str(item)))
+            for obj_hash, entity in context.all_objects():
+                print("%s%s:%s:%s" % (
+                    indent,
+                    obj_hash,
+                    entity.display_name(),
+                    entity.extensions()
+                ))
         except relfs.RelFsError as relfs_error:
             relfs.print_error(relfs_error)
 #------------------------------------------------------------------------------#
