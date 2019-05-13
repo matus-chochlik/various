@@ -10,6 +10,7 @@ from .picture_info import add_picture_info
 #------------------------------------------------------------------------------#
 def shared_component_names():
     return [
+        "Users",
         "AllMimeTypes",
         "AllTags"
     ]
