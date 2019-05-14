@@ -41,7 +41,7 @@ class SFTPSession(object):
             "gss_auth": False,
             "gss_kex": False,
             "look_for_keys": False,
-            "compress": False
+            "compress": True
         }
 
         
@@ -77,7 +77,7 @@ class SFTPSession(object):
         if not connected:
             try:
                 prm_fmt = "enter password for `%(username)s@%(hostname)s': "
-                prompt = prm_fmt % kwargs
+                prompt = prm_fmt % connect_kwargs
                 self._ssh_client.connect(
                     password = parent.get_password(prompt),
                     **connect_kwargs)
@@ -155,17 +155,11 @@ class SFTPFileReader(object):
     def file_size(self, remote_path):
         try:
             return self._open_files[remote_path].stat().st_size
-        except KeyError:
+        except:
             return self._call_session(lambda s: s.file_size(remote_path))
 
     # --------------------------------------------------------------------------
     def open_file(self, remote_path):
-        try:
-            if self._open_files[remote_path].readable():
-                return remote_path
-        except KeyError:
-            pass
-
         rf = self._call_session(lambda s: s.open_file(remote_path))
         sz = rf.stat().st_size
         rf.prefetch(sz)
@@ -188,6 +182,10 @@ class SFTPFileReader(object):
 
     # --------------------------------------------------------------------------
     def close_file(self, remote_path):
-        del self._open_files[remote_path]
+        try:
+            del self._open_files[remote_path]
+            return True
+        except KeyError:
+            return False
 
 # ------------------------------------------------------------------------------

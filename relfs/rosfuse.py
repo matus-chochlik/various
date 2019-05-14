@@ -8,120 +8,7 @@ import fuse
 import errno
 import logging
 import argparse
-import contextlib
-import paramiko # pip install paramiko
-# ------------------------------------------------------------------------------
-class SFTPSession(object):
-    # --------------------------------------------------------------------------
-    @staticmethod
-    def _ssh_config_paths():
-        return [
-            os.path.join(os.path.expanduser("~"), ".ssh", "config"),
-            "/etc/ssh/ssh_config"
-        ]
-
-    # --------------------------------------------------------------------------
-    def __init__(self, options):
-        self._ssh_config = paramiko.config.SSHConfig()
-
-        for path in self._ssh_config_paths():
-            if os.path.isfile(path):
-                with contextlib.closing(open(path,"rt")) as config_file:
-                    self._ssh_config.parse(config_file)
-
-        host_options = self._ssh_config.lookup(options.hostname)
-
-        self._ssh_client = paramiko.SSHClient()
-        self._ssh_client.load_system_host_keys()
-        self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        kwargs = {
-            "hostname": host_options.get("hostname", options.hostname),
-            "username": host_options.get("user", None),
-            "port": int(host_options.get("port", 22)),
-            "timeout": 5, # seconds
-            "auth_timeout": 15, # seconds
-            "allow_agent": options.allow_agent,
-            "gss_auth": False,
-            "gss_kex": False,
-            "look_for_keys": False,
-            "compress": False
-        }
-
-
-        connected = False
-        if not options.password_only:
-            try:
-                self._ssh_client.connect(
-                    key_filename = host_options.get("identityfile", None),
-                    **kwargs)
-                connected = True
-            except paramiko.SSHException:
-                for key_file in host_options.get("identityfile", []):
-                    try:
-                        self._ssh_client.connect(
-                            pkey = paramiko.RSAKey.from_private_key_file(
-                                key_file),
-                            **kwargs)
-                        connected = True
-                        break
-                    except paramiko.AuthenticationException:
-                        pass
-
-        if not connected:
-            try:
-                import getpass
-                fmt = "enter password for `%(username)s@%(hostname)s': "
-                self._ssh_client.connect(
-                    password = getpass.getpass(fmt % kwargs),
-                    **kwargs)
-                connected = True
-            except paramiko.AuthenticationException:
-                pass
-            except ImportError:
-                pass
-
-        self._sftp_client = None
-        if connected:
-            self._sftp_client = self._ssh_client.open_sftp()
-            self._sftp_client.chdir(options.remote_prefix)
-
-    # --------------------------------------------------------------------------
-    def __del__(self):
-        self._ssh_client.close()
-
-    # --------------------------------------------------------------------------
-    def normal_path(self, remote_path):
-        if self._sftp_client:
-            return self._sftp_client.normalize(remote_path)
-
-    # --------------------------------------------------------------------------
-    def stat_remote(self, remote_path):
-        if self._sftp_client:
-            return self._sftp_client.stat(remote_path)
-
-    # --------------------------------------------------------------------------
-    def open_remote(self, remote_path):
-        if self._sftp_client:
-            return self._sftp_client.file(remote_path, mode="r")
-
-# ------------------------------------------------------------------------------
-class SFTPSessionManager(object):
-    # --------------------------------------------------------------------------
-    def __init__(self, options):
-        self._options = options
-        self._sftp_session = None
-    # --------------------------------------------------------------------------
-    def get_session(self):
-        if not self._sftp_session:
-            self._sftp_session = SFTPSession(self._options)
-        return self._sftp_session
-
-    # --------------------------------------------------------------------------
-    def cleanup_sessions(self):
-        del self._sftp_session
-        self._sftp_session = None
-
+from relfs.sftp_utils import SFTPFileReader
 # ------------------------------------------------------------------------------
 class RoSFuseItem(object):
     # --------------------------------------------------------------------------
@@ -134,18 +21,15 @@ class RoSFuseItem(object):
 # ------------------------------------------------------------------------------
 class RoSFuseFile(object):
     # --------------------------------------------------------------------------
-    def __init__(self, parent, split_path):
-        self._parent = parent
-        self._session = parent.get_session()
-        self._path = self._session.normal_path(os.path.join(*split_path))
-        self._stat = self._session.stat_remote(self._path)
-        self._file = self._session.open_remote(self._path)
-        self._file.prefetch()
+    def __init__(self, file_reader, split_path):
+        self._file_reader = file_reader
+        self._path = os.path.join(*split_path)
+        self._file_reader.open_file(self._path)
 
     # --------------------------------------------------------------------------
     def __del__(self):
         try:
-            self._file.close()
+            self._file_reader.close_file(self._path)
         except AttributeError:
             pass
 
@@ -154,25 +38,24 @@ class RoSFuseFile(object):
         return 0o100440
     # --------------------------------------------------------------------------
     def size(self):
-        return self._stat.st_size
+        return self._file_reader.file_size(self._path)
     # --------------------------------------------------------------------------
     def read(self, length, offset):
-        self._file.seek(offset);
-        return self._file.read(length)
+        return self._file_reader.read_file(self._path, length, offset)
 
 # ------------------------------------------------------------------------------
-class RoSFuseRoot(RoSFuseItem, SFTPSessionManager):
+class RoSFuseRoot(RoSFuseItem):
     # --------------------------------------------------------------------------
     def __init__(self, options):
         RoSFuseItem.__init__(self)
-        SFTPSessionManager.__init__(self, options)
+        self._file_reader = SFTPFileReader(options)
     # --------------------------------------------------------------------------
     def find_item(self, split_path):
         if not split_path or split_path == ["."]:
             return self
 
         try:
-            return RoSFuseFile(self, split_path)
+            return RoSFuseFile(self._file_reader, split_path)
         except IOError:
             pass
 
