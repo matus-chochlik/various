@@ -30,7 +30,7 @@ class SFTPSession(object):
                     self._ssh_config.parse(config_file)
 
         host_options = self._ssh_config.lookup(options.hostname)
-        
+
         self._ssh_client = paramiko.SSHClient()
         self._ssh_client.load_system_host_keys()
         self._ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -48,7 +48,7 @@ class SFTPSession(object):
             "compress": False
         }
 
-        
+
         connected = False
         if not options.password_only:
             try:
@@ -154,7 +154,7 @@ class RoSFuseFile(object):
         return 0o100440
     # --------------------------------------------------------------------------
     def size(self):
-        return self._stat.st_size 
+        return self._stat.st_size
     # --------------------------------------------------------------------------
     def read(self, length, offset):
         self._file.seek(offset);
