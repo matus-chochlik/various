@@ -12,7 +12,7 @@ class UserRatings(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "UserRatings"
+    def unique_id(): return "UserRatings"
 
     #--------------------------------------------------------------------------#
     def add(self, user, rating):

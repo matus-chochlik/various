@@ -31,7 +31,7 @@ class Users(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "Users"
+    def unique_id(): return "Users"
 
     #--------------------------------------------------------------------------#
     def find(self, name):

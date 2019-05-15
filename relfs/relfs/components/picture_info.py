@@ -14,7 +14,7 @@ class PictureInfo(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "PictureInfo"
+    def unique_id(): return "PictureInfo"
 
     #--------------------------------------------------------------------------#
     @staticmethod

@@ -20,7 +20,7 @@ class MimeType(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "MimeType"
+    def unique_id(): return "MimeType"
 
     #--------------------------------------------------------------------------#
     def public_values(self):
@@ -65,7 +65,7 @@ class AllMimeTypes(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "AllMimeTypes"
+    def unique_id(): return "AllMimeTypes"
 
     #--------------------------------------------------------------------------#
     def items(self):

@@ -35,7 +35,7 @@ class AllTags(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "AllTags"
+    def unique_id(): return "AllTags"
 
     #--------------------------------------------------------------------------#
     def get_tag(self, label):
@@ -61,7 +61,7 @@ class Tags(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "Tags"
+    def unique_id(): return "Tags"
 
     #--------------------------------------------------------------------------#
     def public_values(self):

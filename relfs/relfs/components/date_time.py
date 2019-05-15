@@ -13,7 +13,7 @@ class DateTime(Component):
 
     #--------------------------------------------------------------------------#
     @staticmethod
-    def _unique_id(): return "DateTime"
+    def unique_id(): return "DateTime"
 
     #--------------------------------------------------------------------------#
     def __eq__(self, that):
