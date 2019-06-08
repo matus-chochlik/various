@@ -34,7 +34,7 @@ class Users(Component):
     def unique_id(): return "Users"
 
     #--------------------------------------------------------------------------#
-    def find(self, name):
+    def find(self, user_id):
         for user in self._users:
             if user.has_id(user_id):
                 return user
