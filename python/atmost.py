@@ -8,6 +8,7 @@ import sys
 import argparse
 import subprocess
 import posix_ipc
+import hashlib
 
 # ------------------------------------------------------------------------------
 def print_error(error):
@@ -44,7 +45,6 @@ class __AtMostArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
-            '-c', '--command',
             dest="command_line",
             nargs=argparse.REMAINDER,
             default=list(),
@@ -91,7 +91,7 @@ def execute(options):
         print_error("empty command line given")
         return 1
 
-    sem_name = "/bla"
+    sem_name = '/' + hashlib.md5(exe_path.encode()).hexdigest()
 
     semaphore = posix_ipc.Semaphore(
         name = sem_name,
@@ -107,7 +107,7 @@ def execute(options):
         print_error(error)
 
     semaphore.release();
-    semaphore.unlink()
+    semaphore.close()
     return result
 # ------------------------------------------------------------------------------
 def main():
