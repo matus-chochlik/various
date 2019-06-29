@@ -19,7 +19,7 @@ def which(executable):
     for path in path.split(os.path.pathsep):
         path = os.path.join(path,executable)
         if os.path.exists(path) and os.access(path, os.X_OK):
-            return path
+            return os.path.realpath(path)
 #------------------------------------------------------------------------------#
 class __AtMostArgumentParser(argparse.ArgumentParser):
 
