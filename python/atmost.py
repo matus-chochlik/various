@@ -36,6 +36,13 @@ class __AtMostArgumentParser(argparse.ArgumentParser):
                 self.error("`%s' is not a positive integer value" % str(x))
 
         self.add_argument(
+            '-r', '--reset',
+            dest='reset',
+            default=False,
+            action='store_true'
+        )
+
+        self.add_argument(
             '-n', '--limit',
             dest='limit',
             metavar='PROCESS-COUNT',
@@ -93,21 +100,26 @@ def execute(options):
 
     sem_name = '/' + hashlib.md5(exe_path.encode()).hexdigest()
 
-    semaphore = posix_ipc.Semaphore(
-        name = sem_name,
-        flags = posix_ipc.O_CREAT,
-        initial_value = options.limit
-    )
-    semaphore.acquire();
+    if options.reset:
+        posix_ipc.unlink_semaphore(sem_name)
 
-    result = 100
     try:
-        result = subprocess.call(options.command_line)
-    except Exception as error:
-        print_error(error)
+        semaphore = posix_ipc.Semaphore(
+            name = sem_name,
+            flags = posix_ipc.O_CREAT,
+            initial_value = options.limit
+        )
+        semaphore.acquire();
 
-    semaphore.release();
-    semaphore.close()
+        result = 100
+        try:
+            result = subprocess.call(options.command_line)
+        except Exception as error:
+            print_error(error)
+    finally:
+        semaphore.release();
+        semaphore.close()
+
     return result
 # ------------------------------------------------------------------------------
 def main():
