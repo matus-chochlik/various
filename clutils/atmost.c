@@ -31,7 +31,14 @@ static const char* make_exe_path(char* temp,
 
 static bool is_executable(const char* path) {
 	struct stat sb;
-	return (stat(path, &sb) == 0) && (sb.st_mode & S_IXUSR);
+	return (stat(path, &sb) == 0) && (sb.st_mode & S_IXUSR)
+		   && S_ISREG(sb.st_mode);
+}
+
+static bool is_file(const char* path) {
+	struct stat sb;
+	return (stat(path, &sb) == 0) && (sb.st_mode & S_IRUSR)
+		   && S_ISREG(sb.st_mode);
 }
 
 static const char* which(const char* arg) {
@@ -76,8 +83,10 @@ static const char* canonical_path(const char* arg) {
 }
 
 struct options {
+	const char* path;
 	int sep_arg;
 	int max_count;
+	bool ipc_remove;
 };
 
 union atmost_semun {
@@ -88,7 +97,7 @@ static int execute(struct options opts, int argc, const char** argv) {
 	const char* executable = canonical_path(argv[0]);
 	if(strlen(executable) > 0) {
 
-		key_t ky = ftok(executable, 0xA73057);
+		key_t ky = ftok(opts.path ? opts.path : executable, 0xA73057);
 		int sems = semget(ky, 1, 0666 | IPC_CREAT | IPC_EXCL);
 
 		if(sems < 0) {
@@ -105,14 +114,24 @@ static int execute(struct options opts, int argc, const char** argv) {
 			}
 		}
 
-		struct sembuf sb = {.sem_num = 0, .sem_op = -1, .sem_flg = SEM_UNDO};
+		if(opts.ipc_remove) {
+			if(semctl(sems, 0, IPC_RMID) < 0) {
+				perror("atmost: ");
+				return 5;
+			} else {
+				return 0;
+			}
+		} else {
+			struct sembuf sb = {
+			  .sem_num = 0, .sem_op = -1, .sem_flg = SEM_UNDO};
 
-		if(semop(sems, &sb, 1) < 0) {
-			perror("atmost: ");
-			return 5;
+			if(semop(sems, &sb, 1) < 0) {
+				perror("atmost: ");
+				return 5;
+			}
+
+			return execv(executable, (char* const*)argv);
 		}
-
-		return execv(argv[0], (char* const*)argv);
 	}
 	fprintf(stderr, "atmost: could not find executable '%s'\n", argv[0]);
 	return 2;
@@ -120,7 +139,8 @@ static int execute(struct options opts, int argc, const char** argv) {
 
 int main(int argc, const char** argv) {
 	if(argc > 1) {
-		struct options opts = {.sep_arg = 0, .max_count = 1};
+		struct options opts = {
+		  .path = NULL, .sep_arg = 0, .max_count = 1, .ipc_remove = false};
 
 		for(int a = 1; a < argc; ++a) {
 			if(strcmp(argv[a], "-n") == 0) {
@@ -133,16 +153,34 @@ int main(int argc, const char** argv) {
 						return 1;
 					}
 				} else {
-					fprintf(stderr, "atmost: missing max count value\n");
+					fprintf(stderr, "atmost: missing max count after -n\n");
 					return 1;
 				}
 				++a;
+			} else if(strcmp(argv[a], "-f") == 0) {
+				if(argv[a + 1]) {
+					opts.path = argv[a + 1];
+					if(!is_file(opts.path)) {
+						fprintf(stderr,
+						  "atmost: invalid file path '%s'\n",
+						  argv[a + 1]);
+						return 1;
+					}
+				} else {
+					fprintf(stderr, "atmost: missing file path after -f\n");
+					return 1;
+				}
+				++a;
+			} else if(strcmp(argv[a], "-r") == 0) {
+				opts.ipc_remove = true;
 			} else if(strcmp(argv[a], "--") == 0) {
 				if(opts.sep_arg < 1) {
 					opts.sep_arg = a;
+					break;
 				}
 			}
 		}
+
 		if(opts.sep_arg > 0 && opts.sep_arg + 1 < argc) {
 			return execute(
 			  opts, argc - opts.sep_arg - 1, argv + opts.sep_arg + 1);
