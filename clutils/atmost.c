@@ -138,7 +138,9 @@ int main(int argc, const char** argv) {
 				}
 				++a;
 			} else if(strcmp(argv[a], "--") == 0) {
-				opts.sep_arg = a;
+				if(opts.sep_arg < 1) {
+					opts.sep_arg = a;
+				}
 			}
 		}
 		if(opts.sep_arg > 0 && opts.sep_arg + 1 < argc) {
