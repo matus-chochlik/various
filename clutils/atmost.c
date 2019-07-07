@@ -112,7 +112,7 @@ static int execute(struct options opts, int argc, const char** argv) {
 			return 5;
 		}
 
-		return execv(executable, (char* const*)argv);
+		return execv(argv[0], (char* const*)argv);
 	}
 	fprintf(stderr, "atmost: could not find executable '%s'\n", argv[0]);
 	return 2;
