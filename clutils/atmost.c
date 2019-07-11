@@ -15,95 +15,85 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define MODIFIER_COUNT 1
+//------------------------------------------------------------------------------
+struct resource_limit {
+	float value;
+	float modifiers[MODIFIER_COUNT];
+	bool check;
+};
 //------------------------------------------------------------------------------
 struct options {
 	const char* path;
 	int sep_arg;
 	int bat_tz_id;
+	int gpu_tz_id;
 	int cpu_tz_id;
-	int max_count;
-	int max_total_procs;
-	float max_bat_temp;
-	float max_cpu_temp;
-	float max_cpu_load1;
-	float max_cpu_load5;
-	float max_used_ram;
-	float max_used_swap;
-	float max_io_ops;
+
+	struct resource_limit max_instances;
+	struct resource_limit max_total_procs;
+	struct resource_limit max_bat_temp;
+	struct resource_limit max_gpu_temp;
+	struct resource_limit max_cpu_temp;
+	struct resource_limit max_cpu_load1;
+	struct resource_limit max_cpu_load5;
+	struct resource_limit max_used_ram;
+	struct resource_limit max_used_swap;
+	struct resource_limit max_io_ops;
 	bool ipc_remove;
-	bool check_total_procs;
-	bool check_bat_temp;
-	bool check_cpu_temp;
-	bool check_cpu_load1;
-	bool check_cpu_load5;
-	bool check_used_ram;
-	bool check_used_swap;
-	bool check_io_ops;
 };
 //------------------------------------------------------------------------------
-static float cpu_temperature(struct options* opts);
-static float bat_temperature(struct options* opts);
-static int io_ops_count();
+struct check_context {
+	struct options* opts;
+	struct sysinfo* si;
+};
+//------------------------------------------------------------------------------
+struct limit_check {
+	float (*value_getter)(struct check_context*);
+	struct resource_limit* limit;
+};
+//------------------------------------------------------------------------------
+static bool is_over_limit(
+  struct limit_check* info, struct check_context* context) {
+	if(info->limit->check) {
+		if(info->limit->value < info->value_getter(context)) {
+			return true;
+		}
+	}
+	return false;
+}
+//------------------------------------------------------------------------------
+static float total_proc_count(struct check_context*);
+static float free_ram_perc(struct check_context*);
+static float free_swap_perc(struct check_context*);
+static float cpu_load1(struct check_context*);
+static float cpu_load5(struct check_context*);
+static float cpu_temperature(struct check_context*);
+static float gpu_temperature(struct check_context*);
+static float bat_temperature(struct check_context*);
+static float io_ops_count(struct check_context*);
 //------------------------------------------------------------------------------
 static bool overloaded(struct options* opts) {
 	struct sysinfo si;
 	sysinfo(&si);
 
-	if(opts->check_used_ram) {
-		const float current_used_ram =
-		  100.f * (1.f - ((float)si.freeram) / ((float)si.totalram));
-		if(opts->max_used_ram < current_used_ram) {
-			return true;
-		}
-	}
+	struct check_context context;
+	context.opts = opts;
+	context.si = &si;
 
-	if(opts->check_used_swap) {
-		const float current_used_swap =
-		  100.f * (1.f - ((float)si.freeswap) / ((float)si.totalswap));
-		if(opts->max_used_swap < current_used_swap) {
-			return true;
-		}
-	}
+	struct limit_check max_limits[] = {
+	  {.value_getter = total_proc_count, .limit = &opts->max_total_procs},
+	  {.value_getter = free_ram_perc, .limit = &opts->max_used_ram},
+	  {.value_getter = free_swap_perc, .limit = &opts->max_used_swap},
+	  {.value_getter = cpu_load1, .limit = &opts->max_cpu_load1},
+	  {.value_getter = cpu_load5, .limit = &opts->max_cpu_load5},
+	  {.value_getter = cpu_temperature, .limit = &opts->max_cpu_temp},
+	  {.value_getter = gpu_temperature, .limit = &opts->max_gpu_temp},
+	  {.value_getter = bat_temperature, .limit = &opts->max_bat_temp},
+	  {.value_getter = io_ops_count, .limit = &opts->max_io_ops}};
 
-	if(opts->check_cpu_load1) {
-		const float current_cpu_load1 =
-		  ((float)si.loads[0]) / ((float)(1U << (SI_LOAD_SHIFT)));
-		if(opts->max_cpu_load1 < current_cpu_load1) {
-			return true;
-		}
-	}
-
-	if(opts->check_cpu_load5) {
-		const float current_cpu_load5 =
-		  ((float)si.loads[1]) / ((float)(1U << (SI_LOAD_SHIFT)));
-		if(opts->max_cpu_load5 < current_cpu_load5) {
-			return true;
-		}
-	}
-
-	if(opts->check_total_procs) {
-		if(opts->max_total_procs < (int)si.procs) {
-			return true;
-		}
-	}
-
-	if(opts->check_cpu_temp) {
-		const float current_cpu_temp = cpu_temperature(opts);
-		if(opts->max_cpu_temp < current_cpu_temp) {
-			return true;
-		}
-	}
-
-	if(opts->check_bat_temp) {
-		const float current_bat_temp = bat_temperature(opts);
-		if(opts->max_bat_temp < current_bat_temp) {
-			return true;
-		}
-	}
-
-	if(opts->check_io_ops) {
-		const int current_io_ops = io_ops_count();
-		if(opts->max_io_ops < current_io_ops) {
+	for(size_t l = 0; l < sizeof(max_limits) / sizeof(max_limits[0]); ++l) {
+		if(is_over_limit(&max_limits[l], &context)) {
 			return true;
 		}
 	}
@@ -111,6 +101,7 @@ static bool overloaded(struct options* opts) {
 	return false;
 }
 //------------------------------------------------------------------------------
+static int init_opts(struct options* opts);
 static int parse_args(int argc, const char** argv, struct options* opts);
 static int execute(struct options* opts, int argc, const char** argv);
 static const char* canonical_path(const char* arg);
@@ -118,32 +109,10 @@ static const char* canonical_path(const char* arg);
 int main(int argc, const char** argv) {
 	int result = 0;
 	if(argc > 1) {
-		struct options opts = {.path = NULL,
-		  .bat_tz_id = -1,
-		  .cpu_tz_id = -1,
-		  .sep_arg = 0,
-		  .max_count = 1,
-		  .max_bat_temp = 100,
-		  .check_bat_temp = false,
-		  .max_cpu_temp = 100,
-		  .check_cpu_temp = false,
-		  .max_cpu_load1 = 100,
-		  .check_cpu_load1 = false,
-		  .max_cpu_load5 = 100,
-		  .check_cpu_load5 = false,
-		  .max_used_ram = 100,
-		  .check_used_ram = false,
-		  .max_used_swap = 50,
-		  .check_used_swap = false,
-		  .max_total_procs = 1000,
-		  .check_total_procs = false,
-		  .max_io_ops = 100,
-		  .check_io_ops = false,
-		  .ipc_remove = false};
+		struct options opts;
 
+		init_opts(&opts);
 		result = parse_args(argc, argv, &opts);
-
-		overloaded(&opts);
 
 		if(result == 0) {
 			if(opts.sep_arg > 0 && opts.sep_arg + 1 < argc) {
@@ -180,20 +149,20 @@ static int execute(struct options* opts, int argc, const char** argv) {
 		if(sems < 0) {
 			sems = semget(ky, 1, 0);
 			if(sems < 0) {
-				perror("atmost: ");
+				perror("atmost: semget failed:");
 				return 3;
 			}
 		} else {
-			union atmost_semun su = {.val = opts->max_count};
+			union atmost_semun su = {.val = (int)opts->max_instances.value};
 			if(semctl(sems, 0, SETVAL, su) < 0) {
-				perror("atmost: ");
+				perror("atmost: semctl failed:");
 				return 4;
 			}
 		}
 
 		if(opts->ipc_remove) {
 			if(semctl(sems, 0, IPC_RMID) < 0) {
-				perror("atmost: ");
+				perror("atmost: semctl failed: ");
 				return 5;
 			} else {
 				return 0;
@@ -203,7 +172,7 @@ static int execute(struct options* opts, int argc, const char** argv) {
 			  .sem_num = 0, .sem_op = -1, .sem_flg = SEM_UNDO};
 
 			if(semop(sems, &sb, 1) < 0) {
-				perror("atmost: ");
+				perror("atmost: semop failed: ");
 				return 5;
 			}
 
@@ -218,160 +187,152 @@ static int execute(struct options* opts, int argc, const char** argv) {
 	return 2;
 }
 //------------------------------------------------------------------------------
-static int parse_args(int argc, const char** argv, struct options* opts) {
-	for(int a = 1; a < argc; ++a) {
-		if(strcmp(argv[a], "-n") == 0) {
-			if(argv[a + 1]) {
-				opts->max_count = atoi(argv[a + 1]);
-				if(opts->max_count <= 0) {
+static int init_opts(struct options* opts) {
+	opts->path = NULL;
+	opts->sep_arg = 0;
+	opts->bat_tz_id = -1;
+	opts->gpu_tz_id = -1;
+	opts->cpu_tz_id = -1;
+
+	opts->max_instances.check = true;
+	opts->max_instances.value = 2;
+
+	opts->max_bat_temp.check = false;
+	opts->max_bat_temp.value = 60;
+
+	opts->max_gpu_temp.check = false;
+	opts->max_gpu_temp.value = 80;
+
+	opts->max_cpu_temp.check = false;
+	opts->max_cpu_temp.value = 80;
+
+	opts->max_cpu_load1.check = false;
+	opts->max_cpu_load1.value = 30;
+
+	opts->max_cpu_load5.check = false;
+	opts->max_cpu_load5.value = 15;
+
+	opts->max_used_ram.check = false;
+	opts->max_used_ram.value = 90;
+
+	opts->max_used_swap.check = false;
+	opts->max_used_swap.value = 50;
+
+	opts->max_total_procs.value = 2000;
+	opts->max_total_procs.check = false;
+
+	opts->max_io_ops.check = false;
+	opts->max_io_ops.value = 100;
+
+	opts->ipc_remove = false;
+}
+//------------------------------------------------------------------------------
+static bool parse_limit_arg(int* a,
+  int argc,
+  const char** argv,
+  const char* flag,
+  const char* description,
+  struct resource_limit* limit) {
+	if(*a < argc) {
+		if(strcmp(argv[*a], flag) == 0) {
+			if(argv[*a + 1]) {
+				if(sscanf(argv[*a + 1], "%f", &limit->value)) {
+					limit->check = true;
+					++(*a);
+				} else {
 					fprintf(stderr,
-					  "atmost: invalid max count '%s' after -n\n",
-					  argv[a + 1]);
-					return 1;
+					  "atmost: invalid %s value '%s' after %s\n",
+					  description,
+					  argv[*a + 1],
+					  argv[*a]);
+					return false;
 				}
-			} else {
-				fprintf(stderr, "atmost: missing max count after -n\n");
-				return 1;
-			}
-			++a;
-		} else if(strcmp(argv[a], "-l") == 0) {
-			if(argv[a + 1]) {
-				opts->max_cpu_load1 = atof(argv[a + 1]);
-				if(opts->max_cpu_load1 <= 0.f) {
-					fprintf(stderr,
-					  "atmost: invalid max CPU load '%s' after -l\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_cpu_load1 = true;
-			} else {
-				fprintf(
-				  stderr, "atmost: missing max CPU load value after -l\n");
-				return 1;
-			}
-			++a;
-		} else if(strcmp(argv[a], "-L") == 0) {
-			if(argv[a + 1]) {
-				opts->max_cpu_load5 = atof(argv[a + 1]);
-				if(opts->max_cpu_load5 <= 0.f) {
-					fprintf(stderr,
-					  "atmost: invalid max CPU load '%s' after -L\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_cpu_load5 = true;
-			} else {
-				fprintf(
-				  stderr, "atmost: missing max CPU load value after -L\n");
-				return 1;
-			}
-			++a;
-		} else if(strcmp(argv[a], "-m") == 0) {
-			if(argv[a + 1]) {
-				opts->max_used_ram = atof(argv[a + 1]);
-				if(opts->max_used_ram <= 0.f) {
-					fprintf(stderr,
-					  "atmost: invalid max used RAM '%s' after -m\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_used_ram = true;
-			} else {
-				fprintf(
-				  stderr, "atmost: missing max used RAM value after -m\n");
-				return 1;
-			}
-			++a;
-		} else if(strcmp(argv[a], "-s") == 0) {
-			if(argv[a + 1]) {
-				opts->max_used_swap = atof(argv[a + 1]);
-				if(opts->max_used_swap <= 0.f) {
-					fprintf(stderr,
-					  "atmost: invalid max used swap '%s' after -s\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_used_swap = true;
-			} else {
-				fprintf(
-				  stderr, "atmost: missing max used swap value after -s\n");
-				return 1;
-			}
-			++a;
-		} else if(strcmp(argv[a], "-p") == 0) {
-			if(argv[a + 1]) {
-				opts->max_total_procs = atoi(argv[a + 1]);
-				if(opts->max_total_procs <= 0) {
-					fprintf(stderr,
-					  "atmost: invalid max processes '%s' after -p\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_total_procs = true;
-			} else {
-				fprintf(
-				  stderr, "atmost: missing max processes value after -p\n");
-				return 1;
-			}
-			++a;
-		} else if(strcmp(argv[a], "-tc") == 0) {
-			if(argv[a + 1]) {
-				opts->max_cpu_temp = atof(argv[a + 1]);
-				if(opts->max_cpu_temp <= 0.f) {
-					fprintf(stderr,
-					  "atmost: invalid CPU temperature '%s' after -tc\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_cpu_temp = true;
-			} else {
-				fprintf(
-				  stderr, "atmost: missing CPU temperature value after -tc\n");
-				return 1;
-			}
-			++a;
-		} else if(strcmp(argv[a], "-tb") == 0) {
-			if(argv[a + 1]) {
-				opts->max_bat_temp = atof(argv[a + 1]);
-				if(opts->max_bat_temp <= 0.f) {
-					fprintf(stderr,
-					  "atmost: invalid battery temperature '%s' after -tb\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_bat_temp = true;
 			} else {
 				fprintf(stderr,
-				  "atmost: missing battery temperature value after -tb\n");
-				return 1;
+				  "atmost: missing %s value after %s\n",
+				  description,
+				  argv[*a]);
+				return false;
 			}
-			++a;
-		} else if(strcmp(argv[a], "-io") == 0) {
-			if(argv[a + 1]) {
-				opts->max_io_ops = atoi(argv[a + 1]);
-				if(opts->max_io_ops <= 0) {
-					fprintf(stderr,
-					  "atmost: invalid max I/O count '%s' after -io\n",
-					  argv[a + 1]);
-					return 1;
-				}
-				opts->check_io_ops = true;
-			} else {
-				fprintf(
-				  stderr, "atmost: missing max I/O count value after -io\n");
-				return 1;
-			}
-			++a;
+			return true;
+		}
+	}
+	return false;
+}
+//------------------------------------------------------------------------------
+static int parse_args(int argc, const char** argv, struct options* opts) {
+	for(int a = 1; a < argc; ++a) {
+		if(parse_limit_arg(&a,
+			 argc,
+			 argv,
+			 "-n",
+			 "maximum concurrent instance count",
+			 &opts->max_instances)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-l",
+					"maximum 1 minute average CPU load",
+					&opts->max_cpu_load1)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-L",
+					"maximum 5 minutes average CPU load",
+					&opts->max_cpu_load5)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-m",
+					"maximum used RAM percentage",
+					&opts->max_used_ram)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-s",
+					"maximum used swap space percentage",
+					&opts->max_used_swap)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-p",
+					"maximum number of running processes",
+					&opts->max_total_procs)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-tc",
+					"maximum CPU temperature",
+					&opts->max_cpu_temp)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-tg",
+					"maximum GPU temperature",
+					&opts->max_gpu_temp)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-tb",
+					"maximum battery temperature",
+					&opts->max_bat_temp)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-io",
+					"maximum number of I/O operations",
+					&opts->max_io_ops)) {
 		} else if(strcmp(argv[a], "-f") == 0) {
 			if(argv[a + 1]) {
 				opts->path = argv[a + 1];
 				if(!is_file(opts->path)) {
-					fprintf(
-					  stderr, "atmost: invalid file path '%s'\n", argv[a + 1]);
+					fprintf(stderr,
+					  "atmost: invalid token file path '%s' -f\n",
+					  argv[a + 1]);
 					return 1;
 				}
 			} else {
-				fprintf(stderr, "atmost: missing file path after -f\n");
+				fprintf(stderr, "atmost: missing token file path after -f\n");
 				return 1;
 			}
 			++a;
@@ -489,28 +450,65 @@ static float get_tz_temperature(int* ptz_id, const char* pattern) {
 	return 0.f;
 }
 //------------------------------------------------------------------------------
-static float cpu_temperature(struct options* opts) {
-	return get_tz_temperature(&opts->cpu_tz_id, "CPU");
+static bool on_battery(struct options* opts) {
+	FILE* file = fopen("/sys/class/power_supply/AC/online", "rt");
+	if(file) {
+		int online = 1;
+		fscanf(file, "%d", &online);
+		fclose(file);
+		return online ? false : true;
+	}
+	return false;
 }
 //------------------------------------------------------------------------------
-static float bat_temperature(struct options* opts) {
-	return get_tz_temperature(&opts->bat_tz_id, "BAT");
+static float total_proc_count(struct check_context* ctx) {
+	return (float)ctx->si->procs;
 }
 //------------------------------------------------------------------------------
-static int io_ops_count() {
+static float free_ram_perc(struct check_context* ctx) {
+	return 100.f
+		   * (1.f - ((float)ctx->si->freeram) / ((float)ctx->si->totalram));
+}
+//------------------------------------------------------------------------------
+static float free_swap_perc(struct check_context* ctx) {
+	return 100.f
+		   * (1.f - ((float)ctx->si->freeswap) / ((float)ctx->si->totalswap));
+}
+//------------------------------------------------------------------------------
+static float cpu_load1(struct check_context* ctx) {
+	return ((float)ctx->si->loads[0]) / ((float)(1U << (SI_LOAD_SHIFT)));
+}
+//------------------------------------------------------------------------------
+static float cpu_load5(struct check_context* ctx) {
+	return ((float)ctx->si->loads[1]) / ((float)(1U << (SI_LOAD_SHIFT)));
+}
+//------------------------------------------------------------------------------
+static float cpu_temperature(struct check_context* ctx) {
+	return get_tz_temperature(&ctx->opts->cpu_tz_id, "CPU");
+}
+//------------------------------------------------------------------------------
+static float gpu_temperature(struct check_context* ctx) {
+	return get_tz_temperature(&ctx->opts->gpu_tz_id, "GPU");
+}
+//------------------------------------------------------------------------------
+static float bat_temperature(struct check_context* ctx) {
+	return get_tz_temperature(&ctx->opts->bat_tz_id, "BAT");
+}
+//------------------------------------------------------------------------------
+static float io_ops_count(struct check_context* ctx) {
 	static char buffer[1024];
-	FILE* dsf = fopen("/proc/diskstats", "rt");
-	if(dsf) {
+	FILE* file = fopen("/proc/diskstats", "rt");
+	if(file) {
 		int iosum = 0;
 		int count = 0;
-		while(fgets(buffer, sizeof(buffer), dsf)) {
+		while(fgets(buffer, sizeof(buffer), file)) {
 			sscanf(buffer, "%*d%*d%*s%*d%*d%*d%*d%*d%*d%*d%*d%d", &count);
 			iosum += count;
 		}
-		fclose(dsf);
+		fclose(file);
 
-		return iosum;
+		return (float)iosum;
 	}
-	return 0;
+	return 0.f;
 }
 //------------------------------------------------------------------------------
