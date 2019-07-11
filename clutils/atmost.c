@@ -15,13 +15,29 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+//------------------------------------------------------------------------------
 #define MODIFIER_COUNT 1
+static const char* modifier_flags[MODIFIER_COUNT] = {"-b"};
 //------------------------------------------------------------------------------
 struct resource_limit {
 	float value;
 	float modifiers[MODIFIER_COUNT];
 	bool check;
 };
+//------------------------------------------------------------------------------
+struct options;
+static bool runs_on_battery(struct options* opts);
+//------------------------------------------------------------------------------
+static float current_limit_value(
+  struct resource_limit* limit, struct options* opts) {
+	float result = limit->value;
+
+	if(runs_on_battery(opts)) {
+		result += limit->modifiers[0];
+	}
+
+	return result;
+}
 //------------------------------------------------------------------------------
 struct options {
 	const char* path;
@@ -30,16 +46,21 @@ struct options {
 	int gpu_tz_id;
 	int cpu_tz_id;
 
-	struct resource_limit max_instances;
-	struct resource_limit max_total_procs;
-	struct resource_limit max_bat_temp;
-	struct resource_limit max_gpu_temp;
-	struct resource_limit max_cpu_temp;
-	struct resource_limit max_cpu_load1;
-	struct resource_limit max_cpu_load5;
-	struct resource_limit max_used_ram;
-	struct resource_limit max_used_swap;
-	struct resource_limit max_io_ops;
+	union {
+		struct {
+			struct resource_limit max_instances;
+			struct resource_limit max_total_procs;
+			struct resource_limit max_bat_temp;
+			struct resource_limit max_gpu_temp;
+			struct resource_limit max_cpu_temp;
+			struct resource_limit max_cpu_load1;
+			struct resource_limit max_cpu_load5;
+			struct resource_limit max_used_ram;
+			struct resource_limit max_used_swap;
+			struct resource_limit max_io_ops;
+		};
+		struct resource_limit limits[10];
+	};
 	bool ipc_remove;
 };
 //------------------------------------------------------------------------------
@@ -53,14 +74,18 @@ struct limit_check {
 	struct resource_limit* limit;
 };
 //------------------------------------------------------------------------------
-static bool is_over_limit(
+static float difference_to_limit(
   struct limit_check* info, struct check_context* context) {
 	if(info->limit->check) {
-		if(info->limit->value < info->value_getter(context)) {
-			return true;
-		}
+		return info->value_getter(context)
+			   - current_limit_value(info->limit, context->opts);
 	}
-	return false;
+	return 0.f;
+}
+//------------------------------------------------------------------------------
+static bool is_over_limit(
+  struct limit_check* info, struct check_context* context) {
+	return difference_to_limit(info, context) > 0.f;
 }
 //------------------------------------------------------------------------------
 static float total_proc_count(struct check_context*);
@@ -194,34 +219,23 @@ static int init_opts(struct options* opts) {
 	opts->gpu_tz_id = -1;
 	opts->cpu_tz_id = -1;
 
-	opts->max_instances.check = true;
+	for(int l = 0; l < (sizeof(opts->limits) / sizeof(opts->limits[0])); ++l) {
+		struct resource_limit* limit = &opts->limits[l];
+		limit->check = false;
+		for(int m = 0; m < MODIFIER_COUNT; ++m) {
+			limit->modifiers[m] = 0.f;
+		}
+	}
+
 	opts->max_instances.value = 2;
-
-	opts->max_bat_temp.check = false;
 	opts->max_bat_temp.value = 60;
-
-	opts->max_gpu_temp.check = false;
 	opts->max_gpu_temp.value = 80;
-
-	opts->max_cpu_temp.check = false;
 	opts->max_cpu_temp.value = 80;
-
-	opts->max_cpu_load1.check = false;
 	opts->max_cpu_load1.value = 30;
-
-	opts->max_cpu_load5.check = false;
 	opts->max_cpu_load5.value = 15;
-
-	opts->max_used_ram.check = false;
 	opts->max_used_ram.value = 90;
-
-	opts->max_used_swap.check = false;
 	opts->max_used_swap.value = 50;
-
 	opts->max_total_procs.value = 2000;
-	opts->max_total_procs.check = false;
-
-	opts->max_io_ops.check = false;
 	opts->max_io_ops.value = 100;
 
 	opts->ipc_remove = false;
@@ -247,6 +261,39 @@ static bool parse_limit_arg(int* a,
 					  argv[*a]);
 					return false;
 				}
+
+				bool found_modifier;
+
+				do {
+					found_modifier = false;
+					if(argv[*a + 1]) {
+						for(int m = 0; m < MODIFIER_COUNT; ++m) {
+							if(strcmp(argv[*a + 1], modifier_flags[m]) == 0) {
+								if(argv[*a + 2]) {
+									if(sscanf(argv[*a + 2],
+										 "%f",
+										 &limit->modifiers[m])) {
+										++(*a);
+										found_modifier = true;
+									} else {
+										fprintf(stderr,
+										  "atmost: invalid value '%s' after "
+										  "%s\n",
+										  argv[*a + 2],
+										  argv[*a + 1]);
+										return false;
+									}
+								} else {
+									fprintf(stderr,
+									  "atmost: missing modifier value after "
+									  "%s\n",
+									  argv[*a + 1]);
+									return false;
+								}
+							}
+						}
+					}
+				} while(found_modifier);
 			} else {
 				fprintf(stderr,
 				  "atmost: missing %s value after %s\n",
@@ -450,7 +497,7 @@ static float get_tz_temperature(int* ptz_id, const char* pattern) {
 	return 0.f;
 }
 //------------------------------------------------------------------------------
-static bool on_battery(struct options* opts) {
+static bool runs_on_battery(struct options* opts) {
 	FILE* file = fopen("/sys/class/power_supply/AC/online", "rt");
 	if(file) {
 		int online = 1;
