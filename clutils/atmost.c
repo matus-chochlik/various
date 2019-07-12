@@ -2,7 +2,9 @@
  */
 #include <assert.h>
 #include <fcntl.h>
+#include <ifaddrs.h>
 #include <limits.h>
+#include <net/if.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -16,8 +18,10 @@
 #include <unistd.h>
 
 //------------------------------------------------------------------------------
-#define MODIFIER_COUNT 1
-static const char* modifier_flags[MODIFIER_COUNT] = {"-b"};
+#define MODIFIER_COUNT 3
+static const char* modifier_flags[MODIFIER_COUNT] = {"-batt", "-slnw", "-nonw"};
+static const char* modifier_descriptions[MODIFIER_COUNT] = {
+  "on battery", "slow network", "no network"};
 //------------------------------------------------------------------------------
 struct resource_limit {
 	float value;
@@ -27,6 +31,8 @@ struct resource_limit {
 //------------------------------------------------------------------------------
 struct options;
 static bool runs_on_battery(struct options* opts);
+static bool slow_network_conn(struct options* opts);
+static bool no_network_conn(struct options* opts);
 //------------------------------------------------------------------------------
 static float current_limit_value(
   struct resource_limit* limit, struct options* opts) {
@@ -34,6 +40,14 @@ static float current_limit_value(
 
 	if(runs_on_battery(opts)) {
 		result += limit->modifiers[0];
+	}
+
+	if(slow_network_conn(opts)) {
+		result += limit->modifiers[1];
+	}
+
+	if(no_network_conn(opts)) {
+		result += limit->modifiers[2];
 	}
 
 	return result;
@@ -45,6 +59,7 @@ struct options {
 	int bat_tz_id;
 	int gpu_tz_id;
 	int cpu_tz_id;
+	float slow_network_speed;
 
 	union {
 		struct {
@@ -58,10 +73,12 @@ struct options {
 			struct resource_limit max_used_ram;
 			struct resource_limit max_used_swap;
 			struct resource_limit max_io_ops;
+			struct resource_limit min_nw_speed;
 		};
 		struct resource_limit limits[10];
 	};
 	bool ipc_remove;
+	bool verbose;
 };
 //------------------------------------------------------------------------------
 struct check_context {
@@ -88,6 +105,11 @@ static bool is_over_limit(
 	return difference_to_limit(info, context) > 0.f;
 }
 //------------------------------------------------------------------------------
+static bool is_under_limit(
+  struct limit_check* info, struct check_context* context) {
+	return difference_to_limit(info, context) < 0.f;
+}
+//------------------------------------------------------------------------------
 static float total_proc_count(struct check_context*);
 static float free_ram_perc(struct check_context*);
 static float free_swap_perc(struct check_context*);
@@ -97,6 +119,7 @@ static float cpu_temperature(struct check_context*);
 static float gpu_temperature(struct check_context*);
 static float bat_temperature(struct check_context*);
 static float io_ops_count(struct check_context*);
+static float network_speed(struct check_context* ctx);
 //------------------------------------------------------------------------------
 static bool overloaded(struct options* opts) {
 	struct sysinfo si;
@@ -123,6 +146,15 @@ static bool overloaded(struct options* opts) {
 		}
 	}
 
+	struct limit_check min_limits[] = {
+	  {.value_getter = network_speed, .limit = &opts->min_nw_speed}};
+
+	for(size_t l = 0; l < sizeof(min_limits) / sizeof(min_limits[0]); ++l) {
+		if(is_under_limit(&min_limits[l], &context)) {
+			return true;
+		}
+	}
+
 	return false;
 }
 //------------------------------------------------------------------------------
@@ -135,7 +167,6 @@ int main(int argc, const char** argv) {
 	int result = 0;
 	if(argc > 1) {
 		struct options opts;
-
 		init_opts(&opts);
 		result = parse_args(argc, argv, &opts);
 
@@ -218,6 +249,7 @@ static int init_opts(struct options* opts) {
 	opts->bat_tz_id = -1;
 	opts->gpu_tz_id = -1;
 	opts->cpu_tz_id = -1;
+	opts->slow_network_speed = 1.f;
 
 	for(int l = 0; l < (sizeof(opts->limits) / sizeof(opts->limits[0])); ++l) {
 		struct resource_limit* limit = &opts->limits[l];
@@ -239,6 +271,42 @@ static int init_opts(struct options* opts) {
 	opts->max_io_ops.value = 100;
 
 	opts->ipc_remove = false;
+	opts->verbose = false;
+}
+//------------------------------------------------------------------------------
+static bool parse_float_arg(int* a,
+  int argc,
+  const char** argv,
+  const char* flag,
+  const char* description,
+  struct options* opts,
+  float* value) {
+	if(*a < argc) {
+		if(strcmp(argv[*a], flag) == 0) {
+			if(argv[*a + 1]) {
+				if(sscanf(argv[*a + 1], "%f", value)) {
+					++(*a);
+					if(opts->verbose) {
+						printf("parsed value %f for %s\n", *value, description);
+					}
+				} else {
+					fprintf(stderr,
+					  "atmost: invalid %s value '%s' after %s\n",
+					  description,
+					  argv[*a + 1],
+					  argv[*a]);
+					return false;
+				}
+			} else {
+				fprintf(stderr,
+				  "atmost: missing %s value after %s\n",
+				  description,
+				  argv[*a]);
+				return false;
+			}
+			return true;
+		}
+	}
 }
 //------------------------------------------------------------------------------
 static bool parse_limit_arg(int* a,
@@ -246,6 +314,7 @@ static bool parse_limit_arg(int* a,
   const char** argv,
   const char* flag,
   const char* description,
+  struct options* opts,
   struct resource_limit* limit) {
 	if(*a < argc) {
 		if(strcmp(argv[*a], flag) == 0) {
@@ -253,6 +322,11 @@ static bool parse_limit_arg(int* a,
 				if(sscanf(argv[*a + 1], "%f", &limit->value)) {
 					limit->check = true;
 					++(*a);
+					if(opts->verbose) {
+						printf("parsed value %f for %s\n",
+						  limit->value,
+						  description);
+					}
 				} else {
 					fprintf(stderr,
 					  "atmost: invalid %s value '%s' after %s\n",
@@ -275,6 +349,14 @@ static bool parse_limit_arg(int* a,
 										 &limit->modifiers[m])) {
 										++(*a);
 										found_modifier = true;
+										if(opts->verbose) {
+											printf(
+											  "parsed %s modifier value %f "
+											  "for %s\n",
+											  modifier_descriptions[m],
+											  limit->modifiers[m],
+											  description);
+										}
 									} else {
 										fprintf(stderr,
 										  "atmost: invalid value '%s' after "
@@ -309,72 +391,105 @@ static bool parse_limit_arg(int* a,
 //------------------------------------------------------------------------------
 static int parse_args(int argc, const char** argv, struct options* opts) {
 	for(int a = 1; a < argc; ++a) {
+		if(strcmp(argv[a], "--") == 0) {
+			break;
+		} else if((strcmp(argv[a], "-v") == 0)
+				  || (strcmp(argv[a], "--verbose") == 0)) {
+			opts->verbose = true;
+		}
+	}
+
+	for(int a = 1; a < argc; ++a) {
 		if(parse_limit_arg(&a,
 			 argc,
 			 argv,
 			 "-n",
 			 "maximum concurrent instance count",
+			 opts,
 			 &opts->max_instances)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-l",
 					"maximum 1 minute average CPU load",
+					opts,
 					&opts->max_cpu_load1)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-L",
 					"maximum 5 minutes average CPU load",
+					opts,
 					&opts->max_cpu_load5)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-m",
 					"maximum used RAM percentage",
+					opts,
 					&opts->max_used_ram)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-s",
 					"maximum used swap space percentage",
+					opts,
 					&opts->max_used_swap)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-p",
 					"maximum number of running processes",
+					opts,
 					&opts->max_total_procs)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-tc",
 					"maximum CPU temperature",
+					opts,
 					&opts->max_cpu_temp)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-tg",
 					"maximum GPU temperature",
+					opts,
 					&opts->max_gpu_temp)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-tb",
 					"maximum battery temperature",
+					opts,
 					&opts->max_bat_temp)) {
 		} else if(parse_limit_arg(&a,
 					argc,
 					argv,
 					"-io",
 					"maximum number of I/O operations",
+					opts,
 					&opts->max_io_ops)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-nw",
+					"minimum total network speed",
+					opts,
+					&opts->min_nw_speed)) {
+		} else if(parse_float_arg(&a,
+					argc,
+					argv,
+					"-snw",
+					"slow network speed",
+					opts,
+					&opts->slow_network_speed)) {
 		} else if(strcmp(argv[a], "-f") == 0) {
 			if(argv[a + 1]) {
 				opts->path = argv[a + 1];
 				if(!is_file(opts->path)) {
 					fprintf(stderr,
-					  "atmost: invalid token file path '%s' -f\n",
+					  "atmost: invalid token file path '%s' after -f\n",
 					  argv[a + 1]);
 					return 1;
 				}
@@ -385,7 +500,9 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 			++a;
 		} else if(strcmp(argv[a], "-r") == 0) {
 			opts->ipc_remove = true;
-		} else if(strcmp(argv[a], "--") == 0) {
+		}
+
+		if(strcmp(argv[a], "--") == 0) {
 			if(opts->sep_arg < 1) {
 				opts->sep_arg = a;
 				break;
@@ -508,6 +625,19 @@ static bool runs_on_battery(struct options* opts) {
 	return false;
 }
 //------------------------------------------------------------------------------
+static bool slow_network_conn(struct options* opts) {
+	struct check_context context;
+	context.opts = opts;
+	return network_speed(&context) <= opts->slow_network_speed;
+}
+//------------------------------------------------------------------------------
+
+static bool no_network_conn(struct options* opts) {
+	struct check_context context;
+	context.opts = opts;
+	return network_speed(&context) <= 0.f;
+}
+//------------------------------------------------------------------------------
 static float total_proc_count(struct check_context* ctx) {
 	return (float)ctx->si->procs;
 }
@@ -557,5 +687,38 @@ static float io_ops_count(struct check_context* ctx) {
 		return (float)iosum;
 	}
 	return 0.f;
+}
+//------------------------------------------------------------------------------
+static float network_speed(struct check_context* ctx) {
+	float total = 0.f;
+	struct ifaddrs *addrs, *addr;
+	getifaddrs(&addrs);
+	addr = addrs;
+	while(addr) {
+		if(addr->ifa_addr && addr->ifa_addr->sa_family == AF_PACKET) {
+			if((addr->ifa_flags & IFF_LOOPBACK) != IFF_LOOPBACK) {
+				if((addr->ifa_flags & IFF_RUNNING) == IFF_RUNNING) {
+					if((addr->ifa_flags & IFF_UP) == IFF_UP) {
+						char buffer[PATH_MAX];
+						snprintf(buffer,
+						  PATH_MAX,
+						  "/sys/class/net/%s/speed",
+						  addr->ifa_name);
+						FILE* file = fopen(buffer, "rt");
+						if(file) {
+							float speed = 0.f;
+							if(fscanf(file, "%f", &speed)) {
+								total += speed;
+							}
+							fclose(file);
+						}
+					}
+				}
+			}
+		}
+		addr = addr->ifa_next;
+	}
+	freeifaddrs(addrs);
+	return total;
 }
 //------------------------------------------------------------------------------
