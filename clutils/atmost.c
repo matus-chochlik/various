@@ -24,6 +24,7 @@ static const char* modifier_descriptions[MODIFIER_COUNT] = {
   "on battery", "slow network", "no network"};
 //------------------------------------------------------------------------------
 struct resource_limit {
+	const char* description;
 	float value;
 	float modifiers[MODIFIER_COUNT];
 	bool check;
@@ -70,8 +71,9 @@ struct options {
 			struct resource_limit max_cpu_temp;
 			struct resource_limit max_cpu_load1;
 			struct resource_limit max_cpu_load5;
-			struct resource_limit max_used_ram;
-			struct resource_limit max_used_swap;
+			struct resource_limit min_avail_ram;
+			struct resource_limit min_free_ram;
+			struct resource_limit min_free_swap;
 			struct resource_limit max_io_ops;
 			struct resource_limit min_nw_speed;
 		};
@@ -92,25 +94,38 @@ struct limit_check {
 };
 //------------------------------------------------------------------------------
 static float difference_to_limit(
-  struct limit_check* info, struct check_context* context) {
+  struct limit_check* info, struct check_context* context, float mult) {
 	if(info->limit->check) {
-		return info->value_getter(context)
-			   - current_limit_value(info->limit, context->opts);
+		const float current_value = info->value_getter(context);
+		const float limit_value =
+		  current_limit_value(info->limit, context->opts);
+		const float diff = (current_value - limit_value) * mult;
+		if(context->opts->verbose) {
+			if(diff > 0.f) {
+				printf("atmost: %s value %f %s limit %f\n",
+				  info->limit->description,
+				  current_value,
+				  (mult > 0.f ? "over" : "under"),
+				  limit_value);
+			}
+		}
+		return diff;
 	}
 	return 0.f;
 }
 //------------------------------------------------------------------------------
 static bool is_over_limit(
   struct limit_check* info, struct check_context* context) {
-	return difference_to_limit(info, context) > 0.f;
+	return difference_to_limit(info, context, +1.f) > 0.f;
 }
 //------------------------------------------------------------------------------
 static bool is_under_limit(
   struct limit_check* info, struct check_context* context) {
-	return difference_to_limit(info, context) < 0.f;
+	return difference_to_limit(info, context, -1.f) > 0.f;
 }
 //------------------------------------------------------------------------------
 static float total_proc_count(struct check_context*);
+static float available_ram_perc(struct check_context*);
 static float free_ram_perc(struct check_context*);
 static float free_swap_perc(struct check_context*);
 static float cpu_load1(struct check_context*);
@@ -131,8 +146,6 @@ static bool overloaded(struct options* opts) {
 
 	struct limit_check max_limits[] = {
 	  {.value_getter = total_proc_count, .limit = &opts->max_total_procs},
-	  {.value_getter = free_ram_perc, .limit = &opts->max_used_ram},
-	  {.value_getter = free_swap_perc, .limit = &opts->max_used_swap},
 	  {.value_getter = cpu_load1, .limit = &opts->max_cpu_load1},
 	  {.value_getter = cpu_load5, .limit = &opts->max_cpu_load5},
 	  {.value_getter = cpu_temperature, .limit = &opts->max_cpu_temp},
@@ -147,6 +160,9 @@ static bool overloaded(struct options* opts) {
 	}
 
 	struct limit_check min_limits[] = {
+	  {.value_getter = available_ram_perc, .limit = &opts->min_avail_ram},
+	  {.value_getter = free_ram_perc, .limit = &opts->min_free_ram},
+	  {.value_getter = free_swap_perc, .limit = &opts->min_free_swap},
 	  {.value_getter = network_speed, .limit = &opts->min_nw_speed}};
 
 	for(size_t l = 0; l < sizeof(min_limits) / sizeof(min_limits[0]); ++l) {
@@ -259,16 +275,30 @@ static int init_opts(struct options* opts) {
 		}
 	}
 
+	opts->max_instances.description = "maximum concurrent instance count";
 	opts->max_instances.value = 2;
+	opts->max_bat_temp.description = "maximum battery temperature";
 	opts->max_bat_temp.value = 60;
+	opts->max_gpu_temp.description = "maximum GPU temperature";
 	opts->max_gpu_temp.value = 80;
+	opts->max_cpu_temp.description = "maximum CPU temperature";
 	opts->max_cpu_temp.value = 80;
+	opts->max_cpu_load1.description = "maximum 1 minute average CPU load";
 	opts->max_cpu_load1.value = 30;
+	opts->max_cpu_load5.description = "maximum 5 minutes average CPU load";
 	opts->max_cpu_load5.value = 15;
-	opts->max_used_ram.value = 90;
-	opts->max_used_swap.value = 50;
+	opts->min_avail_ram.description = "minimum available RAM percentage";
+	opts->min_avail_ram.value = 20;
+	opts->min_free_ram.description = "minimum free RAM percentage";
+	opts->min_free_ram.value = 10;
+	opts->min_free_swap.description = "minimum free swap space percentage";
+	opts->min_free_swap.value = 50;
+	opts->max_total_procs.description = "maximum number of running processes";
 	opts->max_total_procs.value = 2000;
+	opts->max_io_ops.description = "maximum number of I/O operations";
 	opts->max_io_ops.value = 100;
+	opts->min_nw_speed.description = "minimum network speed in Mb/s";
+	opts->min_nw_speed.value = 10;
 
 	opts->ipc_remove = false;
 	opts->verbose = false;
@@ -313,7 +343,6 @@ static bool parse_limit_arg(int* a,
   int argc,
   const char** argv,
   const char* flag,
-  const char* description,
   struct options* opts,
   struct resource_limit* limit) {
 	if(*a < argc) {
@@ -325,12 +354,12 @@ static bool parse_limit_arg(int* a,
 					if(opts->verbose) {
 						printf("parsed value %f for %s\n",
 						  limit->value,
-						  description);
+						  limit->description);
 					}
 				} else {
 					fprintf(stderr,
 					  "atmost: invalid %s value '%s' after %s\n",
-					  description,
+					  limit->description,
 					  argv[*a + 1],
 					  argv[*a]);
 					return false;
@@ -355,7 +384,7 @@ static bool parse_limit_arg(int* a,
 											  "for %s\n",
 											  modifier_descriptions[m],
 											  limit->modifiers[m],
-											  description);
+											  limit->description);
 										}
 									} else {
 										fprintf(stderr,
@@ -379,7 +408,7 @@ static bool parse_limit_arg(int* a,
 			} else {
 				fprintf(stderr,
 				  "atmost: missing %s value after %s\n",
-				  description,
+				  limit->description,
 				  argv[*a]);
 				return false;
 			}
@@ -400,83 +429,29 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 	}
 
 	for(int a = 1; a < argc; ++a) {
-		if(parse_limit_arg(&a,
-			 argc,
-			 argv,
-			 "-n",
-			 "maximum concurrent instance count",
-			 opts,
-			 &opts->max_instances)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-l",
-					"maximum 1 minute average CPU load",
-					opts,
-					&opts->max_cpu_load1)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-L",
-					"maximum 5 minutes average CPU load",
-					opts,
-					&opts->max_cpu_load5)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-m",
-					"maximum used RAM percentage",
-					opts,
-					&opts->max_used_ram)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-s",
-					"maximum used swap space percentage",
-					opts,
-					&opts->max_used_swap)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-p",
-					"maximum number of running processes",
-					opts,
-					&opts->max_total_procs)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-tc",
-					"maximum CPU temperature",
-					opts,
-					&opts->max_cpu_temp)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-tg",
-					"maximum GPU temperature",
-					opts,
-					&opts->max_gpu_temp)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-tb",
-					"maximum battery temperature",
-					opts,
-					&opts->max_bat_temp)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-io",
-					"maximum number of I/O operations",
-					opts,
-					&opts->max_io_ops)) {
-		} else if(parse_limit_arg(&a,
-					argc,
-					argv,
-					"-nw",
-					"minimum total network speed",
-					opts,
-					&opts->min_nw_speed)) {
+		if(parse_limit_arg(&a, argc, argv, "-n", opts, &opts->max_instances)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-l", opts, &opts->max_cpu_load1)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-L", opts, &opts->max_cpu_load5)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-m", opts, &opts->min_avail_ram)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-M", opts, &opts->min_free_ram)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-S", opts, &opts->min_free_swap)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-p", opts, &opts->max_total_procs)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-tc", opts, &opts->max_cpu_temp)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-tg", opts, &opts->max_gpu_temp)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-tb", opts, &opts->max_bat_temp)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-io", opts, &opts->max_io_ops)) {
+		} else if(parse_limit_arg(
+					&a, argc, argv, "-nw", opts, &opts->min_nw_speed)) {
 		} else if(parse_float_arg(&a,
 					argc,
 					argv,
@@ -640,6 +615,32 @@ static bool no_network_conn(struct options* opts) {
 //------------------------------------------------------------------------------
 static float total_proc_count(struct check_context* ctx) {
 	return (float)ctx->si->procs;
+}
+//------------------------------------------------------------------------------
+static float available_ram_perc(struct check_context* ctx) {
+	FILE* file = fopen("/proc/meminfo", "rt");
+	if(file) {
+		char buffer[1024];
+		bool has_total = false;
+		bool has_avail = false;
+		float total = 1.f;
+		float avail = 1.f;
+		while(
+		  !(has_total && has_avail) && fgets(buffer, sizeof(buffer), file)) {
+			if(sscanf(buffer, "MemTotal:%f", &total)) {
+				has_total = true;
+			} else if(sscanf(buffer, "MemAvailable:%f", &avail)) {
+				has_avail = true;
+			}
+		}
+		fclose(file);
+		if(has_total && has_avail) {
+			if(total > 0.f) {
+				return 100.f * avail / total;
+			}
+		}
+	}
+	return 100.f;
 }
 //------------------------------------------------------------------------------
 static float free_ram_perc(struct check_context* ctx) {
