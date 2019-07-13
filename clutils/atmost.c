@@ -56,6 +56,7 @@ static float current_limit_value(
 //------------------------------------------------------------------------------
 struct options {
 	const char* path;
+	int verbose;
 	int sep_arg;
 	int bat_tz_id;
 	int gpu_tz_id;
@@ -71,16 +72,15 @@ struct options {
 			struct resource_limit max_cpu_temp;
 			struct resource_limit max_cpu_load1;
 			struct resource_limit max_cpu_load5;
+			struct resource_limit max_io_ops;
 			struct resource_limit min_avail_ram;
 			struct resource_limit min_free_ram;
 			struct resource_limit min_free_swap;
-			struct resource_limit max_io_ops;
 			struct resource_limit min_nw_speed;
 		};
-		struct resource_limit limits[10];
+		struct resource_limit limits[12];
 	};
 	bool ipc_remove;
-	bool verbose;
 };
 //------------------------------------------------------------------------------
 struct check_context {
@@ -102,10 +102,15 @@ static float difference_to_limit(
 		const float diff = (current_value - limit_value) * mult;
 		if(context->opts->verbose) {
 			if(diff > 0.f) {
-				printf("atmost: %s value %f %s limit %f\n",
+				printf("atmost: %s value %3.1f is %s limit %3.1f\n",
 				  info->limit->description,
 				  current_value,
 				  (mult > 0.f ? "over" : "under"),
+				  limit_value);
+			} else if(context->opts->verbose > 1) {
+				printf("atmost: %s value %3.1f is within limit %3.1f\n",
+				  info->limit->description,
+				  current_value,
 				  limit_value);
 			}
 		}
@@ -261,6 +266,7 @@ static int execute(struct options* opts, int argc, const char** argv) {
 //------------------------------------------------------------------------------
 static int init_opts(struct options* opts) {
 	opts->path = NULL;
+	opts->verbose = 0;
 	opts->sep_arg = 0;
 	opts->bat_tz_id = -1;
 	opts->gpu_tz_id = -1;
@@ -301,7 +307,6 @@ static int init_opts(struct options* opts) {
 	opts->min_nw_speed.value = 10;
 
 	opts->ipc_remove = false;
-	opts->verbose = false;
 }
 //------------------------------------------------------------------------------
 static bool parse_float_arg(int* a,
@@ -317,7 +322,9 @@ static bool parse_float_arg(int* a,
 				if(sscanf(argv[*a + 1], "%f", value)) {
 					++(*a);
 					if(opts->verbose) {
-						printf("parsed value %f for %s\n", *value, description);
+						printf("atmost: parsed value %3.1f for %s\n",
+						  *value,
+						  description);
 					}
 				} else {
 					fprintf(stderr,
@@ -352,7 +359,7 @@ static bool parse_limit_arg(int* a,
 					limit->check = true;
 					++(*a);
 					if(opts->verbose) {
-						printf("parsed value %f for %s\n",
+						printf("atmost: parsed value %3.1f for %s\n",
 						  limit->value,
 						  limit->description);
 					}
@@ -380,8 +387,8 @@ static bool parse_limit_arg(int* a,
 										found_modifier = true;
 										if(opts->verbose) {
 											printf(
-											  "parsed %s modifier value %f "
-											  "for %s\n",
+											  "atmost: parsed %s modifier "
+											  "value %f for %s\n",
 											  modifier_descriptions[m],
 											  limit->modifiers[m],
 											  limit->description);
@@ -424,7 +431,7 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 			break;
 		} else if((strcmp(argv[a], "-v") == 0)
 				  || (strcmp(argv[a], "--verbose") == 0)) {
-			opts->verbose = true;
+			opts->verbose += 1;
 		}
 	}
 
