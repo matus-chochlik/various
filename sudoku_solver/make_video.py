@@ -250,7 +250,7 @@ class __MakeVideoArgumentParser(argparse.ArgumentParser):
 		self.add_argument(
 			'-o', '--output',
 			dest='output_path',
-			metavar='INPUT-FILE',
+			metavar='OUTPUT-FILE',
 			nargs='?',
 			type=os.path.realpath,
 			default=None
