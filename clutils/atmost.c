@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 //------------------------------------------------------------------------------
@@ -425,6 +426,8 @@ static bool parse_limit_arg(int* a,
 	return false;
 }
 //------------------------------------------------------------------------------
+static void print_help();
+//------------------------------------------------------------------------------
 static int parse_args(int argc, const char** argv, struct options* opts) {
 	for(int a = 1; a < argc; ++a) {
 		if(strcmp(argv[a], "--") == 0) {
@@ -432,6 +435,10 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 		} else if((strcmp(argv[a], "-v") == 0)
 				  || (strcmp(argv[a], "--verbose") == 0)) {
 			opts->verbose += 1;
+		} else if((strcmp(argv[a], "-h") == 0)
+				  || (strcmp(argv[a], "--help") == 0)) {
+			print_help();
+			return 0;
 		}
 	}
 
@@ -493,6 +500,8 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 	}
 	return 0;
 }
+//------------------------------------------------------------------------------
+static void print_help();
 //------------------------------------------------------------------------------
 static const char* make_exe_path(char* temp,
   const char* path,
@@ -730,3 +739,32 @@ static float network_speed(struct check_context* ctx) {
 	return total;
 }
 //------------------------------------------------------------------------------
+static void print_help() {
+
+#include "atmost.inl"
+
+	int input_pipe[2];
+	if(pipe(input_pipe) < 0) {
+		perror("atmost: pipe failed: ");
+		return;
+	}
+
+	int pid = fork();
+	if(pid < 0) {
+		perror("atmost: fork failed: ");
+		return;
+	}
+
+	if(pid > 0) {
+		close(input_pipe[0]);
+		write(input_pipe[1], _res_atmost, sizeof(_res_atmost));
+		close(input_pipe[1]);
+		waitpid(pid, NULL, 0);
+	} else {
+		close(input_pipe[1]);
+		dup2(input_pipe[0], 0);
+		execlp("man", "man", "-l", "-", NULL);
+	}
+}
+//------------------------------------------------------------------------------
+

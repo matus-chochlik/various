@@ -1,0 +1,31 @@
+.TH ATMOST 1 "2019-07-16" "Limits concurrent execution of executable."
+.SH "NAME"
+atmost\- tool for limiting the concurrent execution of a specified executable.
+.SH "SYNOPSIS"
+.B atmost
+[
+OPTIONS
+]
+.SH "DESCRIPTION"
+The \fatmost\fR utility allows to limit concurrent execution of a single
+executable or a set of executables, depending on various criteria like
+CPU load, memory and swap usage, thermal zone temeratures, current number
+of I/O operations, etc. or just by a simple maximum number.
+
+.SH "OPTIONS"
+.TP
+\fB-h\fR, \fB--help\fR
+show this help message and exit
+.TP
+\fB-v\fR, \fB--verbose\fR
+Make output more verbose. Can be specified multiple times, each instance
+increases the verbosity level.
+
+.SH "AUTHOR"
+Matus Chochlik, chochlik@gmail.com
+.SH "COPYRIGHT"
+Copyright (c) 2019 Matus Chochlik
+.PP
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the Boost Software License, Version 1.0.
+(See a copy at http://www.boost.org/LICENSE_1_0.txt)

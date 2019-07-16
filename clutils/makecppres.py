@@ -102,7 +102,7 @@ def make_res_inl(options):
 		if first: first = False
 		else: temp += ", "
 
-		temp += "0x%u" % ord(byte)
+		temp += "0x%x" % ord(byte)
 		
 		if linelen > options.max_line_len:
 			linelen = 0
