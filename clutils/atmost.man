@@ -1,13 +1,13 @@
 .TH ATMOST 1 "2019-07-16" "Limits concurrent execution of executable."
 .SH "NAME"
-atmost\- tool for limiting the concurrent execution of a specified executable.
+atmost \- tool for limiting the concurrent execution of a specified executable(s).
 .SH "SYNOPSIS"
 .B atmost
 [
 OPTIONS
-]
+] [-- EXECUTABLE [ARGS...]]
 .SH "DESCRIPTION"
-The \fatmost\fR utility allows to limit concurrent execution of a single
+The \fIatmost\fR utility allows to limit concurrent execution of a single
 executable or a set of executables, depending on various criteria like
 CPU load, memory and swap usage, thermal zone temeratures, current number
 of I/O operations, etc. or just by a simple maximum number.
@@ -20,6 +20,20 @@ show this help message and exit
 \fB-v\fR, \fB--verbose\fR
 Make output more verbose. Can be specified multiple times, each instance
 increases the verbosity level.
+.TP
+\fB-n\fR \fICOUNT\fR
+Limit the number of instances of \fIEXECUTABLE\fR to at most the value of COUNT.
+COUNT must be a positive integer.
+.TP
+\fB-l\fR \fILOAD\fR
+Wait before starting a new instance of \fIEXECUTABLE\fR while 1 minute average
+CPU load is over the value of LOAD. LOAD must be a positive floating-point
+value,
+.TP
+\fB-L\fR \fILOAD\fR
+Wait before starting a new instance of \fIEXECUTABLE\fR while 5 minute average
+CPU load is over the value of LOAD. LOAD must be a positive floating-point
+value.
 
 .SH "AUTHOR"
 Matus Chochlik, chochlik@gmail.com
