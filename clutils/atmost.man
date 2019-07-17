@@ -3,15 +3,40 @@
 atmost \- tool for limiting the concurrent execution of a specified executable(s).
 .SH "SYNOPSIS"
 .SY atmost
+.OP \-v|\-\-verbose
+.OP \-f file\-path
+.OP \-r
+.OP \-c
+.OP \-C
+.OP \-n count
+.OP \-l percent
+.OP \-L percent
+.OP \-m percent
+.OP \-M percent
+.OP \-S percent
+.OP \-p count
+.OP \-tc temp
+.OP \-tg temp
+.OP \-tb temp
+.OP \-io count
+.OP \-nw speed
+.OP \-snw speed
 [
 OPTIONS
-] [-- EXECUTABLE [ARGS...]]
+]
+[\-\- \fIexecutable\fR [args\.\.\.]]
+.YS
+.
+.SY atmost
+.B -h
+.SY atmost
+.B --help
 .YS
 .SH "DESCRIPTION"
 The \fIatmost\fR utility allows to limit concurrent execution of a single
 executable or a set of executables, depending on various criteria like
 CPU load, memory and swap usage, thermal zone temeratures, current number
-of I/O operations, etc. or just by a simple maximum number.
+of I/O operations, etc., or just by a simple maximum number.
 
 .SH "OPTIONS"
 .SS "General options"
@@ -23,78 +48,86 @@ Show this help message and exit.
 Make output more verbose. Can be specified multiple times, each instance
 increases the verbosity level.
 .TP
-\fB-f\fR \fIFILE-PATH\fR
+\fB-f\fR \fIfile-path\fR
 Without this option \fBatmost\fR uses the real path of \fIEXECUTABLE\fR
 to determine the number of concurrent running instances of the executable.
-If the -f option is specified, then FILE-PATH is used instead as a token
+If the -f option is specified, then \fIfile-path\fR is used instead as a token
 used to count concurrent processes. This means that different executables
-may be subject of a single counter. FILE-PATH must be a path to an existing
-file.
+may be subject of a single counter. \fIfile-path\fR must be a path
+to an existing file.
 .TP
 \fB-r\fR 
-Reset the instance counter associated with \fIEXECUTABLE\fR or with the
-\fIFILE-PATH\fR specified after the -f option.
+Reset the instance counter associated with \fIexecutable\fR or with the
+\fIfile-path\fR specified after the -f option.
+.TP
+\fB-c\fR 
+Print the current values of the watched execution limits.
+.TP
+\fB-C\fR 
+Print the current values of all supported execution limits.
 
 .SS "Execution limits"
 .TP
-\fB-n\fR \fICOUNT\fR
-Limit the number of instances of \fIEXECUTABLE\fR to at most the value of COUNT.
-COUNT must be a positive integer.
+\fB-n\fR \fIcount\fR
+Limit the number of instances of \fIexecutable\fR to at most the value
+\fIcount\fR, which must be a positive integer.
 .TP
-\fB-l\fR \fIPERCENT\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while 1 minute average
-CPU load is over the value of PERCENT. PERCENT must be a positive floating-point
-value,
+\fB-l\fR \fIpercent\fR
+Wait before starting a new instance of \fIexecutable\fR while 1 minute average
+CPU load is over the value of \fIpercent\fR, which must be a positive
+floating-point value,
 .TP
-\fB-L\fR \fIPERCENT\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while 5 minute average
-CPU load is over the value of PERCENT. PERCENT must be a positive floating-point
+\fB-L\fR \fIpercent\fR
+Wait before starting a new instance of \fIexecutable\fR while 5 minute average
+CPU load is over the value of \fIpercent\fR, which must be a positive
+floating-point
 value.
 .TP
-\fB-m\fR \fIPERCENT\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current amount
-of available memory is lower than the value of PERCENT. PERCENT must be
+\fB-m\fR \fIpercent\fR
+Wait before starting a new instance of \fIexecutable\fR while current amount
+of available memory is lower than the value of \fIpercent\fR, which must be
 a positive floating-point value.
 .TP
-\fB-M\fR \fIPERCENT\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current amount
-of free memory is lower than the value of PERCENT. PERCENT must be
+\fB-M\fR \fIpercent\fR
+Wait before starting a new instance of \fIexecutable\fR while current amount
+of free memory is lower than the value of \fIpercent\fR, which must be
 a positive floating-point value.
 .TP
-\fB-S\fR \fIPERCENT\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current amount
-of free swap space is lower than the value of PERCENT. PERCENT must be
+\fB-S\fR \fIpercent\fR
+Wait before starting a new instance of \fIexecutable\fR while current amount
+of free swap space is lower than the value of \fIpercent\fR, which must be
 a positive floating-point value.
 .TP
-\fB-p\fR \fICOUNT\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current number
-of all processes exceeds the value of COUNT.
-COUNT must be a positive integer.
+\fB-p\fR \fIcount\fR
+Wait before starting a new instance of \fIexecutable\fR while current number
+of all processes exceeds the value of \fIcount\fR, which  must be
+a positive integer.
 .TP
-\fB-tc\fR \fITEMP\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current CPU
-thermal zone temperature exceeds the value of TEMP.
+\fB-tc\fR \fItemp\fR
+Wait before starting a new instance of \fIexecutable\fR while current CPU
+thermal zone temperature exceeds the value of \fItemp\fR.
 .TP
-\fB-tg\fR \fITEMP\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current GPU
-thermal zone temperature exceeds the value of TEMP.
+\fB-tg\fR \fItemp\fR
+Wait before starting a new instance of \fIexecutable\fR while current GPU
+thermal zone temperature exceeds the value of\fItemp\fR. 
 .TP
-\fB-tb\fR \fITEMP\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current BAT
-(battery) thermal zone temperature exceeds the value of TEMP.
+\fB-tb\fR \fItemp\fR
+Wait before starting a new instance of \fIexecutable\fR while current BAT
+(battery) thermal zone temperature exceeds the value of\fItemp\fR 
 .TP
-\fB-io\fR \fICOUNT\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current number
-of I/O operations exceeds the value of TEMP.
+\fB-io\fR \fIcount\fR
+Wait before starting a new instance of \fIexecutable\fR while current number
+of I/O operations exceeds the value of \fIcount\fR. 
 .TP
-\fB-nw\fR \fIN\fR
-Wait before starting a new instance of \fIEXECUTABLE\fR while current combined
-rated speed in MB/s of all network interfaces is less than the value of N.
+\fB-nw\fR \fIspeed\fR
+Wait before starting a new instance of \fIexecutable\fR while current combined
+rated speed in MB/s of all network interfaces is less than the value
+of \fIspeed\fR.
 
 .SS "Other limits"
 
 .TP
-\fB-snw\fR \fIN\fR
+\fB-snw\fR \fIspeed\fR
 Specifies the total rated speed in MB/s of all network connections that
 is considered \(lqslow\(rq for the purpose of the limit modifier options.
 
@@ -105,20 +138,20 @@ for example the machine running on battery, running without a network connection
 etc.
 
 .TP
-\fB-batt\fR \fIMOD\fR
+\fB-batt\fR \fImod\fR
 Change the value of the preceding \fBExecution limit\fR by the value
-of \fIMOD\fR in case that the machine is running on battery.
+of \fImod\fR in case that the machine is running on battery.
 
 .TP
-\fB-slnw\fR \fIMOD\fR
+\fB-slnw\fR \fImod\fR
 Change the value of the preceding \fBExecution limit\fR by the value
-of \fIMOD\fR in case that the current combined rated speed of all network
+of \fImod\fR in case that the current combined rated speed of all network
 interfaces is less than the limit specified by the \fB-snw\fR option.
 
 .TP
-\fB-nonw\fR \fIMOD\fR
+\fB-nonw\fR \fImod\fR
 Change the value of the preceding \fBExecution limit\fR by the value
-of \fIMOD\fR in case that there is no network connection.
+of \fImod\fR in case that there is no network connection.
 
 .SH "EXAMPLES"
 
