@@ -82,6 +82,8 @@ struct options {
 		struct resource_limit limits[12];
 	};
 	bool ipc_remove;
+	bool print_current;
+	bool print_all_current;
 };
 //------------------------------------------------------------------------------
 struct check_context {
@@ -142,7 +144,7 @@ static float bat_temperature(struct check_context*);
 static float io_ops_count(struct check_context*);
 static float network_speed(struct check_context* ctx);
 //------------------------------------------------------------------------------
-static bool overloaded(struct options* opts) {
+static bool is_overloaded(struct options* opts) {
 	struct sysinfo si;
 	sysinfo(&si);
 
@@ -180,6 +182,41 @@ static bool overloaded(struct options* opts) {
 	return false;
 }
 //------------------------------------------------------------------------------
+void print_current_value(struct check_context* ctx, struct limit_check* info) {
+	if(ctx->opts->print_all_current
+	   || (ctx->opts->print_current && info->limit->check)) {
+		printf("atmost: current value of %s is %3.1f\n",
+		  info->limit->description,
+		  info->value_getter(ctx));
+	}
+}
+//------------------------------------------------------------------------------
+void print_current_values(struct options* opts) {
+	struct limit_check limits[] = {
+	  {.value_getter = total_proc_count, .limit = &opts->max_total_procs},
+	  {.value_getter = cpu_load1, .limit = &opts->max_cpu_load1},
+	  {.value_getter = cpu_load5, .limit = &opts->max_cpu_load5},
+	  {.value_getter = cpu_temperature, .limit = &opts->max_cpu_temp},
+	  {.value_getter = gpu_temperature, .limit = &opts->max_gpu_temp},
+	  {.value_getter = bat_temperature, .limit = &opts->max_bat_temp},
+	  {.value_getter = io_ops_count, .limit = &opts->max_io_ops},
+	  {.value_getter = available_ram_perc, .limit = &opts->min_avail_ram},
+	  {.value_getter = free_ram_perc, .limit = &opts->min_free_ram},
+	  {.value_getter = free_swap_perc, .limit = &opts->min_free_swap},
+	  {.value_getter = network_speed, .limit = &opts->min_nw_speed}};
+
+	struct sysinfo si;
+	sysinfo(&si);
+
+	struct check_context context;
+	context.opts = opts;
+	context.si = &si;
+
+	for(size_t l = 0; l < sizeof(limits) / sizeof(limits[0]); ++l) {
+		print_current_value(&context, &limits[l]);
+	}
+}
+//------------------------------------------------------------------------------
 static int init_opts(struct options* opts);
 static int parse_args(int argc, const char** argv, struct options* opts);
 static int execute(struct options* opts, int argc, const char** argv);
@@ -193,6 +230,8 @@ int main(int argc, const char** argv) {
 		result = parse_args(argc, argv, &opts);
 
 		if(result == 0) {
+
+			print_current_values(&opts);
 			if(opts.sep_arg > 0 && opts.sep_arg + 1 < argc) {
 				return execute(
 				  &opts, argc - opts.sep_arg - 1, argv + opts.sep_arg + 1);
@@ -219,6 +258,7 @@ union atmost_semun {
 };
 //------------------------------------------------------------------------------
 static int execute(struct options* opts, int argc, const char** argv) {
+
 	const char* executable = canonical_path(argv[0]);
 	if(strlen(executable) > 0) {
 
@@ -260,7 +300,7 @@ static int execute(struct options* opts, int argc, const char** argv) {
 				}
 			}
 
-			while(overloaded(opts)) {
+			while(is_overloaded(opts)) {
 				usleep(100000);
 			}
 
@@ -314,6 +354,12 @@ static int init_opts(struct options* opts) {
 	opts->min_nw_speed.value = 10;
 
 	opts->ipc_remove = false;
+	opts->print_current = false;
+	opts->print_all_current = false;
+}
+//------------------------------------------------------------------------------
+static bool arg_is(const char* arg, const char* what) {
+	return strcmp(arg, what) == 0;
 }
 //------------------------------------------------------------------------------
 static bool parse_float_arg(int* a,
@@ -324,7 +370,7 @@ static bool parse_float_arg(int* a,
   struct options* opts,
   float* value) {
 	if(*a < argc) {
-		if(strcmp(argv[*a], flag) == 0) {
+		if(arg_is(argv[*a], flag)) {
 			if(argv[*a + 1]) {
 				if(sscanf(argv[*a + 1], "%f", value)) {
 					++(*a);
@@ -436,13 +482,11 @@ static void print_help();
 //------------------------------------------------------------------------------
 static int parse_args(int argc, const char** argv, struct options* opts) {
 	for(int a = 1; a < argc; ++a) {
-		if(strcmp(argv[a], "--") == 0) {
+		if(arg_is(argv[a], "--")) {
 			break;
-		} else if((strcmp(argv[a], "-v") == 0)
-				  || (strcmp(argv[a], "--verbose") == 0)) {
+		} else if((arg_is(argv[a], "-v")) || (arg_is(argv[a], "--verbose"))) {
 			opts->verbose += 1;
-		} else if((strcmp(argv[a], "-h") == 0)
-				  || (strcmp(argv[a], "--help") == 0)) {
+		} else if((arg_is(argv[a], "-h")) || (arg_is(argv[a], "--help"))) {
 			print_help();
 			return 0;
 		}
@@ -479,7 +523,7 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 					"slow network speed",
 					opts,
 					&opts->slow_network_speed)) {
-		} else if(strcmp(argv[a], "-f") == 0) {
+		} else if(arg_is(argv[a], "-f")) {
 			if(argv[a + 1]) {
 				opts->path = argv[a + 1];
 				if(!is_file(opts->path)) {
@@ -493,11 +537,15 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 				return 1;
 			}
 			++a;
-		} else if(strcmp(argv[a], "-r") == 0) {
+		} else if(arg_is(argv[a], "-r")) {
 			opts->ipc_remove = true;
+		} else if(arg_is(argv[a], "-c")) {
+			opts->print_current = true;
+		} else if(arg_is(argv[a], "-C")) {
+			opts->print_all_current = true;
 		}
 
-		if(strcmp(argv[a], "--") == 0) {
+		if(arg_is(argv[a], "--")) {
 			if(opts->sep_arg < 1) {
 				opts->sep_arg = a;
 				break;
@@ -748,7 +796,6 @@ static float network_speed(struct check_context* ctx) {
 static void print_help() {
 
 #include "atmost.inl"
-
 	int input_pipe[2];
 	if(pipe(input_pipe) < 0) {
 		perror("atmost: pipe failed: ");
