@@ -21,9 +21,6 @@ atmost \- tool for limiting the concurrent execution of a specified executable(s
 .OP \-io count
 .OP \-nw speed
 .OP \-snw speed
-[
-OPTIONS
-]
 [\-\- \fIexecutable\fR [args\.\.\.]]
 .YS
 .
@@ -154,6 +151,32 @@ Change the value of the preceding \fBExecution limit\fR by the value
 of \fImod\fR in case that there is no network connection.
 
 .SH "EXAMPLES"
+.EX
+.B atmost -n 8 -- cmd args...
+.EE
+.PP
+If invoked multiple times concurrently, allows at most 8 instances
+of \(lqcmd\(rq to run at the same time. If there are more invocations
+they wait until some of the already running instances finish.
+
+.EX
+.B atmost -l 10 -batt -4 -- cmd args...
+.EE
+.PP
+If not running on battery and the 1 minute average CPU load is more than
+10% or if running on battery and the 1 minute average CPU load is more
+than 6% (10 + \-4) then wait for until the load drops under the specified
+limits and run the command after \fB--\fR, otherwise run the command
+immediately.
+
+.EX
+.B atmost -snw 10 -m 30 -io 100 -batt -40 -slnw -20  -- cmd args...
+.EE
+.PP
+Waits if there is less than 30% available memory or if not running on battery if there is less then 100 current I/O operations. If running on battery then
+lower the limit of concurrent I/O operations by 40. If there is a network
+connection slower then 10 Mb/s, then lower the limit of I/O operations
+by 20. The limit modifiers do stack.
 
 .SH "AUTHOR"
 Matus Chochlik, chochlik@gmail.com
