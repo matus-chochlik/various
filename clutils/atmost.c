@@ -192,28 +192,30 @@ void print_current_value(struct check_context* ctx, struct limit_check* info) {
 }
 //------------------------------------------------------------------------------
 void print_current_values(struct options* opts) {
-	struct limit_check limits[] = {
-	  {.value_getter = total_proc_count, .limit = &opts->max_total_procs},
-	  {.value_getter = cpu_load1, .limit = &opts->max_cpu_load1},
-	  {.value_getter = cpu_load5, .limit = &opts->max_cpu_load5},
-	  {.value_getter = cpu_temperature, .limit = &opts->max_cpu_temp},
-	  {.value_getter = gpu_temperature, .limit = &opts->max_gpu_temp},
-	  {.value_getter = bat_temperature, .limit = &opts->max_bat_temp},
-	  {.value_getter = io_ops_count, .limit = &opts->max_io_ops},
-	  {.value_getter = available_ram_perc, .limit = &opts->min_avail_ram},
-	  {.value_getter = free_ram_perc, .limit = &opts->min_free_ram},
-	  {.value_getter = free_swap_perc, .limit = &opts->min_free_swap},
-	  {.value_getter = network_speed, .limit = &opts->min_nw_speed}};
+	if(opts->print_all_current || opts->print_current) {
+		struct limit_check limits[] = {
+		  {.value_getter = total_proc_count, .limit = &opts->max_total_procs},
+		  {.value_getter = cpu_load1, .limit = &opts->max_cpu_load1},
+		  {.value_getter = cpu_load5, .limit = &opts->max_cpu_load5},
+		  {.value_getter = cpu_temperature, .limit = &opts->max_cpu_temp},
+		  {.value_getter = gpu_temperature, .limit = &opts->max_gpu_temp},
+		  {.value_getter = bat_temperature, .limit = &opts->max_bat_temp},
+		  {.value_getter = io_ops_count, .limit = &opts->max_io_ops},
+		  {.value_getter = available_ram_perc, .limit = &opts->min_avail_ram},
+		  {.value_getter = free_ram_perc, .limit = &opts->min_free_ram},
+		  {.value_getter = free_swap_perc, .limit = &opts->min_free_swap},
+		  {.value_getter = network_speed, .limit = &opts->min_nw_speed}};
 
-	struct sysinfo si;
-	sysinfo(&si);
+		struct sysinfo si;
+		sysinfo(&si);
 
-	struct check_context context;
-	context.opts = opts;
-	context.si = &si;
+		struct check_context context;
+		context.opts = opts;
+		context.si = &si;
 
-	for(size_t l = 0; l < sizeof(limits) / sizeof(limits[0]); ++l) {
-		print_current_value(&context, &limits[l]);
+		for(size_t l = 0; l < sizeof(limits) / sizeof(limits[0]); ++l) {
+			print_current_value(&context, &limits[l]);
+		}
 	}
 }
 //------------------------------------------------------------------------------
@@ -714,13 +716,11 @@ static float available_ram_perc(struct check_context* ctx) {
 }
 //------------------------------------------------------------------------------
 static float free_ram_perc(struct check_context* ctx) {
-	return 100.f
-		   * (1.f - ((float)ctx->si->freeram) / ((float)ctx->si->totalram));
+	return 100.f * (((float)ctx->si->freeram) / ((float)ctx->si->totalram));
 }
 //------------------------------------------------------------------------------
 static float free_swap_perc(struct check_context* ctx) {
-	return 100.f
-		   * (1.f - ((float)ctx->si->freeswap) / ((float)ctx->si->totalswap));
+	return 100.f * (((float)ctx->si->freeswap) / ((float)ctx->si->totalswap));
 }
 //------------------------------------------------------------------------------
 static float cpu_load1(struct check_context* ctx) {
