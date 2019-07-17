@@ -221,20 +221,24 @@ union atmost_semun {
 static int execute(struct options* opts, int argc, const char** argv) {
 	const char* executable = canonical_path(argv[0]);
 	if(strlen(executable) > 0) {
-		key_t ky = ftok(opts->path ? opts->path : executable, 0xA73057);
-		int sems = semget(ky, 1, 0666 | IPC_CREAT | IPC_EXCL);
 
-		if(sems < 0) {
-			sems = semget(ky, 1, 0);
+		int sems = -1;
+		if(opts->max_instances.check || opts->ipc_remove) {
+			key_t ky = ftok(opts->path ? opts->path : executable, 0xA73057);
+			sems = semget(ky, 1, 0666 | IPC_CREAT | IPC_EXCL);
+
 			if(sems < 0) {
-				perror("atmost: semget failed:");
-				return 3;
-			}
-		} else {
-			union atmost_semun su = {.val = (int)opts->max_instances.value};
-			if(semctl(sems, 0, SETVAL, su) < 0) {
-				perror("atmost: semctl failed:");
-				return 4;
+				sems = semget(ky, 1, 0);
+				if(sems < 0) {
+					perror("atmost: semget failed:");
+					return 3;
+				}
+			} else {
+				union atmost_semun su = {.val = (int)opts->max_instances.value};
+				if(semctl(sems, 0, SETVAL, su) < 0) {
+					perror("atmost: semctl failed:");
+					return 4;
+				}
 			}
 		}
 
@@ -246,12 +250,14 @@ static int execute(struct options* opts, int argc, const char** argv) {
 				return 0;
 			}
 		} else {
-			struct sembuf sb = {
-			  .sem_num = 0, .sem_op = -1, .sem_flg = SEM_UNDO};
+			if(opts->max_instances.check) {
+				struct sembuf sb = {
+				  .sem_num = 0, .sem_op = -1, .sem_flg = SEM_UNDO};
 
-			if(semop(sems, &sb, 1) < 0) {
-				perror("atmost: semop failed: ");
-				return 5;
+				if(semop(sems, &sb, 1) < 0) {
+					perror("atmost: semop failed: ");
+					return 5;
+				}
 			}
 
 			while(overloaded(opts)) {
