@@ -20,7 +20,10 @@
 
 //------------------------------------------------------------------------------
 #define MODIFIER_COUNT 3
-static const char* modifier_flags[MODIFIER_COUNT] = {"-batt", "-slnw", "-nonw"};
+static const char* modifier_short_flags[MODIFIER_COUNT] = {
+  "-batt", "-slnw", "-nonw"};
+static const char* modifier_long_flags[MODIFIER_COUNT] = {
+  "--on-battery", "--slow-nw", "--no-nw"};
 static const char* modifier_descriptions[MODIFIER_COUNT] = {
   "on battery", "slow network", "no network"};
 //------------------------------------------------------------------------------
@@ -364,15 +367,20 @@ static bool arg_is(const char* arg, const char* what) {
 	return strcmp(arg, what) == 0;
 }
 //------------------------------------------------------------------------------
+static bool arg_in(const char* arg, const char* s0, const char* s1) {
+	return arg_is(arg, s0) || arg_is(arg, s1);
+}
+//------------------------------------------------------------------------------
 static bool parse_float_arg(int* a,
   int argc,
   const char** argv,
-  const char* flag,
+  const char* short_flag,
+  const char* long_flag,
   const char* description,
   struct options* opts,
   float* value) {
 	if(*a < argc) {
-		if(arg_is(argv[*a], flag)) {
+		if(arg_in(argv[*a], short_flag, long_flag)) {
 			if(argv[*a + 1]) {
 				if(sscanf(argv[*a + 1], "%f", value)) {
 					++(*a);
@@ -404,11 +412,12 @@ static bool parse_float_arg(int* a,
 static bool parse_limit_arg(int* a,
   int argc,
   const char** argv,
-  const char* flag,
+  const char* short_flag,
+  const char* long_flag,
   struct options* opts,
   struct resource_limit* limit) {
 	if(*a < argc) {
-		if(strcmp(argv[*a], flag) == 0) {
+		if(arg_in(argv[*a], short_flag, long_flag)) {
 			if(argv[*a + 1]) {
 				if(sscanf(argv[*a + 1], "%f", &limit->value)) {
 					limit->check = true;
@@ -433,7 +442,9 @@ static bool parse_limit_arg(int* a,
 					found_modifier = false;
 					if(argv[*a + 1]) {
 						for(int m = 0; m < MODIFIER_COUNT; ++m) {
-							if(strcmp(argv[*a + 1], modifier_flags[m]) == 0) {
+							if(arg_in(argv[*a + 1],
+								 modifier_short_flags[m],
+								 modifier_long_flags[m])) {
 								if(argv[*a + 2]) {
 									if(sscanf(argv[*a + 2],
 										 "%f",
@@ -486,46 +497,108 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 	for(int a = 1; a < argc; ++a) {
 		if(arg_is(argv[a], "--")) {
 			break;
-		} else if((arg_is(argv[a], "-v")) || (arg_is(argv[a], "--verbose"))) {
+		} else if(arg_in(argv[a], "-v", "--verbose")) {
 			opts->verbose += 1;
-		} else if((arg_is(argv[a], "-h")) || (arg_is(argv[a], "--help"))) {
+		} else if(arg_in(argv[a], "-h", "--help")) {
 			print_help();
 			return 0;
 		}
 	}
 
 	for(int a = 1; a < argc; ++a) {
-		if(parse_limit_arg(&a, argc, argv, "-n", opts, &opts->max_instances)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-l", opts, &opts->max_cpu_load1)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-L", opts, &opts->max_cpu_load5)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-m", opts, &opts->min_avail_ram)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-M", opts, &opts->min_free_ram)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-S", opts, &opts->min_free_swap)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-p", opts, &opts->max_total_procs)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-tc", opts, &opts->max_cpu_temp)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-tg", opts, &opts->max_gpu_temp)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-tb", opts, &opts->max_bat_temp)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-io", opts, &opts->max_io_ops)) {
-		} else if(parse_limit_arg(
-					&a, argc, argv, "-nw", opts, &opts->min_nw_speed)) {
+		if(parse_limit_arg(&a,
+			 argc,
+			 argv,
+			 "-n",
+			 "--max-instances",
+			 opts,
+			 &opts->max_instances)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-l",
+					"--max-cpu-load-1m",
+					opts,
+					&opts->max_cpu_load1)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-L",
+					"--max-cpu-load-5m",
+					opts,
+					&opts->max_cpu_load5)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-m",
+					"--min-avail-ram",
+					opts,
+					&opts->min_avail_ram)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-M",
+					"--min-free-ram",
+					opts,
+					&opts->min_free_ram)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-S",
+					"--min-free-swap",
+					opts,
+					&opts->min_free_swap)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-p",
+					"--max-total-procs",
+					opts,
+					&opts->max_total_procs)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-tc",
+					"--max-cpu-temp",
+					opts,
+					&opts->max_cpu_temp)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-tg",
+					"--max-gpu-temp",
+					opts,
+					&opts->max_gpu_temp)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-tb",
+					"--max-bat-temp",
+					opts,
+					&opts->max_bat_temp)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-io",
+					"--max-io-ops",
+					opts,
+					&opts->max_io_ops)) {
+		} else if(parse_limit_arg(&a,
+					argc,
+					argv,
+					"-nw",
+					"--min-nw-speed",
+					opts,
+					&opts->min_nw_speed)) {
 		} else if(parse_float_arg(&a,
 					argc,
 					argv,
 					"-snw",
+					"--slow-nw-speed",
 					"slow network speed",
 					opts,
 					&opts->slow_network_speed)) {
-		} else if(arg_is(argv[a], "-f")) {
+		} else if(arg_in(argv[a], "-f", "--file")) {
 			if(argv[a + 1]) {
 				opts->path = argv[a + 1];
 				if(!is_file(opts->path)) {
@@ -539,15 +612,15 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 				return 1;
 			}
 			++a;
-		} else if(arg_is(argv[a], "-r")) {
+		} else if(arg_in(argv[a], "-r", "--reset")) {
 			opts->ipc_remove = true;
-		} else if(arg_is(argv[a], "-c")) {
+		} else if(arg_in(argv[a], "-c", "--print-current")) {
 			opts->print_current = true;
-		} else if(arg_is(argv[a], "-C")) {
+		} else if(arg_in(argv[a], "-C", "--print-all-current")) {
 			opts->print_all_current = true;
 		}
 
-		if(arg_is(argv[a], "--")) {
+		if(arg_in(argv[a], "--", ";")) {
 			if(opts->sep_arg < 1) {
 				opts->sep_arg = a;
 				break;

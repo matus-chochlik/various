@@ -4,23 +4,23 @@ atmost \- tool for limiting the concurrent execution of a specified executable(s
 .SH "SYNOPSIS"
 .SY atmost
 .OP \-v|\-\-verbose
-.OP \-f file\-path
-.OP \-r
-.OP \-c
-.OP \-C
-.OP \-n count
-.OP \-l percent
-.OP \-L percent
-.OP \-m percent
-.OP \-M percent
-.OP \-S percent
-.OP \-p count
-.OP \-tc temp
-.OP \-tg temp
-.OP \-tb temp
-.OP \-io count
-.OP \-nw speed
-.OP \-snw speed
+.OP \-f|--file file\-path
+.OP \-r|\-\-reset
+.OP \-c|\-\-print\-current
+.OP \-C|\-\-print\-all\-current
+.OP \-n|\-\-max\-instances count
+.OP \-l|\-\-max\-cpu\-load\-1m percent
+.OP \-L|\-\-max\-cpu\-load\-5m percent
+.OP \-m|\-\-min\-avail\-ram percent
+.OP \-M|\-\-min\-free\-ram percent
+.OP \-S|\-\-min\-free\-swap  percent
+.OP \-p|\-\-max\-total\-procs count
+.OP \-tc|\-\-max\-cpu\-temp temp
+.OP \-tg|\-\-max\-gpu\-temp temp
+.OP \-tb|\-\-max\-bat\-temp temp
+.OP \-io|\-\-max\-io\-ops count
+.OP \-nw|\-\-max\-nw\-speed speed
+.OP \-snw|\-\-slow\-nw\-speed speed
 [\-\- \fIexecutable\fR [args\.\.\.]]
 .YS
 .
@@ -45,7 +45,7 @@ Show this help message and exit.
 Make output more verbose. Can be specified multiple times, each instance
 increases the verbosity level.
 .TP
-\fB-f\fR \fIfile-path\fR
+\fB-f\fR \fIfile-path\fR, \fB--file\fR \fIfile-path\fR
 Without this option \fBatmost\fR uses the real path of \fIEXECUTABLE\fR
 to determine the number of concurrent running instances of the executable.
 If the -f option is specified, then \fIfile-path\fR is used instead as a token
@@ -53,70 +53,70 @@ used to count concurrent processes. This means that different executables
 may be subject of a single counter. \fIfile-path\fR must be a path
 to an existing file.
 .TP
-\fB-r\fR 
+\fB-r\fR, \fB--reset\fR 
 Reset the instance counter associated with \fIexecutable\fR or with the
 \fIfile-path\fR specified after the -f option.
 .TP
-\fB-c\fR 
+\fB-c\fR, \fB--print-current\fR
 Print the current values of the watched execution limits.
 .TP
-\fB-C\fR 
+\fB-C\fR, \fB--print-all-current\fR
 Print the current values of all supported execution limits.
 
 .SS "Execution limits"
 .TP
-\fB-n\fR \fIcount\fR
+\fB-n\fR \fIcount\fR, \fB--max-countn\fR \fIcount\fR
 Limit the number of instances of \fIexecutable\fR to at most the value
 \fIcount\fR, which must be a positive integer.
 .TP
-\fB-l\fR \fIpercent\fR
+\fB-l\fR \fIpercent\fR, \fB-max-cpu-load-1m\fR \fIpercent\fR
 Wait before starting a new instance of \fIexecutable\fR while 1 minute average
 CPU load is over the value of \fIpercent\fR, which must be a positive
 floating-point value,
 .TP
-\fB-L\fR \fIpercent\fR
+\fB-L\fR \fIpercent\fR, \fB-max-cpu-load-5m\fR \fIpercent\fR
 Wait before starting a new instance of \fIexecutable\fR while 5 minute average
 CPU load is over the value of \fIpercent\fR, which must be a positive
 floating-point
 value.
 .TP
-\fB-m\fR \fIpercent\fR
+\fB-m\fR \fIpercent\fR, \fB--min-avail-ram\fR \fIpercent\fR
 Wait before starting a new instance of \fIexecutable\fR while current amount
 of available memory is lower than the value of \fIpercent\fR, which must be
 a positive floating-point value.
 .TP
-\fB-M\fR \fIpercent\fR
+\fB-M\fR \fIpercent\fR, \fB--min-free-ram\fR \fIpercent\fR
 Wait before starting a new instance of \fIexecutable\fR while current amount
 of free memory is lower than the value of \fIpercent\fR, which must be
 a positive floating-point value.
 .TP
-\fB-S\fR \fIpercent\fR
+\fB-S\fR \fIpercent\fR, \fB--min-free-swap\fR \fIpercent\fR
 Wait before starting a new instance of \fIexecutable\fR while current amount
 of free swap space is lower than the value of \fIpercent\fR, which must be
 a positive floating-point value.
 .TP
-\fB-p\fR \fIcount\fR
+\fB-p\fR \fIcount\fR, \fB--max-total-procs\fR \fIcount\fR
 Wait before starting a new instance of \fIexecutable\fR while current number
 of all processes exceeds the value of \fIcount\fR, which  must be
 a positive integer.
 .TP
-\fB-tc\fR \fItemp\fR
+\fB-tc\fR \fItemp\fR, \fB--max-cpu-temp\fR \fItemp\fR
 Wait before starting a new instance of \fIexecutable\fR while current CPU
 thermal zone temperature exceeds the value of \fItemp\fR.
 .TP
-\fB-tg\fR \fItemp\fR
+\fB-tg\fR \fItemp\fR, \fB--max-gpu-temp\fR \fItemp\fR
 Wait before starting a new instance of \fIexecutable\fR while current GPU
 thermal zone temperature exceeds the value of\fItemp\fR. 
 .TP
-\fB-tb\fR \fItemp\fR
+\fB-tb\fR \fItemp\fR, \fB--max-bat-temp\fR \fItemp\fR
 Wait before starting a new instance of \fIexecutable\fR while current BAT
 (battery) thermal zone temperature exceeds the value of\fItemp\fR 
 .TP
-\fB-io\fR \fIcount\fR
+\fB-io\fR \fIcount\fR, \fB--max-io-ops\fR \fIcount\fR
 Wait before starting a new instance of \fIexecutable\fR while current number
 of I/O operations exceeds the value of \fIcount\fR. 
 .TP
-\fB-nw\fR \fIspeed\fR
+\fB-nw\fR \fIspeed\fR, \fB--min-nw-speed\fR \fIspeed\fR
 Wait before starting a new instance of \fIexecutable\fR while current combined
 rated speed in MB/s of all network interfaces is less than the value
 of \fIspeed\fR.
@@ -124,7 +124,7 @@ of \fIspeed\fR.
 .SS "Other limits"
 
 .TP
-\fB-snw\fR \fIspeed\fR
+\fB-snw\fR \fIspeed\fR, \fB--slow-nw-speed\fR \fIspeed\fR
 Specifies the total rated speed in MB/s of all network connections that
 is considered \(lqslow\(rq for the purpose of the limit modifier options.
 
@@ -135,18 +135,18 @@ for example the machine running on battery, running without a network connection
 etc.
 
 .TP
-\fB-batt\fR \fImod\fR
+\fB-batt\fR \fImod\fR, \fB--on-battery\fR \fImod\fR
 Change the value of the preceding \fBExecution limit\fR by the value
 of \fImod\fR in case that the machine is running on battery.
 
 .TP
-\fB-slnw\fR \fImod\fR
+\fB-slnw\fR \fImod\fR, \fB--slow-nw\fR \fImod\fR
 Change the value of the preceding \fBExecution limit\fR by the value
 of \fImod\fR in case that the current combined rated speed of all network
 interfaces is less than the limit specified by the \fB-snw\fR option.
 
 .TP
-\fB-nonw\fR \fImod\fR
+\fB-nonw\fR \fImod\fR, \fB--no-nw\fR \fImod\fR
 Change the value of the preceding \fBExecution limit\fR by the value
 of \fImod\fR in case that there is no network connection.
 
@@ -173,7 +173,8 @@ immediately.
 .B atmost -snw 10 -m 30 -io 100 -batt -40 -slnw -20  -- cmd args...
 .EE
 .PP
-Waits if there is less than 30% available memory or if not running on battery if there is less then 100 current I/O operations. If running on battery then
+Waits if there is less than 30% available memory or if not running on battery
+if there is less then 100 current I/O operations. If running on battery then
 lower the limit of concurrent I/O operations by 40. If there is a network
 connection slower then 10 Mb/s, then lower the limit of I/O operations
 by 20. The limit modifiers do stack.
