@@ -25,38 +25,20 @@ static const char* modifier_short_flags[MODIFIER_COUNT] = {
 static const char* modifier_long_flags[MODIFIER_COUNT] = {
   "--on-battery", "--slow-nw", "--no-nw"};
 static const char* modifier_descriptions[MODIFIER_COUNT] = {
-  "on battery", "slow network", "no network"};
+  "running on battery", "slow network", "no network"};
 //------------------------------------------------------------------------------
 struct resource_limit {
 	const char* description;
 	float value;
 	float modifiers[MODIFIER_COUNT];
 	bool check;
+	bool do_modification[MODIFIER_COUNT];
 };
 //------------------------------------------------------------------------------
 struct options;
 static bool runs_on_battery(struct options* opts);
 static bool slow_network_conn(struct options* opts);
 static bool no_network_conn(struct options* opts);
-//------------------------------------------------------------------------------
-static float current_limit_value(
-  struct resource_limit* limit, struct options* opts) {
-	float result = limit->value;
-
-	if(runs_on_battery(opts)) {
-		result += limit->modifiers[0];
-	}
-
-	if(slow_network_conn(opts)) {
-		result += limit->modifiers[1];
-	}
-
-	if(no_network_conn(opts)) {
-		result += limit->modifiers[2];
-	}
-
-	return result;
-}
 //------------------------------------------------------------------------------
 struct options {
 	const char* path;
@@ -89,6 +71,48 @@ struct options {
 	bool print_current;
 	bool print_all_current;
 };
+//------------------------------------------------------------------------------
+static float current_limit_value(
+  struct resource_limit* limit, struct options* opts) {
+	float result = limit->value;
+	if(opts->verbose > 3) {
+		printf("atmost: initial %s limit value is %3.1f\n",
+		  limit->description,
+		  result);
+	}
+
+	struct {
+		bool (*needs_modification)(struct options*);
+		bool done;
+	} modifications[MODIFIER_COUNT] = {
+	  {.needs_modification = runs_on_battery, .done = false},
+	  {.needs_modification = slow_network_conn, .done = false},
+	  {.needs_modification = no_network_conn, .done = false}};
+
+	for(size_t l = 0; l < MODIFIER_COUNT; ++l) {
+		if(limit->do_modification[l]) {
+			if(modifications[l].needs_modification(opts)) {
+				result += limit->modifiers[l];
+				if(opts->verbose > 3) {
+					printf(
+					  "atmost: modified %s limit value by %3.1f "
+					  "because of %s\n",
+					  limit->description,
+					  limit->modifiers[l],
+					  modifier_descriptions[l]);
+				}
+			}
+		}
+	}
+
+	if(opts->verbose > 2) {
+		printf("atmost: final %s limit value is %3.1f\n",
+		  limit->description,
+		  result);
+	}
+
+	return result;
+}
 //------------------------------------------------------------------------------
 struct check_context {
 	struct options* opts;
@@ -332,6 +356,7 @@ static int init_opts(struct options* opts) {
 		limit->check = false;
 		for(int m = 0; m < MODIFIER_COUNT; ++m) {
 			limit->modifiers[m] = 0.f;
+			limit->do_modification[m] = false;
 		}
 	}
 
@@ -452,6 +477,7 @@ static bool parse_limit_arg(int* a,
 										 "%f",
 										 &limit->modifiers[m])) {
 										++(*a);
+										limit->do_modification[m] = true;
 										found_modifier = true;
 										if(opts->verbose) {
 											printf(
