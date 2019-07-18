@@ -54,8 +54,8 @@ class MakeCppResArgumentParser(argparse.ArgumentParser):
 			options.input = sys.stdin
 			options.input_name = 'resources'
 		else:
-			options.input_name = os.path.splitext(
-					os.path.basename(options.input.name))[0]
+			options.input_name =\
+				os.path.basename(options.input.name).split(os.path.extsep)[0]
 
 		if options.output_path is None:
 			options.output_path = '%s.inl' % options.input_name
@@ -88,7 +88,7 @@ def make_argparser():
 # ------------------------------------------------------------------------------
 def make_res_inl(options):
 	options.output.write(
-		"static constexpr const unsigned char _res_%s[] = {\n" %
+		"static const unsigned char _res_%s[] = {\n" %
 		options.input_name
 	)
 	linelen = 0
