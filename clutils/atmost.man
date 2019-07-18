@@ -6,6 +6,7 @@ atmost \- tool for limiting the concurrent execution of a specified executable(s
 .OP \-v|\-\-verbose
 .OP \-f|--file file\-path
 .OP \-r|\-\-reset
+.OP \-i|\-\-sleep\-interval seconds
 .OP \-c|\-\-print\-current
 .OP \-C|\-\-print\-all\-current
 .OP \-n|\-\-max\-instances count
@@ -56,6 +57,10 @@ to an existing file.
 \fB-r\fR, \fB--reset\fR 
 Reset the instance counter associated with \fIexecutable\fR or with the
 \fIfile-path\fR specified after the -f option.
+.TP
+\fB-i\fR, \fB--sleep-interval\fR
+Specifies the time interval in seconds \fBatmost\fR sleeps before rechecking
+if the system is overloaded.
 .TP
 \fB-c\fR, \fB--print-current\fR
 Print the current values of the watched execution limits.

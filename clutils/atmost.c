@@ -60,6 +60,7 @@ static float current_limit_value(
 //------------------------------------------------------------------------------
 struct options {
 	const char* path;
+	useconds_t sleep_interval;
 	int verbose;
 	int sep_arg;
 	int bat_tz_id;
@@ -306,7 +307,7 @@ static int execute(struct options* opts, int argc, const char** argv) {
 			}
 
 			while(is_overloaded(opts)) {
-				usleep(100000);
+				usleep(opts->sleep_interval);
 			}
 
 			return execv(executable, (char* const*)argv);
@@ -318,6 +319,7 @@ static int execute(struct options* opts, int argc, const char** argv) {
 //------------------------------------------------------------------------------
 static int init_opts(struct options* opts) {
 	opts->path = NULL;
+	opts->sleep_interval = 100000;
 	opts->verbose = 0;
 	opts->sep_arg = 0;
 	opts->bat_tz_id = -1;
@@ -504,6 +506,7 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 			return 0;
 		}
 	}
+	float temp;
 
 	for(int a = 1; a < argc; ++a) {
 		if(parse_limit_arg(&a,
@@ -598,6 +601,15 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 					"slow network speed",
 					opts,
 					&opts->slow_network_speed)) {
+		} else if(parse_float_arg(&a,
+					argc,
+					argv,
+					"-i",
+					"--sleep-interval",
+					"sleep interval in seconds",
+					opts,
+					&temp)) {
+			opts->sleep_interval = (useconds_t)(100000.f * temp);
 		} else if(arg_in(argv[a], "-f", "--file")) {
 			if(argv[a + 1]) {
 				opts->path = argv[a + 1];
