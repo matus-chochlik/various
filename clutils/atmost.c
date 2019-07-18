@@ -294,7 +294,11 @@ static int execute(struct options* opts, int argc, const char** argv) {
 
 		int sems = -1;
 		if(opts->max_instances.check || opts->ipc_remove) {
-			key_t ky = ftok(opts->path ? opts->path : executable, 0xA73057);
+			const char* token_path = opts->path ? opts->path : executable;
+			if(opts->verbose) {
+				printf("atmost: using '%s' as the token path\n", token_path);
+			}
+			key_t ky = ftok(token_path, 0xA73057);
 			sems = semget(ky, 1, 0666 | IPC_CREAT | IPC_EXCL);
 
 			if(sems < 0) {
@@ -532,6 +536,14 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 			return 0;
 		}
 	}
+
+	if(opts->verbose) {
+		printf("atmost: being");
+		for(int i = 1; i < opts->verbose; ++i) {
+			printf(" very");
+		}
+		printf(" verbose\n");
+	}
 	float temp;
 
 	for(int a = 1; a < argc; ++a) {
@@ -635,7 +647,7 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 					"sleep interval in seconds",
 					opts,
 					&temp)) {
-			opts->sleep_interval = (useconds_t)(100000.f * temp);
+			opts->sleep_interval = (useconds_t)(1000000.f * temp);
 		} else if(arg_in(argv[a], "-f", "--file")) {
 			if(argv[a + 1]) {
 				opts->path = argv[a + 1];
