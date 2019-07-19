@@ -76,7 +76,7 @@ static float current_limit_value(
   struct resource_limit* limit, struct options* opts) {
 	float result = limit->value;
 	if(opts->verbose > 3) {
-		printf("atmost: initial %s limit value is %3.1f\n",
+		printf("atmost: initial %s limit value is %3.2f\n",
 		  limit->description,
 		  result);
 	}
@@ -95,7 +95,7 @@ static float current_limit_value(
 				result += limit->modifiers[l];
 				if(opts->verbose > 3) {
 					printf(
-					  "atmost: modified %s limit value by %3.1f "
+					  "atmost: modified %s limit value by %3.2f "
 					  "because of %s\n",
 					  limit->description,
 					  limit->modifiers[l],
@@ -106,7 +106,7 @@ static float current_limit_value(
 	}
 
 	if(opts->verbose > 2) {
-		printf("atmost: final %s limit value is %3.1f\n",
+		printf("atmost: final %s limit value is %3.2f\n",
 		  limit->description,
 		  result);
 	}
@@ -133,13 +133,13 @@ static float difference_to_limit(
 		const float diff = (current_value - limit_value) * mult;
 		if(context->opts->verbose) {
 			if(diff > 0.f) {
-				printf("atmost: %s value %3.1f is %s limit %3.1f\n",
+				printf("atmost: %s value %3.2f is %s limit %3.2f\n",
 				  info->limit->description,
 				  current_value,
 				  (mult > 0.f ? "over" : "under"),
 				  limit_value);
 			} else if(context->opts->verbose > 1) {
-				printf("atmost: %s value %3.1f is within limit %3.1f\n",
+				printf("atmost: %s value %3.2f is within limit %3.2f\n",
 				  info->limit->description,
 				  current_value,
 				  limit_value);
@@ -213,7 +213,7 @@ static bool is_overloaded(struct options* opts) {
 void print_current_value(struct check_context* ctx, struct limit_check* info) {
 	if(ctx->opts->print_all_current
 	   || (ctx->opts->print_current && info->limit->check)) {
-		printf("atmost: current value of %s is %3.1f\n",
+		printf("atmost: current value of %s is %3.2f\n",
 		  info->limit->description,
 		  info->value_getter(ctx));
 	}
@@ -296,7 +296,8 @@ static int execute(struct options* opts, int argc, const char** argv) {
 		if(opts->max_instances.check || opts->ipc_remove) {
 			const char* token_path = opts->path ? opts->path : executable;
 			if(opts->verbose) {
-				printf("atmost: using '%s' as the token path\n", token_path);
+				printf("atmost: using '%s' as the synchronization token path\n",
+				  token_path);
 			}
 			key_t ky = ftok(token_path, 0xA73057);
 			sems = semget(ky, 1, 0666 | IPC_CREAT | IPC_EXCL);
@@ -310,7 +311,7 @@ static int execute(struct options* opts, int argc, const char** argv) {
 			} else {
 				union atmost_semun su = {.val = (int)opts->max_instances.value};
 				if(semctl(sems, 0, SETVAL, su) < 0) {
-					perror("atmost: semctl failed:");
+					perror("atmost: semctl (SETVAL) failed:");
 					return 4;
 				}
 			}
@@ -318,7 +319,7 @@ static int execute(struct options* opts, int argc, const char** argv) {
 
 		if(opts->ipc_remove) {
 			if(semctl(sems, 0, IPC_RMID) < 0) {
-				perror("atmost: semctl failed: ");
+				perror("atmost: semctl (IPC_RMID) failed: ");
 				return 5;
 			} else {
 				return 0;
@@ -416,7 +417,7 @@ static bool parse_float_arg(int* a,
 				if(sscanf(argv[*a + 1], "%f", value)) {
 					++(*a);
 					if(opts->verbose) {
-						printf("atmost: parsed value %3.1f for %s\n",
+						printf("atmost: parsed value %3.2f for %s\n",
 						  *value,
 						  description);
 					}
@@ -454,7 +455,7 @@ static bool parse_limit_arg(int* a,
 					limit->check = true;
 					++(*a);
 					if(opts->verbose) {
-						printf("atmost: parsed value %3.1f for %s\n",
+						printf("atmost: parsed value %3.2f for %s\n",
 						  limit->value,
 						  limit->description);
 					}
