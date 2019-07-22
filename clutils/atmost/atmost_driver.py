@@ -70,23 +70,12 @@ class AtmostProcess(object):
         self._input_buff = str()
         self._output_buff = str()
         self._json = None
-        self._closed = False
+        self._pid = -1
         self._responded = False
-
-    # --------------------------------------------------------------------------
-    def is_disconnected(self):
-        return self._closed
 
     # --------------------------------------------------------------------------
     def got_response(self):
         return self._responded
-
-    # --------------------------------------------------------------------------
-    def pid(self):
-        try:
-            return self._json["args"]
-        except:
-            return []
 
     # --------------------------------------------------------------------------
     def args(self):
@@ -96,28 +85,47 @@ class AtmostProcess(object):
             return []
 
     # --------------------------------------------------------------------------
+    def is_running(self):
+        try:
+            os.kill(self._pid, 0)
+        except OSError:
+            return False
+        else:
+            return True
+
+    # --------------------------------------------------------------------------
     def go(self, conn):
         self._responded = True
-        self._output_buff = "OK-GO"
+        self._output_buff = "OK-GO\n"
         self.handle_write(conn)
 
     # --------------------------------------------------------------------------
+    def disconnect(self, conn):
+        self._parent.disconnect_client(self._uid, conn)
+
+    # --------------------------------------------------------------------------
     def handle_read(self, conn):
-        data = conn.recv(1024)
-        if data:
-            self._input_buff += str(data)
-            try:
-                self._json = json.loads(self._input_buff)
-            except ValueError:
-                pass
-        else:
-            self._closed = True
+        try:
+            data = conn.recv(1024)
+            if data:
+                self._input_buff += str(data)
+                try:
+                    self._json = json.loads(self._input_buff)
+                    self._pid = int(self._json["pid"])
+                except:
+                    pass
+            else:
+                self.disconnect(conn)
+        except socket.error:
+                self.disconnect(conn)
 
     # --------------------------------------------------------------------------
     def handle_write(self, conn):
         if self._output_buff:
             done = conn.send(self._output_buff)
             self._output_buff = self._output_buff[done:]
+            if not self._output_buff:
+                self.disconnect(conn)
 
 # ------------------------------------------------------------------------------
 class AtmostDriver(object):
@@ -137,9 +145,13 @@ class AtmostDriver(object):
         )
 
     # --------------------------------------------------------------------------
-    def remove_client(self, client_id, conn):
+    def disconnect_client(self, client_id, conn):
         self._selector.unregister(conn)
         conn.close()
+        del conn
+
+    # --------------------------------------------------------------------------
+    def remove_client(self, client_id, conn):
         del conn
         del self._clients[client_id]
 
@@ -147,7 +159,7 @@ class AtmostDriver(object):
     def cleanup(self):
         to_be_removed = []
         for uid, (conn, client) in self._clients.items():
-            if client.is_disconnected():
+            if not client.is_running():
                 to_be_removed.append((uid, conn))
 
         for uid, conn in to_be_removed:
@@ -157,8 +169,8 @@ class AtmostDriver(object):
     def let_go(self, client, others):
         # TODO
         args = client.args()
+        print(args)
         if args:
-            print(args)
             return True
         return False
 

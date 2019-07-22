@@ -12,9 +12,11 @@
 #include <string.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
 #include <sys/types.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -42,6 +44,7 @@ static bool no_network_conn(struct options* opts);
 //------------------------------------------------------------------------------
 struct options {
 	const char* path;
+	const char* driver_socket_path;
 	useconds_t sleep_interval;
 	int verbose;
 	int sep_arg;
@@ -283,9 +286,16 @@ static bool is_file(const char* path) {
 		   && S_ISREG(sb.st_mode);
 }
 //------------------------------------------------------------------------------
+static bool is_socket(const char* path) {
+	struct stat sb;
+	return (stat(path, &sb) == 0) && ((sb.st_mode & S_IFMT) == S_IFSOCK);
+}
+//------------------------------------------------------------------------------
 union atmost_semun {
 	int val;
 };
+//------------------------------------------------------------------------------
+static bool driver_barrier(struct options* opts, int argc, const char** argv);
 //------------------------------------------------------------------------------
 static int execute(struct options* opts, int argc, const char** argv) {
 
@@ -339,15 +349,19 @@ static int execute(struct options* opts, int argc, const char** argv) {
 				usleep(opts->sleep_interval);
 			}
 
-			return execv(executable, (char* const*)argv);
+			if(driver_barrier(opts, argc, argv)) {
+				return execv(executable, (char* const*)argv);
+				fprintf(
+				  stderr, "atmost: could not find executable '%s'\n", argv[0]);
+			}
 		}
 	}
-	fprintf(stderr, "atmost: could not find executable '%s'\n", argv[0]);
 	return 2;
 }
 //------------------------------------------------------------------------------
 static int init_opts(struct options* opts) {
 	opts->path = NULL;
+	opts->driver_socket_path = "/tmp/atmost.socket";
 	opts->sleep_interval = 100000;
 	opts->verbose = 0;
 	opts->sep_arg = 0;
@@ -915,6 +929,52 @@ static float network_speed(struct check_context* ctx) {
 	}
 	freeifaddrs(addrs);
 	return total;
+}
+//------------------------------------------------------------------------------
+static bool driver_barrier(struct options* opts, int argc, const char** argv) {
+	if(is_socket(opts->driver_socket_path)) {
+		if(opts->verbose) {
+			printf("atmost: using driver at %s\n", opts->driver_socket_path);
+		}
+		int sock = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+		if(sock < 0) {
+			perror("atmost: socket failed: ");
+			return false;
+		}
+
+		struct sockaddr_un addr;
+		addr.sun_family = AF_UNIX;
+		strncpy(addr.sun_path, opts->driver_socket_path, sizeof(addr.sun_path));
+
+		if(connect(sock, (struct sockaddr*)&addr, (socklen_t)sizeof(addr))
+		   < 0) {
+			perror("atmost: connect failed: ");
+			close(sock);
+			return false;
+		}
+
+		FILE* driver = fdopen(sock, "wt");
+
+		fprintf(driver, "{\"args\": [");
+		for(int a = 0; a < argc; ++a) {
+			if(a > 0) {
+				fprintf(driver, ", ");
+			}
+
+			fputc('"', driver);
+			fputs(argv[a], driver);
+			fputc('"', driver);
+		}
+		fprintf(driver, "], \"pid\": %d}", getpid());
+		fflush(driver);
+
+		char c = '\0';
+		if(fscanf(fdopen(sock, "rt"), "OK%cGO\n", &c) == 1) {
+			return (c == '-');
+		}
+		return false;
+	}
+	return true;
 }
 //------------------------------------------------------------------------------
 static void print_help() {
