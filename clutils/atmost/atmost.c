@@ -455,6 +455,35 @@ static bool parse_float_arg(int* a,
 	}
 }
 //------------------------------------------------------------------------------
+static bool parse_string_arg(int* a,
+  int argc,
+  const char** argv,
+  const char* short_flag,
+  const char* long_flag,
+  const char* description,
+  struct options* opts,
+  const char** value) {
+	if(*a < argc) {
+		if(arg_in(argv[*a], short_flag, long_flag)) {
+			if(argv[*a + 1]) {
+				*value = argv[*a + 1];
+				++(*a);
+				if(opts->verbose) {
+					printf(
+					  "atmost: parsed value %s for %s\n", *value, description);
+				}
+			} else {
+				fprintf(stderr,
+				  "atmost: missing %s value after %s\n",
+				  description,
+				  argv[*a]);
+				return false;
+			}
+			return true;
+		}
+	}
+}
+//------------------------------------------------------------------------------
 static bool parse_limit_arg(int* a,
   int argc,
   const char** argv,
@@ -559,7 +588,8 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 		}
 		printf(" verbose\n");
 	}
-	float temp;
+	float temp_float;
+	const char* temp_str;
 
 	for(int a = 1; a < argc; ++a) {
 		if(parse_limit_arg(&a,
@@ -661,22 +691,40 @@ static int parse_args(int argc, const char** argv, struct options* opts) {
 					"--sleep-interval",
 					"sleep interval in seconds",
 					opts,
-					&temp)) {
-			opts->sleep_interval = (useconds_t)(1000000.f * temp);
-		} else if(arg_in(argv[a], "-f", "--file")) {
-			if(argv[a + 1]) {
-				opts->path = argv[a + 1];
-				if(!is_file(opts->path)) {
-					fprintf(stderr,
-					  "atmost: invalid token file path '%s' after -f\n",
-					  argv[a + 1]);
-					return 1;
-				}
+					&temp_float)) {
+			opts->sleep_interval = (useconds_t)(1000000.f * temp_float);
+		} else if(parse_string_arg(&a,
+					argc,
+					argv,
+					"-f",
+					"--file",
+					"synchronization token file path",
+					opts,
+					&temp_str)) {
+			if(temp_str && is_file(temp_str)) {
+				opts->path = temp_str;
 			} else {
-				fprintf(stderr, "atmost: missing token file path after -f\n");
+				fprintf(stderr,
+				  "atmost: invalid synchronization token file path '%s'\n",
+				  temp_str);
 				return 1;
 			}
-			++a;
+		} else if(parse_string_arg(&a,
+					argc,
+					argv,
+					"-s",
+					"--socket",
+					"synchronization driver socket path",
+					opts,
+					&temp_str)) {
+			if(temp_str && is_socket(temp_str)) {
+				opts->driver_socket_path = temp_str;
+			} else {
+				fprintf(stderr,
+				  "atmost: invalid synchronization driver socket path '%s'\n",
+				  temp_str);
+				return 1;
+			}
 		} else if(arg_in(argv[a], "-r", "--reset")) {
 			opts->ipc_remove = true;
 		} else if(arg_in(argv[a], "-c", "--print-current")) {
