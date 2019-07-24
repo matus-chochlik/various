@@ -3,11 +3,13 @@
 #  Copyright (c) 2019 Matus Chochlik
 
 import os
+import imp
 import json
 import errno
 import socket
 import signal
 import argparse
+import multiprocessing
 
 try:
     import selectors
@@ -16,6 +18,21 @@ except ImportError:
 
 # ------------------------------------------------------------------------------
 class AtmostDriverArgumentParser(argparse.ArgumentParser):
+    # --------------------------------------------------------------------------
+    def _try_import_filter_py(self, filter_path):
+        try:
+            imp.acquire_lock()
+            filter_py = imp.load_source(
+                "atmost",
+                os.path.join(filter_path)
+            )
+            return filter_py.release_process
+        except:
+            imp.release_lock()
+            raise
+        finally:
+            imp.release_lock()
+
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
         argparse.ArgumentParser.__init__(self, **kw)
@@ -29,8 +46,48 @@ class AtmostDriverArgumentParser(argparse.ArgumentParser):
             default="/tmp/atmost.socket"
         )
 
+        self.add_argument(
+            '-f', '--filter',
+            metavar='FILTER-SCRIPT',
+            dest='filter_script',
+            nargs='?',
+            type=os.path.realpath,
+            default=None
+        )
+
+        self.add_argument(
+            '-u', '--update',
+            metavar='INTERVAL',
+            dest='update_interval',
+            nargs='?',
+            type=float,
+            default=1
+        )
+
     # --------------------------------------------------------------------------
     def process_parsed_options(self, options):
+        options.filter_func =\
+                lambda info: len(info.active()) < multiprocessing.cpu_count()
+
+        if options.filter_script is not None:
+            path = options.filter_script
+            if os.path.isfile(path):
+                try:
+                    options.filter_func = self._try_import_filter_py(path)
+                except Exception as error:
+                    self.error("failed to import filter script '%s': %s" % (
+                        path,
+                        str(error)
+                    ))
+            else:
+                self.error("'%s' is not a file" % path)
+        else:
+            path = os.path.realpath("atmost_filter.py")
+            if os.path.isfile(path):
+                try:
+                    options.filter_func = self._try_import_filter_py(path)
+                except: pass
+        #
         return options
 
     # --------------------------------------------------------------------------
@@ -74,6 +131,14 @@ class AtmostProcess(object):
         self._responded = False
 
     # --------------------------------------------------------------------------
+    def __eq__(self, other):
+        return self._pid != -1 and other._pid != -1 and self._pid == other._pid
+
+    # --------------------------------------------------------------------------
+    def __ne__(self, other):
+        return not self == other
+
+    # --------------------------------------------------------------------------
     def got_response(self):
         return self._responded
 
@@ -85,13 +150,18 @@ class AtmostProcess(object):
             return []
 
     # --------------------------------------------------------------------------
+    def is_ready(self):
+        return self._pid is not None and self._pid > 0
+
+    # --------------------------------------------------------------------------
     def is_running(self):
-        try:
-            os.kill(self._pid, 0)
-        except OSError:
-            return False
-        else:
-            return True
+        if self._pid > 0:
+            try:
+                os.kill(self._pid, 0)
+                return True
+            except OSError:
+                pass
+        return False
 
     # --------------------------------------------------------------------------
     def go(self, conn):
@@ -128,10 +198,34 @@ class AtmostProcess(object):
                 self.disconnect(conn)
 
 # ------------------------------------------------------------------------------
+class AtmostProcesses(object):
+    # --------------------------------------------------------------------------
+    def __init__(self, clients, current):
+        self._clients = clients
+        self._current = current
+
+    # --------------------------------------------------------------------------
+    def current(self):
+        return self._current
+
+    # --------------------------------------------------------------------------
+    def active(self):
+        def _filter(x):
+            return x.got_response() and x.is_running() and x != self._current
+        return [x for x in self._clients if _filter(x)]
+
+    # --------------------------------------------------------------------------
+    def waiting(self):
+        def _filter(x):
+            return not x.got_response() and x.is_running() and x != self._current
+        return [x for x in self._clients if _filter(x)]
+
+# ------------------------------------------------------------------------------
 class AtmostDriver(object):
     # --------------------------------------------------------------------------
-    def __init__(self, selector):
+    def __init__(self, selector, release_filter):
         self._selector = selector
+        self._release_process = release_filter
         self._clients = dict()
 
     # --------------------------------------------------------------------------
@@ -159,33 +253,23 @@ class AtmostDriver(object):
     def cleanup(self):
         to_be_removed = []
         for uid, (conn, client) in self._clients.items():
-            if not client.is_running():
+            if client.is_ready() and not client.is_running():
                 to_be_removed.append((uid, conn))
 
         for uid, conn in to_be_removed:
             self.remove_client(uid, conn)
 
     # --------------------------------------------------------------------------
-    def let_go(self, client, others):
-        # TODO
-        args = client.args()
-        print(args)
-        if args:
-            return True
-        return False
+    def let_go(self, info):
+        return self._release_process(info)
 
     # --------------------------------------------------------------------------
     def respond(self):
-        todo = [conn_client for conn_client in self._clients.values()]
-        done = []
-
-        while todo:
-            conn, curr = todo[0]
-            todo = todo[1:]
-            if not curr.got_response():
-                if self.let_go(curr, [x[1] for x in todo] + done):
+        clients = [client for conn, client in self._clients.values()]
+        for (conn, curr) in self._clients.values():
+            if curr.is_ready() and not curr.got_response():
+                if self.let_go(AtmostProcesses(clients, curr)):
                     curr.go(conn)
-            done.append(curr)
 
     # --------------------------------------------------------------------------
     def update(self):
@@ -200,7 +284,7 @@ def drive_atmost(options):
         global keep_running
         lsock = open_socket(options)
         with selectors.DefaultSelector() as selector:
-            driver = AtmostDriver(selector)
+            driver = AtmostDriver(selector, options.filter_func)
             selector.register(
                 lsock,
                 selectors.EVENT_READ,
@@ -209,7 +293,7 @@ def drive_atmost(options):
 
             client_id  = 0
             while keep_running:
-                events = selector.select(timeout=0.1)
+                events = selector.select(timeout=options.update_interval)
                 for key, mask in events:
                     if type(key.data) is AtmostDriver:
                         state = key.data
