@@ -4,10 +4,14 @@
 
 import os
 import imp
+import time
 import json
+import string
 import errno
 import socket
 import signal
+import psutil
+import hashlib
 import argparse
 import multiprocessing
 
@@ -17,21 +21,37 @@ except ImportError:
     import selectors2 as selectors
 
 # ------------------------------------------------------------------------------
+class AtmostCallbacks(object):
+    # --------------------------------------------------------------------------
+    def __init__(self):
+        self.load_user_data = lambda: None
+        self.save_user_data = lambda data: None
+
+        self.let_process_go =\
+            lambda data, info: len(info.active()) < multiprocessing.cpu_count()
+        self.process_finished = lambda data, info: None
+# ------------------------------------------------------------------------------
 class AtmostDriverArgumentParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
-    def _try_import_filter_py(self, filter_path):
+    def _try_import_callbacks_py(self, callbacks_path):
+        callbacks = AtmostCallbacks()
         try:
             imp.acquire_lock()
-            filter_py = imp.load_source(
+            callbacks_py = imp.load_source(
                 "atmost",
-                os.path.join(filter_path)
+                os.path.join(callbacks_path)
             )
-            return filter_py.release_process
-        except:
-            imp.release_lock()
-            raise
+            try: callbacks.load_user_data = callbacks_py.load_user_data
+            except: pass
+            try: callbacks.save_user_data = callbacks_py.save_user_data
+            except: pass
+            try: callbacks.let_process_go = callbacks_py.let_process_go
+            except: pass
+            try: callbacks.process_finished = callbacks_py.process_finished
+            except: pass
         finally:
             imp.release_lock()
+        return callbacks
 
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
@@ -47,9 +67,9 @@ class AtmostDriverArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
-            '-f', '--filter',
-            metavar='FILTER-SCRIPT',
-            dest='filter_script',
+            '-c', '--callbacks',
+            metavar='CALLBACK-SCRIPT',
+            dest='callbacks_script',
             nargs='?',
             type=os.path.realpath,
             default=None
@@ -66,26 +86,25 @@ class AtmostDriverArgumentParser(argparse.ArgumentParser):
 
     # --------------------------------------------------------------------------
     def process_parsed_options(self, options):
-        options.filter_func =\
-                lambda info: len(info.active()) < multiprocessing.cpu_count()
+        options.callbacks = AtmostCallbacks()
 
-        if options.filter_script is not None:
-            path = options.filter_script
+        if options.callbacks_script is not None:
+            path = options.callbacks_script
             if os.path.isfile(path):
                 try:
-                    options.filter_func = self._try_import_filter_py(path)
+                    options.callbacks = self._try_import_callbacks_py(path)
                 except Exception as error:
-                    self.error("failed to import filter script '%s': %s" % (
+                    self.error("failed to import callback script '%s': %s" % (
                         path,
                         str(error)
                     ))
             else:
                 self.error("'%s' is not a file" % path)
         else:
-            path = os.path.realpath("atmost_filter.py")
+            path = os.path.realpath("atmost_callbacks.py")
             if os.path.isfile(path):
                 try:
-                    options.filter_func = self._try_import_filter_py(path)
+                    options.callbacks = self._try_import_callbacks_py(path)
                 except: pass
         #
         return options
@@ -128,7 +147,22 @@ class AtmostProcess(object):
         self._output_buff = str()
         self._json = None
         self._pid = -1
+        self._arguid = None
+        self._psutil = None
         self._responded = False
+        self._create_time = time.time()
+        self._ready_time = None
+        self._let_go_time = None
+        self._max_mem_usage = -1
+        self._digest_trans = string.maketrans('0123456789', 'ghijklmnop')
+
+    # --------------------------------------------------------------------------
+    def __add__(self, other):
+        if type(other) == AtmostProcess:
+            return AtmostProcessList([self, other])
+        if type(other) == AtmostProcessList:
+            return AtmostProcessList([self] + list(other))
+        raise TypeError
 
     # --------------------------------------------------------------------------
     def __eq__(self, other):
@@ -139,15 +173,95 @@ class AtmostProcess(object):
         return not self == other
 
     # --------------------------------------------------------------------------
+    def update(self):
+        try: self._max_mem_usage = self._psutil.memory_info().rss
+        except: pass
+
+    # --------------------------------------------------------------------------
+    def life_time(self):
+        return time.time() - self._create_time
+
+    # --------------------------------------------------------------------------
+    def wait_time(self):
+        if self._ready_time is not None:
+            if self._let_go_time is not None:
+                return self._let_go_time - self._ready_time
+            else:
+                return time.time() - self._ready_time
+        return 0.0
+
+    # --------------------------------------------------------------------------
+    def run_time(self):
+        if self._let_go_time is not None:
+            return time.time() - self._let_go_time
+        return 0.0
+
+    # --------------------------------------------------------------------------
     def got_response(self):
         return self._responded
 
     # --------------------------------------------------------------------------
+    def command_uid(self):
+        return self._arguid
+
+    # --------------------------------------------------------------------------
     def args(self):
-        try:
-            return self._json["args"]
-        except:
-            return []
+        try: return self._json["args"]
+        except: return []
+
+    # --------------------------------------------------------------------------
+    def exe(self):
+        try: return self._json["args"][0]
+        except: pass
+
+    # --------------------------------------------------------------------------
+    def basename(self):
+        try: return os.path.basename(self._json["args"][0])
+        except: pass
+
+    # --------------------------------------------------------------------------
+    def environment(self):
+        try: return self._psutil.environ()
+        except: pass
+
+    # --------------------------------------------------------------------------
+    def cwd(self):
+        try: return self._psutil.cwd()
+        except: pass
+
+    # --------------------------------------------------------------------------
+    def username(self):
+        try: return self._psutil.username()
+        except: pass
+
+    # --------------------------------------------------------------------------
+    def usernames(self):
+        try: return [self._psutil.username()]
+        except: []
+
+    # --------------------------------------------------------------------------
+    def status(self):
+        try: return self._psutil.status()
+        except: pass
+
+    # --------------------------------------------------------------------------
+    def num_threads(self):
+        try: return self._psutil.num_threads()
+        except: return 0
+
+    # --------------------------------------------------------------------------
+    def cpu_percent(self, interval=1):
+        try: return self._psutil.cpu_percent(interval)
+        except: return 0
+
+    # --------------------------------------------------------------------------
+    def memory_percent(self):
+        try: return self._psutil.memory_percent()
+        except: return 0
+
+    # --------------------------------------------------------------------------
+    def max_memory_bytes(self):
+        return self._max_mem_usage
 
     # --------------------------------------------------------------------------
     def is_ready(self):
@@ -166,12 +280,20 @@ class AtmostProcess(object):
     # --------------------------------------------------------------------------
     def go(self, conn):
         self._responded = True
+        self._let_go_time = time.time()
         self._output_buff = "OK-GO\n"
         self.handle_write(conn)
 
     # --------------------------------------------------------------------------
     def disconnect(self, conn):
         self._parent.disconnect_client(self._uid, conn)
+
+    # --------------------------------------------------------------------------
+    def command_line_uid(self):
+        h = hashlib.sha1()
+        for arg in self.args():
+            h.update(arg)
+        return h.hexdigest().translate(self._digest_trans)
 
     # --------------------------------------------------------------------------
     def handle_read(self, conn):
@@ -182,6 +304,9 @@ class AtmostProcess(object):
                 try:
                     self._json = json.loads(self._input_buff)
                     self._pid = int(self._json["pid"])
+                    self._arguid = self.command_line_uid()
+                    self._psutil = psutil.Process(self._pid)
+                    self._ready_time = time.time()
                 except:
                     pass
             else:
@@ -198,7 +323,58 @@ class AtmostProcess(object):
                 self.disconnect(conn)
 
 # ------------------------------------------------------------------------------
-class AtmostProcesses(object):
+class AtmostProcessList(list):
+    # --------------------------------------------------------------------------
+    def __init__(self, items):
+        list.__init__(self)
+        self.extend(items)
+
+    # --------------------------------------------------------------------------
+    def __add__(self, other):
+        if type(other) == AtmostProcessList:
+            return AtmostProcessList(list(self) + list(other))
+        if type(other) == AtmostProcess:
+            return AtmostProcessList(list(self) + [other])
+        raise TypeError
+
+    # --------------------------------------------------------------------------
+    def __len__(self):
+        return list.__len__(self)
+
+    # --------------------------------------------------------------------------
+    def __iter__(self):
+        return list.__iter__(self)
+
+    # --------------------------------------------------------------------------
+    def __getitem__(self, key):
+        return list.__getitem__(self, key)
+
+    # --------------------------------------------------------------------------
+    def __delitem__(self, key):
+        return list.__delitem__(self, key)
+
+    # --------------------------------------------------------------------------
+    def usernames(self):
+        return list(set(n for p in self for n in p.usernames()))
+
+    # --------------------------------------------------------------------------
+    def num_threads(self):
+        return sum([p.num_threads() for p in self])
+
+    # --------------------------------------------------------------------------
+    def cpu_percent(self, interval=1):
+        return sum([p.cpu_percent(interval) for p in self])
+
+    # --------------------------------------------------------------------------
+    def memory_percent(self):
+        return sum([p.memory_percent() for p in self])
+
+    # --------------------------------------------------------------------------
+    def max_memory_bytes(self):
+        return sum([p.max_memory_bytes() for p in self])
+
+# ------------------------------------------------------------------------------
+class AtmostFilterContext(object):
     # --------------------------------------------------------------------------
     def __init__(self, clients, current):
         self._clients = clients
@@ -212,20 +388,21 @@ class AtmostProcesses(object):
     def active(self):
         def _filter(x):
             return x.got_response() and x.is_running() and x != self._current
-        return [x for x in self._clients if _filter(x)]
+        return AtmostProcessList([x for x in self._clients if _filter(x)])
 
     # --------------------------------------------------------------------------
     def waiting(self):
         def _filter(x):
             return not x.got_response() and x.is_running() and x != self._current
-        return [x for x in self._clients if _filter(x)]
+        return AtmostProcessList([x for x in self._clients if _filter(x)])
 
 # ------------------------------------------------------------------------------
 class AtmostDriver(object):
     # --------------------------------------------------------------------------
-    def __init__(self, selector, release_filter):
+    def __init__(self, selector, callbacks, user_data):
         self._selector = selector
-        self._release_process = release_filter
+        self._callbacks = callbacks
+        self._user_data = user_data
         self._clients = dict()
 
     # --------------------------------------------------------------------------
@@ -246,6 +423,9 @@ class AtmostDriver(object):
 
     # --------------------------------------------------------------------------
     def remove_client(self, client_id, conn):
+        self._callbacks.process_finished(
+            self._user_data,
+            self._clients[client_id][1])
         del conn
         del self._clients[client_id]
 
@@ -261,18 +441,20 @@ class AtmostDriver(object):
 
     # --------------------------------------------------------------------------
     def let_go(self, info):
-        return self._release_process(info)
+        return self._callbacks.let_process_go(self._user_data, info)
 
     # --------------------------------------------------------------------------
     def respond(self):
         clients = [client for conn, client in self._clients.values()]
         for (conn, curr) in self._clients.values():
             if curr.is_ready() and not curr.got_response():
-                if self.let_go(AtmostProcesses(clients, curr)):
+                if self.let_go(AtmostFilterContext(clients, curr)):
                     curr.go(conn)
 
     # --------------------------------------------------------------------------
     def update(self):
+        for conn, client in self._clients.values():
+            client.update()
         self.cleanup()
         self.respond()
 
@@ -280,11 +462,15 @@ class AtmostDriver(object):
 keep_running = True
 # ------------------------------------------------------------------------------
 def drive_atmost(options):
+    user_data = None
+    try: user_data = options.callbacks.load_user_data()
+    except: pass
+
     try:
         global keep_running
         lsock = open_socket(options)
         with selectors.DefaultSelector() as selector:
-            driver = AtmostDriver(selector, options.filter_func)
+            driver = AtmostDriver(selector, options.callbacks, user_data)
             selector.register(
                 lsock,
                 selectors.EVENT_READ,
@@ -313,6 +499,9 @@ def drive_atmost(options):
     finally:
         try: lsock.close()  
         except: pass
+
+    try: options.callbacks.save_user_data(user_data)
+    except: pass
 
 # ------------------------------------------------------------------------------
 def handle_interrupt(sig, frame):
