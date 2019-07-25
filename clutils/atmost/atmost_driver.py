@@ -174,7 +174,11 @@ class AtmostProcess(object):
 
     # --------------------------------------------------------------------------
     def update(self):
-        try: self._max_mem_usage = self._psutil.memory_info().rss
+        try:
+            self._max_mem_usage = max(
+                self._max_mem_usage,
+                self._psutil.memory_info().rss
+            )
         except: pass
 
     # --------------------------------------------------------------------------
@@ -279,6 +283,7 @@ class AtmostProcess(object):
 
     # --------------------------------------------------------------------------
     def go(self, conn):
+        self.update()
         self._responded = True
         self._let_go_time = time.time()
         self._output_buff = "OK-GO\n"
@@ -379,6 +384,14 @@ class AtmostFilterContext(object):
     def __init__(self, clients, current):
         self._clients = clients
         self._current = current
+
+    # --------------------------------------------------------------------------
+    def total_memory(self):
+        return psutil.virtual_memory().total
+
+    # --------------------------------------------------------------------------
+    def available_memory(self):
+        return psutil.virtual_memory().available
 
     # --------------------------------------------------------------------------
     def current(self):
