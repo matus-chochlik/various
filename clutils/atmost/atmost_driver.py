@@ -294,11 +294,15 @@ class AtmostProcess(object):
         self._parent.disconnect_client(self._uid, conn)
 
     # --------------------------------------------------------------------------
-    def command_line_uid(self):
+    def string_list_hash(self, strings):
         h = hashlib.sha1()
-        for arg in self.args():
-            h.update(arg)
+        for s in strings:
+            h.update(s)
         return h.hexdigest().translate(self._digest_trans)
+
+    # --------------------------------------------------------------------------
+    def command_line_uid(self):
+        return self.string_list_hash(self.args())
 
     # --------------------------------------------------------------------------
     def handle_read(self, conn):
