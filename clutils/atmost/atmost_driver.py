@@ -147,6 +147,7 @@ class AtmostProcess(object):
         self._output_buff = str()
         self._json = None
         self._pid = -1
+        self._ciw = None
         self._arguid = None
         self._psutil = None
         self._responded = False
@@ -231,7 +232,7 @@ class AtmostProcess(object):
     # --------------------------------------------------------------------------
     def cwd(self):
         try: return self._psutil.cwd()
-        except: pass
+        except: return self._cwd
 
     # --------------------------------------------------------------------------
     def username(self):
@@ -313,8 +314,9 @@ class AtmostProcess(object):
                 try:
                     self._json = json.loads(self._input_buff)
                     self._pid = int(self._json["pid"])
-                    self._arguid = self.command_line_uid()
                     self._psutil = psutil.Process(self._pid)
+                    self._cwd = self._psutil.cwd()
+                    self._arguid = self.command_line_uid()
                     self._ready_time = time.time()
                 except:
                     pass
@@ -514,7 +516,9 @@ def drive_atmost(options):
                             client.handle_write(conn)
                 driver.update()
     finally:
-        try: lsock.close()  
+        try:
+            lsock.close()
+            os.unlink(options.socket_path)
         except: pass
 
     try: options.callbacks.save_user_data(user_data)
