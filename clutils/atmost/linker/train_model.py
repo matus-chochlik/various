@@ -106,6 +106,7 @@ def make_argparser():
 # ------------------------------------------------------------------------------
 def get_json_data(options):
     transforms = [
+        ("opt", lambda x: x),
         ("pie", lambda x: x),
         ("static_count", lambda x: x),
         ("static_size", lambda x: x),
