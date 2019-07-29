@@ -84,30 +84,41 @@ def get_ld_info(user_data, proc):
         elif os.path.isfile(os.path.join(cwd, path)):
             plugins.append(os.path.join(cwd, path))
 
+    opt_level = 0
+
     prev = None
     for arg in args:
         if arg[0] != '-':
-            path_arg = None
-            if os.path.isfile(arg):
-                path_arg = arg
-            elif os.path.isfile(os.path.join(cwd, arg)):
-                path_arg = os.path.join(cwd, arg)
+            if prev in ["-O"]:
+                try:
+                    opt_level = int(arg)
+                except TypeError: pass
+            else:
+                path_arg = None
+                if os.path.isfile(arg):
+                    path_arg = arg
+                elif os.path.isfile(os.path.join(cwd, arg)):
+                    path_arg = os.path.join(cwd, arg)
 
-            if path_arg is not None:
-                if prev in ["-o", "--output"]:
-                    outputs.append(path_arg)
-                elif prev in ["--plugin", "-plugin"]:
-                    plugins.append(path_arg)
-                elif _is_so_path(path_arg):
-                    dinputs.append(path_arg)
-                else:
-                    sinputs.append(path_arg)
+                if path_arg is not None:
+                    if prev in ["-o", "--output"]:
+                        outputs.append(path_arg)
+                    elif prev in ["--plugin", "-plugin"]:
+                        plugins.append(path_arg)
+                    elif _is_so_path(path_arg):
+                        dinputs.append(path_arg)
+                    else:
+                        sinputs.append(path_arg)
         elif prev in ["-l", "--library"]:
             _append_lib(arg)
         elif arg.startswith("-l"):
             _append_lib(arg[len("-l"):].strip())
         elif arg.startswith("--library"):
             _append_lib(arg[len("--library"):].strip())
+        elif arg.startswith("-O"):
+            try:
+                opt_level = int(arg[len("-O"):])
+            except TypeError: pass
         elif arg.startswith("--plugin"):
             _append_plgn(arg[len("--plugin"):].strip())
         elif arg.startswith("-plugin"):
@@ -119,33 +130,35 @@ def get_ld_info(user_data, proc):
     dinputs = set([os.path.realpath(p) for p in dinputs])
     plugins = set([os.path.realpath(p) for p in plugins])
 
-    sco = sum(1 for f in sinputs if os.path.isfile(f))
-    dco = sum(1 for f in dinputs if os.path.isfile(f))
-    npg = sum(1 for f in plugins if os.path.isfile(f))
-    ssz = sum(os.path.getsize(f) for f in sinputs if os.path.isfile(f))
-    dsz = sum(os.path.getsize(f) for f in dinputs if os.path.isfile(f))
-    osz = sum(os.path.getsize(f) for f in outputs if os.path.isfile(f))
-    mem = proc.max_memory_bytes()
+    try:
+        sco = sum(1 for f in sinputs if os.path.isfile(f))
+        dco = sum(1 for f in dinputs if os.path.isfile(f))
+        npg = sum(1 for f in plugins if os.path.isfile(f))
+        ssz = sum(os.path.getsize(f) for f in sinputs if os.path.isfile(f))
+        dsz = sum(os.path.getsize(f) for f in dinputs if os.path.isfile(f))
+        osz = sum(os.path.getsize(f) for f in outputs if os.path.isfile(f))
+        mem = proc.max_memory_bytes()
 
-    if osz > 0 and len(outputs) > 0:
-        pie = 1 if ("-pie" in args or "--pic-executable" in args) else 0
-        pie = 0 if ("-no-pie" in args or "--no-pic-executable" in args) else pie 
-        outpath = os.path.realpath(outputs[0])
+        if len(outputs) > 0:
+            pie = 1 if ("-pie" in args or "--pic-executable" in args) else 0
+            pie = 0 if ("-no-pie" in args or "--no-pic-executable" in args) else pie 
+            outpath = os.path.realpath(outputs[0])
 
-        return {
-            "plugin_count": npg,
-            "static_count": sco,
-            "static_size": ssz,
-            "shared_count": dco,
-            "shared_size": dsz,
-            "memory_size": mem,
-            "output_size": osz,
-            "pie": pie,
-            "b_static": 1 if "-Bstatic" in args else 0,
-            "b_dynamic": 1 if "-Bdynamic" in args else 0,
-            "output_path": outpath
-        }
-
+            return {
+                #"output_path": outpath,
+                "plugin_count": npg,
+                "static_count": sco,
+                "static_size": ssz,
+                "shared_count": dco,
+                "shared_size": dsz,
+                "memory_size": mem,
+                "output_size": osz,
+                "b_static": 1 if "-Bstatic" in args else 0,
+                "b_dynamic": 1 if "-Bdynamic" in args else 0,
+                "pie": pie,
+                "opt": opt_level
+            }
+    except: pass
 
 # ------------------------------------------------------------------------------
 def let_process_go(user_data, procs):
@@ -159,10 +172,12 @@ def let_process_go(user_data, procs):
 # ------------------------------------------------------------------------------
 def process_finished(user_data, proc):
     if is_linker(proc):
-        sys.stdout.write(",")
-        json.dump(get_ld_info(user_data, proc), sys.stdout)
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        info = get_ld_info(user_data, proc)
+        if info:
+            sys.stdout.write(",")
+            json.dump(info, sys.stdout)
+            sys.stdout.write("\n")
+            sys.stdout.flush()
 
 
  
