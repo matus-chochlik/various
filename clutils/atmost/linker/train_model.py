@@ -7,6 +7,7 @@ import json
 import glob
 import math
 import pandas
+import pickle
 import argparse
 
 # ------------------------------------------------------------------------------
@@ -21,10 +22,20 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
     def _positive_int(self, x):
         try:
-            assert(int(x) > 0)
-            return int(x)
+            i = int(x)
+            assert(i > 0)
+            return i
         except:
             self.error("`%s' is not a positive integer value" % str(x))
+
+    # --------------------------------------------------------------------------
+    def _confidence(self, x):
+        try:
+            c = float(x)
+            assert(c > 0.0 and c <= 1.0)
+            return c
+        except:
+            self.error("`%s' is not a valid confidence value" % str(x))
 
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
@@ -52,7 +63,16 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
             nargs='?',
             dest="chunk_size",
             type=self._size_bytes,
-            default=1024*1024*1024,
+            default=1024*1024*512,
+            action="store"
+        )
+
+        self.add_argument(
+            "--min-confidence", "-c",
+            nargs='?',
+            dest="min_confidence",
+            type=self._confidence,
+            default=None,
             action="store"
         )
 
@@ -104,7 +124,7 @@ def make_argparser():
     )
 
 # ------------------------------------------------------------------------------
-def get_json_data(options):
+def load_json_data(options):
     transforms = [
         ("opt", lambda x: x),
         ("pie", lambda x: x),
@@ -129,65 +149,61 @@ def get_json_data(options):
             print(error)
 
 # ------------------------------------------------------------------------------
+def load_dataframes(options):
+    for d in load_json_data(options):
+        try: yield pandas.DataFrame.from_dict(d)
+        except KeyError: pass
+        except Exception as error:
+            print("error: %s" % error)
+
+# ------------------------------------------------------------------------------
+def load_dataframe(options):
+    return pandas.concat(load_dataframes(options))
+
+# ------------------------------------------------------------------------------
+def single_train_pass(options, model, x, y):
+    from sklearn.metrics import accuracy_score
+
+    maxd = sys.float_info.min
+    mind = sys.float_info.max
+
+    model.partial_fit(x, y)
+    p = model.predict(x)
+    for px in zip(p, y):
+        diff = px[0] - px[1]
+        mind = min(mind, diff)
+        maxd = min(maxd, diff)
+    acc = accuracy_score(p, y)
+
+    return (acc, mind, maxd)
+
+# ------------------------------------------------------------------------------
 def train_model(options):
     from sklearn.preprocessing import StandardScaler
     from sklearn.neural_network import MLPClassifier
-    from sklearn.metrics import accuracy_score
 
     model = MLPClassifier()
     scaler = StandardScaler()
 
-    for d in get_json_data(options):
-        try:
-            df = pandas.DataFrame.from_dict(d)
-            x = df.drop(["memory_size"], axis=1)
-            scaler.partial_fit(x)
-        except: pass
+    data = load_dataframe(options)
+    x = data.drop(["memory_size"], axis=1)
+    y = data["memory_size"]
+    scaler.fit(x)
+    x = scaler.transform(x)
+    model.partial_fit(x, y, xrange(0, 64))
 
-    _1GiB = 1024.0*1024.0*1024.0
-    rng = 64
-    cls = xrange(rng);
+    fmt = "%1.2f|%4.1f|%4.1f|"
 
-    ssum = 0.0
-    scnt = 1.0
-    maxd = 0
-    mind = 0
-
-    for i in xrange(options.repeat_count):
-        print(
-            "run: %5d (%1.3f, %7.3f, %7.3f)" % (
-                i,
-                ssum/scnt,
-                mind*options.chunk_size/_1GiB,
-                maxd*options.chunk_size/_1GiB
-            ))
-        ssum = 0.0
-        scnt = 1.0
-        maxd = -rng
-        mind = +rng
-
-        for d in get_json_data(options):
-            df = pandas.DataFrame.from_dict(d)
-            try:
-                x = df.drop(["memory_size"], axis=1)
-                y = df["memory_size"]
-                x = scaler.transform(x)
-
-                p = 0
-                try:
-                    p = model.predict(x)
-                    ssum += accuracy_score(y, p);
-                    scnt += 1.0
-                except: pass
-
-                diff = p - y[0]
-                maxd = max(maxd, diff)
-                mind = min(mind, diff)
-
-                model.partial_fit(x, y, classes = cls)
-
-            except KeyError as err:
-                print(err)
+    if options.min_confidence is not None:
+        while True:
+            result = single_train_pass(options, model, x, y)
+            print(fmt % result)
+            if result[0] >= options.min_confidence:
+                break
+    else:
+        for i in xrange(options.repeat_count):
+            result = single_train_pass(options, model, x, y)
+            print(fmt % result)
 # ------------------------------------------------------------------------------
 def main():
     sys.exit(train_model(make_argparser().parse_args()))
