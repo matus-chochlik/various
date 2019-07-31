@@ -103,6 +103,8 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
         options.input_paths =\
             list(set(os.path.realpath(x) for x in options.input_paths))
 
+        options.chunk_gib_mult = options.chunk_size/float(1024**3)
+
         del options.__dict__["input_args"]
         del options.__dict__["arguments"]
 
@@ -164,18 +166,30 @@ def load_dataframe(options):
 def single_train_pass(options, model, x, y):
     from sklearn.metrics import accuracy_score
 
-    maxd = sys.float_info.min
-    mind = sys.float_info.max
+    pdiffs = []
+    ndiffs = []
 
     model.partial_fit(x, y)
-    p = model.predict(x)
-    for px in zip(p, y):
-        diff = px[0] - px[1]
-        mind = min(mind, diff)
-        maxd = min(maxd, diff)
-    acc = accuracy_score(p, y)
+    p = model.predict_proba(x)
+    for pprobs, yval in zip(p, y):
+        ypred = sum(pprob*pval for pprob, pval in zip(pprobs, model.classes_))
+        diff = ypred - yval
+        if diff > 0.0:
+            pdiffs.append(diff)
+        else:
+            ndiffs.append(diff)
+    acc = accuracy_score(model.predict(x), y)
 
-    return (acc, mind, maxd)
+    def _stat(diffs):
+        try: return math.sqrt(sum(x*x for x in diffs)/len(diffs))
+        except ZeroDivisionError:
+            return 0.0
+
+    return (
+        acc,
+        -_stat(ndiffs)*options.chunk_gib_mult,
+        +_stat(pdiffs)*options.chunk_gib_mult
+    )
 
 # ------------------------------------------------------------------------------
 def train_model(options):
@@ -192,7 +206,7 @@ def train_model(options):
     x = scaler.transform(x)
     model.partial_fit(x, y, xrange(0, 64))
 
-    fmt = "%1.2f|%4.1f|%4.1f|"
+    fmt = "%4.3f|%5.1f|%5.1f|"
 
     if options.min_confidence is not None:
         while True:
