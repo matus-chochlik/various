@@ -1016,9 +1016,9 @@ static bool driver_barrier(struct options* opts, int argc, const char** argv) {
 		fprintf(driver, "], \"pid\": %d}", getpid());
 		fflush(driver);
 
-		char c = '\0';
-		if(fscanf(fdopen(sock, "rt"), "OK%cGO\n", &c) == 1) {
-			return (c == '-');
+		int retpid = -1;
+		if(fscanf(fdopen(sock, "rt"), "OK-GO:%d\n", &retpid) == 1) {
+			return ((pid_t)retpid == getpid());
 		}
 		return false;
 	}

@@ -1,5 +1,4 @@
-[{}
-,{"opt": 0, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 10534912, "plugin_count": 1, "b_dynamic": 0, "output_size": 7864, "static_count": 7, "b_static": 0, "static_size": 3012478}
+[{"opt": 0, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 10534912, "plugin_count": 1, "b_dynamic": 0, "output_size": 7864, "static_count": 7, "b_static": 0, "static_size": 3012478}
 ,{"opt": 0, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 950272, "plugin_count": 1, "b_dynamic": 0, "output_size": 7936, "static_count": 7, "b_static": 0, "static_size": 3012878}
 ,{"opt": 0, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 958464, "plugin_count": 1, "b_dynamic": 0, "output_size": 7936, "static_count": 7, "b_static": 0, "static_size": 3012878}
 ,{"opt": 0, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 4419584, "plugin_count": 1, "b_dynamic": 0, "output_size": 7864, "static_count": 7, "b_static": 0, "static_size": 3012478}

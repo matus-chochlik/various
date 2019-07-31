@@ -287,7 +287,7 @@ class AtmostProcess(object):
         self.update()
         self._responded = True
         self._let_go_time = time.time()
-        self._output_buff = "OK-GO\n"
+        self._output_buff = "OK-GO:%d\n" % self._pid
         self.handle_write(conn)
 
     # --------------------------------------------------------------------------
