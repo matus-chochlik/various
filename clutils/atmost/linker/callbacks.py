@@ -104,6 +104,9 @@ def get_ld_info(user_data, proc):
                         dinputs.append(path_arg)
                     else:
                         sinputs.append(path_arg)
+                else:
+                    if prev in ["-o", "--output"]:
+                        outputs.append(arg)
         elif prev in ["-l", "--library"]:
             _append_lib(arg)
         elif arg.startswith("-l"):
@@ -137,6 +140,7 @@ def get_ld_info(user_data, proc):
         pie = 0 if ("-no-pie" in args or "--no-pic-executable" in args) else pie 
 
         return {
+            "outputs": outputs,
             "plugin_count": npg,
             "static_count": sco,
             "static_size": ssz,
@@ -163,15 +167,17 @@ class DriverData(object):
         self._error_margin = d["error_margin"] * self._chunk_size
 
     # --------------------------------------------------------------------------
-    def estimate_memory_usage(self, proc):
+    def predict_ld_info(self, proc):
         f = self._fields
         ldi = get_ld_info(self, proc)
         if ldi is not None:
-            ldi = {k: float(v) for k, v in ldi.items() if k in f}
-            df = pandas.DataFrame(ldi, index=[0])
+            fldi = {k: float(v) for k, v in ldi.items() if k in f}
+            df = pandas.DataFrame(fldi, index=[0])
             cls = self._model.classes_
             pro = self._model.predict_proba(self._scaler.transform(df))
-            return sum(p * c for p, c in zip(pro[0], cls)) * self._chunk_size
+            pre = sum(p * c for p, c in zip(pro[0], cls)) * self._chunk_size
+            ldi["memory_size"] = pre
+            return ldi
         return None
     # --------------------------------------------------------------------------
     def error_margin(self):
@@ -194,39 +200,44 @@ def let_process_go(user_data, procs):
     proc = procs.current()
     actp = procs.active()
     actn = len(actp)
-    waitn = len(procs.waiting())
     if is_linker(proc):
         # estimated memory usage of the current process
-        proc_est_usage = user_data.estimate_memory_usage(proc)
-        proc_est_usage += user_data.error_margin()
+        proc_info = user_data.predict_ld_info(proc)
+        proc_pred_usage = proc_info["memory_size"]
+        proc_pred_usage += user_data.error_margin()
         # active process memory usage
         active_mem_usage = 0.0
+
+        total_mem = procs.total_memory()
+        avail_mem = procs.available_memory()
 
         let_go = False
 
         if actn > 0:
-            total_mem = procs.total_memory()
-            avail_mem = procs.available_memory()
 
-            for ap in actp:
-                est_usage = ap.callback_data()
-                max_usage = ap.max_memory_bytes()
-                alpha = math.exp(-ap.run_time() / 120.0)
+            for act_proc in actp:
+                ap_info = act_proc.callback_data()
+                est_usage = ap_info["memory_size"]
+                max_usage = act_proc.max_memory_bytes()
+                alpha = math.exp(-act_proc.run_time() / 120.0)
                 active_mem_usage += alpha*est_usage + (1.0-alpha)*max_usage
 
-            if min(total_mem-active_mem_usage, avail_mem) > proc_est_usage:
+            pred_avail_mem = min(total_mem-active_mem_usage, avail_mem)
+
+            if avail_mem > proc_pred_usage:
                 let_go = True
         else:
+            pred_avail_mem = avail_mem 
             let_go = True
 
         if let_go:
-            proc.set_callback_data(proc_est_usage)
+            proc.set_callback_data(proc_info)
+            outputs = proc_info["outputs"]
             sys.stderr.write(
-                "atmost: linking: a=%d|w=%d (%4.2f GB / %4.2f GB)\n" % (
-                    actn,
-                    waitn,
-                    active_mem_usage / _1GB,
-                    proc_est_usage / _1GB,
+                "atmost: linking '%s': (pred=%4.2fG|avail=%4.2fG)\n" % (
+                    os.path.basename(outputs[0]) if len(outputs) > 0 else "N/A",
+                    proc_pred_usage / _1GB,
+                    pred_avail_mem / _1GB
                 )
             )
             return True
@@ -238,10 +249,18 @@ def process_finished(user_data, proc):
     if is_linker(proc):
         info = get_ld_info(user_data, proc)
         if info:
+            pred = proc.callback_data()
+            outputs = info["outputs"]
+
+            proc_real_usage = info["memory_size"]
+            proc_pred_usage = pred["memory_size"]
+            proc_pred_usage += user_data.error_margin()
+
             sys.stderr.write(
-                "atmost: linked: (%4.2f GB / %4.2f GB)\n" % (
-                    info["memory_size"] / _1GB,
-                    proc.callback_data() / _1GB
+                "atmost: linked  '%s': (pred=%4.2fG|real=%4.2fG)\n" % (
+                    os.path.basename(outputs[0]) if len(outputs) > 0 else "N/A",
+                    proc_pred_usage / _1GB,
+                    proc_real_usage / _1GB
                 )
             )
 
