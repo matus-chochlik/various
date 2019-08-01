@@ -155,6 +155,7 @@ class AtmostProcess(object):
         self._ready_time = None
         self._let_go_time = None
         self._max_mem_usage = -1
+        self._callback_data = None
         self._digest_trans = string.maketrans('0123456789', 'ghijklmnop')
 
     # --------------------------------------------------------------------------
@@ -304,6 +305,14 @@ class AtmostProcess(object):
     # --------------------------------------------------------------------------
     def command_line_uid(self):
         return self.string_list_hash(self.args())
+
+    # --------------------------------------------------------------------------
+    def set_callback_data(self, data):
+        self._callback_data = data
+
+    # --------------------------------------------------------------------------
+    def callback_data(self):
+        return self._callback_data
 
     # --------------------------------------------------------------------------
     def handle_read(self, conn):

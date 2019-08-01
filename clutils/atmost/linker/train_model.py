@@ -91,7 +91,7 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
             nargs='?',
             dest="repeat_count",
             type=self._positive_int,
-            default=8,
+            default=12,
             action="store"
         )
 
@@ -114,7 +114,7 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
             list(set(os.path.realpath(x) for x in options.input_paths))
 
         if options.output_path is None:
-            options.output_path = os.path.realpath("atmost.linker.model.pickle")
+            options.output_path = os.path.realpath("atmost.linker.pickle.gz")
 
         options.chunk_gib_mult = options.chunk_size/float(1024**3)
 
@@ -144,9 +144,9 @@ def load_json_data(options):
         ("opt", lambda x: float(x)),
         ("pie", lambda x: float(x)),
         ("static_count", lambda x: float(x)),
-        ("static_size", lambda x: math.ceil(float(x)/1024.0)),
+        ("static_size", lambda x: float(x)),
         ("shared_count", lambda x: float(x)),
-        ("shared_size", lambda x: math.ceil(float(x)/1024.0)),
+        ("shared_size", lambda x: float(x)),
         ("memory_size", lambda x: int(math.ceil(float(x) / options.chunk_size)))
     ]
     for filepath in options.input_paths:

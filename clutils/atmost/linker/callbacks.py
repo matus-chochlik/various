@@ -2,21 +2,14 @@
 #  Copyright (c) 2019 Matus Chochlik
 import os
 import sys
+import math
 import json
+import gzip
+import pickle
+import pandas
 import multiprocessing
 # ------------------------------------------------------------------------------
-class DriverData(object):
-    # --------------------------------------------------------------------------
-    def __init__(self):
-        pass
-# ------------------------------------------------------------------------------
-def load_user_data():
-    sys.stdout.write("[{}\n")
-
-# ------------------------------------------------------------------------------
-def save_user_data(user_data):
-    sys.stdout.write("]")
-
+_1GB = (1024.0**3.0)
 # ------------------------------------------------------------------------------
 def is_linker(proc):
     linker_names = [
@@ -29,7 +22,9 @@ def is_linker(proc):
 
 # ------------------------------------------------------------------------------
 def get_ld_info(user_data, proc):
-    assert is_linker(proc)
+    if not is_linker(proc):
+        return None
+
     args = proc.args()[1:]
     cwd = proc.cwd()
     outputs = []
@@ -138,46 +133,123 @@ def get_ld_info(user_data, proc):
         dsz = sum(os.path.getsize(f) for f in dinputs if os.path.isfile(f))
         osz = sum(os.path.getsize(f) for f in outputs if os.path.isfile(f))
         mem = proc.max_memory_bytes()
+        pie = 1 if ("-pie" in args or "--pic-executable" in args) else 0
+        pie = 0 if ("-no-pie" in args or "--no-pic-executable" in args) else pie 
 
-        if len(outputs) > 0:
-            pie = 1 if ("-pie" in args or "--pic-executable" in args) else 0
-            pie = 0 if ("-no-pie" in args or "--no-pic-executable" in args) else pie 
-            outpath = os.path.realpath(outputs[0])
+        return {
+            "plugin_count": npg,
+            "static_count": sco,
+            "static_size": ssz,
+            "shared_count": dco,
+            "shared_size": dsz,
+            "memory_size": mem,
+            "output_size": osz,
+            "b_static": 1 if "-Bstatic" in args else 0,
+            "b_dynamic": 1 if "-Bdynamic" in args else 0,
+            "pie": pie,
+            "opt": opt_level
+        }
+    except Exception as error:
+        sys.stderr.write("atmost: error: %s\n" % error)
 
-            return {
-                #"output_path": outpath,
-                "plugin_count": npg,
-                "static_count": sco,
-                "static_size": ssz,
-                "shared_count": dco,
-                "shared_size": dsz,
-                "memory_size": mem,
-                "output_size": osz,
-                "b_static": 1 if "-Bstatic" in args else 0,
-                "b_dynamic": 1 if "-Bdynamic" in args else 0,
-                "pie": pie,
-                "opt": opt_level
-            }
-    except: pass
+# ------------------------------------------------------------------------------
+class DriverData(object):
+    # --------------------------------------------------------------------------
+    def __init__(self, d):
+        self._scaler = d["scaler"]
+        self._model = d["model"]
+        self._fields = d["fields"]
+        self._chunk_size = d["chunk_size"]
+        self._error_margin = d["error_margin"] * self._chunk_size
+
+    # --------------------------------------------------------------------------
+    def estimate_memory_usage(self, proc):
+        f = self._fields
+        ldi = get_ld_info(self, proc)
+        if ldi is not None:
+            ldi = {k: float(v) for k, v in ldi.items() if k in f}
+            df = pandas.DataFrame(ldi, index=[0])
+            cls = self._model.classes_
+            pro = self._model.predict_proba(self._scaler.transform(df))
+            return sum(p * c for p, c in zip(pro[0], cls)) * self._chunk_size
+        return None
+    # --------------------------------------------------------------------------
+    def error_margin(self):
+        return self._error_margin
+
+# ------------------------------------------------------------------------------
+def load_user_data():
+    sys.stdout.write("[{}\n")
+    try:
+        return DriverData(pickle.load(gzip.open("atmost.linker.pickle.gz", "rb")))
+    except Exception as error:
+        sys.stderr.write("atmost: error: %s\n" % error)
+
+# ------------------------------------------------------------------------------
+def save_user_data(user_data):
+    sys.stdout.write("]")
 
 # ------------------------------------------------------------------------------
 def let_process_go(user_data, procs):
     proc = procs.current()
+    actp = procs.active()
+    actn = len(actp)
+    waitn = len(procs.waiting())
     if is_linker(proc):
-        if len(procs.active()) < 1:
+        # estimated memory usage of the current process
+        proc_est_usage = user_data.estimate_memory_usage(proc)
+        proc_est_usage += user_data.error_margin()
+        # active process memory usage
+        active_mem_usage = 0.0
+
+        let_go = False
+
+        if actn > 0:
+            total_mem = procs.total_memory()
+            avail_mem = procs.available_memory()
+
+            for ap in actp:
+                est_usage = ap.callback_data()
+                max_usage = ap.max_memory_bytes()
+                alpha = math.exp(-ap.run_time() / 120.0)
+                active_mem_usage += alpha*est_usage + (1.0-alpha)*max_usage
+
+            if min(total_mem-active_mem_usage, avail_mem) > proc_est_usage:
+                let_go = True
+        else:
+            let_go = True
+
+        if let_go:
+            proc.set_callback_data(proc_est_usage)
+            sys.stderr.write(
+                "atmost: linking: a=%d|w=%d (%4.2f GB / %4.2f GB)\n" % (
+                    actn,
+                    waitn,
+                    active_mem_usage / _1GB,
+                    proc_est_usage / _1GB,
+                )
+            )
             return True
         return False
-    return len(procs.active()) <  multiprocessing.cpu_count()
+    return actn <  multiprocessing.cpu_count()
 
 # ------------------------------------------------------------------------------
 def process_finished(user_data, proc):
     if is_linker(proc):
         info = get_ld_info(user_data, proc)
         if info:
+            sys.stderr.write(
+                "atmost: linked: (%4.2f GB / %4.2f GB)\n" % (
+                    info["memory_size"] / _1GB,
+                    proc.callback_data() / _1GB
+                )
+            )
+
             sys.stdout.write(",")
             json.dump(info, sys.stdout)
             sys.stdout.write("\n")
             sys.stdout.flush()
 
+# ------------------------------------------------------------------------------
 
  
