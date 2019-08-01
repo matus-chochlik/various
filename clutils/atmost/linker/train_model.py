@@ -3,6 +3,7 @@
 import os
 import sys
 import csv
+import gzip
 import json
 import glob
 import math
@@ -40,6 +41,15 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
         argparse.ArgumentParser.__init__(self, **kw)
+
+        self.add_argument(
+            "--output", "-o",
+            metavar="OUTPUT-PATH",
+            nargs='?',
+            dest="output_path",
+            default=None,
+            help="output file path"
+        )
 
         self.add_argument(
             "--input", "-i",
@@ -81,7 +91,7 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
             nargs='?',
             dest="repeat_count",
             type=self._positive_int,
-            default=24,
+            default=8,
             action="store"
         )
 
@@ -102,6 +112,9 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
 
         options.input_paths =\
             list(set(os.path.realpath(x) for x in options.input_paths))
+
+        if options.output_path is None:
+            options.output_path = os.path.realpath("atmost.linker.model.pickle")
 
         options.chunk_gib_mult = options.chunk_size/float(1024**3)
 
@@ -128,12 +141,12 @@ def make_argparser():
 # ------------------------------------------------------------------------------
 def load_json_data(options):
     transforms = [
-        ("opt", lambda x: x),
-        ("pie", lambda x: x),
-        ("static_count", lambda x: x),
-        ("static_size", lambda x: x),
-        ("shared_count", lambda x: x),
-        ("shared_size", lambda x: x),
+        ("opt", lambda x: float(x)),
+        ("pie", lambda x: float(x)),
+        ("static_count", lambda x: float(x)),
+        ("static_size", lambda x: math.ceil(float(x)/1024.0)),
+        ("shared_count", lambda x: float(x)),
+        ("shared_size", lambda x: math.ceil(float(x)/1024.0)),
         ("memory_size", lambda x: int(math.ceil(float(x) / options.chunk_size)))
     ]
     for filepath in options.input_paths:
@@ -185,39 +198,53 @@ def single_train_pass(options, model, x, y):
         except ZeroDivisionError:
             return 0.0
 
-    return (
-        acc,
-        -_stat(ndiffs)*options.chunk_gib_mult,
-        +_stat(pdiffs)*options.chunk_gib_mult
-    )
+    return (acc, -_stat(ndiffs), +_stat(pdiffs))
 
 # ------------------------------------------------------------------------------
 def train_model(options):
     from sklearn.preprocessing import StandardScaler
     from sklearn.neural_network import MLPClassifier
 
-    model = MLPClassifier()
     scaler = StandardScaler()
+    model = MLPClassifier(
+        hidden_layer_sizes=(55, 34),
+        activation="relu"
+    )
 
     data = load_dataframe(options)
     x = data.drop(["memory_size"], axis=1)
+    fields = list(x.columns.values)
     y = data["memory_size"]
     scaler.fit(x)
     x = scaler.transform(x)
     model.partial_fit(x, y, xrange(0, 64))
 
-    fmt = "%4.3f|%5.1f|%5.1f|"
+    fmt = "%4.3f|%6.2f|%5.2f|"
+    steps = 0
 
     if options.min_confidence is not None:
         while True:
             result = single_train_pass(options, model, x, y)
+            steps += 1
             print(fmt % result)
             if result[0] >= options.min_confidence:
                 break
     else:
         for i in xrange(options.repeat_count):
             result = single_train_pass(options, model, x, y)
+            steps += 1
             print(fmt % result)
+
+    archive = {
+        "fields": fields,
+        "steps": steps,
+        "model": model,
+        "scaler": scaler,
+        "confidence": result[0],
+        "error_margin": -result[1],
+        "chunk_size": options.chunk_size
+    }
+    pickle.dump(archive, gzip.open(options.output_path, "wb"))
 # ------------------------------------------------------------------------------
 def main():
     sys.exit(train_model(make_argparser().parse_args()))
