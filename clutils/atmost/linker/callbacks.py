@@ -21,7 +21,7 @@ def is_linker(proc):
     return proc.basename() in linker_names
 
 # ------------------------------------------------------------------------------
-def get_ld_info(user_data, proc):
+def get_ld_info(context, proc):
     if not is_linker(proc):
         return None
 
@@ -157,7 +157,7 @@ def get_ld_info(user_data, proc):
         sys.stderr.write("atmost: error: %s\n" % error)
 
 # ------------------------------------------------------------------------------
-class DriverData(object):
+class Context(object):
     # --------------------------------------------------------------------------
     def __init__(self, d):
         self._scaler = d["scaler"]
@@ -179,37 +179,42 @@ class DriverData(object):
             ldi["memory_size"] = pre
             return ldi
         return None
+
     # --------------------------------------------------------------------------
     def error_margin(self):
         return self._error_margin
 
 # ------------------------------------------------------------------------------
-def load_user_data():
+def load_callback_data():
     sys.stdout.write("[{}\n")
     try:
-        return DriverData(pickle.load(gzip.open("atmost.linker.pickle.gz", "rb")))
+        return Context(pickle.load(gzip.open("atmost.linker.pickle.gz", "rb")))
     except Exception as error:
         sys.stderr.write("atmost: error: %s\n" % error)
 
 # ------------------------------------------------------------------------------
-def save_user_data(user_data):
+def save_callback_data(context):
     sys.stdout.write("]")
 
 # ------------------------------------------------------------------------------
-def let_process_go(user_data, procs):
+def process_initialized(context, proc):
+    if is_linker(proc):
+        proc_info = context.predict_ld_info(proc)
+        proc_pred_usage = proc_info["memory_size"]
+        proc_pred_usage += context.error_margin()
+        proc.set_callback_data(proc_info)
+
+# ------------------------------------------------------------------------------
+def let_process_go(context, procs):
     proc = procs.current()
     actp = procs.active()
     actn = len(actp)
     if is_linker(proc):
-        # estimated memory usage of the current process
-        proc_info = user_data.predict_ld_info(proc)
-        proc_pred_usage = proc_info["memory_size"]
-        proc_pred_usage += user_data.error_margin()
-        # active process memory usage
-        active_mem_usage = 0.0
-
         total_mem = procs.total_memory()
         avail_mem = procs.available_memory()
+        proc_info = proc.callback_data()
+        proc_pred_usage = proc_info["memory_size"]
+        active_mem_usage = 0.0
 
         let_go = False
 
@@ -231,10 +236,9 @@ def let_process_go(user_data, procs):
             let_go = True
 
         if let_go:
-            proc.set_callback_data(proc_info)
             outputs = proc_info["outputs"]
             sys.stderr.write(
-                "atmost: linking '%s': (pred=%4.2fG|avail=%4.2fG)\n" % (
+                "atmost: linking '%s': (predicted=%4.2fG|available=%4.2fG)\n" % (
                     os.path.basename(outputs[0]) if len(outputs) > 0 else "N/A",
                     proc_pred_usage / _1GB,
                     pred_avail_mem / _1GB
@@ -245,19 +249,19 @@ def let_process_go(user_data, procs):
     return actn <  multiprocessing.cpu_count()
 
 # ------------------------------------------------------------------------------
-def process_finished(user_data, proc):
+def process_finished(context, proc):
     if is_linker(proc):
-        info = get_ld_info(user_data, proc)
+        info = get_ld_info(context, proc)
         if info:
             pred = proc.callback_data()
             outputs = info["outputs"]
 
             proc_real_usage = info["memory_size"]
             proc_pred_usage = pred["memory_size"]
-            proc_pred_usage += user_data.error_margin()
+            proc_pred_usage += context.error_margin()
 
             sys.stderr.write(
-                "atmost: linked  '%s': (pred=%4.2fG|real=%4.2fG)\n" % (
+                "atmost: linked  '%s': (predicted=%4.2fG|actual=%4.2fG)\n" % (
                     os.path.basename(outputs[0]) if len(outputs) > 0 else "N/A",
                     proc_pred_usage / _1GB,
                     proc_real_usage / _1GB

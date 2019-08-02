@@ -73,7 +73,7 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
             nargs='?',
             dest="chunk_size",
             type=self._size_bytes,
-            default=1024*1024*512,
+            default=1024*1024*256,
             action="store"
         )
 

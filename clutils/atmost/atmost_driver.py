@@ -24,9 +24,10 @@ except ImportError:
 class AtmostCallbacks(object):
     # --------------------------------------------------------------------------
     def __init__(self):
-        self.load_user_data = lambda: None
-        self.save_user_data = lambda data: None
+        self.load_callback_data = lambda: None
+        self.save_callback_data = lambda data: None
 
+        self.process_initialized = lambda data, info: None
         self.let_process_go =\
             lambda data, info: len(info.active()) < multiprocessing.cpu_count()
         self.process_finished = lambda data, info: None
@@ -41,9 +42,11 @@ class AtmostDriverArgumentParser(argparse.ArgumentParser):
                 "atmost",
                 os.path.join(callbacks_path)
             )
-            try: callbacks.load_user_data = callbacks_py.load_user_data
+            try: callbacks.load_callback_data = callbacks_py.load_callback_data
             except: pass
-            try: callbacks.save_user_data = callbacks_py.save_user_data
+            try: callbacks.save_callback_data = callbacks_py.save_callback_data
+            except: pass
+            try: callbacks.process_initialized = callbacks_py.process_initialized
             except: pass
             try: callbacks.let_process_go = callbacks_py.let_process_go
             except: pass
@@ -327,6 +330,7 @@ class AtmostProcess(object):
                     self._cwd = self._psutil.cwd()
                     self._arguid = self.command_line_uid()
                     self._ready_time = time.time()
+                    self._parent.client_ready(self)
                 except:
                     pass
             else:
@@ -427,10 +431,10 @@ class AtmostFilterContext(object):
 # ------------------------------------------------------------------------------
 class AtmostDriver(object):
     # --------------------------------------------------------------------------
-    def __init__(self, selector, callbacks, user_data):
+    def __init__(self, selector, callbacks, callback_data):
         self._selector = selector
         self._callbacks = callbacks
-        self._user_data = user_data
+        self._callback_data = callback_data
         self._clients = dict()
 
     # --------------------------------------------------------------------------
@@ -444,6 +448,13 @@ class AtmostDriver(object):
         )
 
     # --------------------------------------------------------------------------
+    def client_ready(self, client):
+        self._callbacks.process_initialized(
+            self._callback_data,
+            client
+        )
+
+    # --------------------------------------------------------------------------
     def disconnect_client(self, client_id, conn):
         self._selector.unregister(conn)
         conn.close()
@@ -452,8 +463,9 @@ class AtmostDriver(object):
     # --------------------------------------------------------------------------
     def remove_client(self, client_id, conn):
         self._callbacks.process_finished(
-            self._user_data,
-            self._clients[client_id][1])
+            self._callback_data,
+            self._clients[client_id][1]
+        )
         del conn
         del self._clients[client_id]
 
@@ -469,7 +481,7 @@ class AtmostDriver(object):
 
     # --------------------------------------------------------------------------
     def let_go(self, info):
-        return self._callbacks.let_process_go(self._user_data, info)
+        return self._callbacks.let_process_go(self._callback_data, info)
 
     # --------------------------------------------------------------------------
     def respond(self):
@@ -490,15 +502,15 @@ class AtmostDriver(object):
 keep_running = True
 # ------------------------------------------------------------------------------
 def drive_atmost(options):
-    user_data = None
-    try: user_data = options.callbacks.load_user_data()
+    callback_data = None
+    try: callback_data = options.callbacks.load_callback_data()
     except: pass
 
     try:
         global keep_running
         lsock = open_socket(options)
         with selectors.DefaultSelector() as selector:
-            driver = AtmostDriver(selector, options.callbacks, user_data)
+            driver = AtmostDriver(selector, options.callbacks, callback_data)
             selector.register(
                 lsock,
                 selectors.EVENT_READ,
@@ -530,7 +542,7 @@ def drive_atmost(options):
             os.unlink(options.socket_path)
         except: pass
 
-    try: options.callbacks.save_user_data(user_data)
+    try: options.callbacks.save_callback_data(callback_data)
     except: pass
 
 # ------------------------------------------------------------------------------
