@@ -200,8 +200,6 @@ def save_callback_data(context):
 def process_initialized(context, proc):
     if is_linker(proc):
         proc_info = context.predict_ld_info(proc)
-        proc_pred_usage = proc_info["memory_size"]
-        proc_pred_usage += context.error_margin()
         proc.set_callback_data(proc_info)
 
 # ------------------------------------------------------------------------------
@@ -214,6 +212,7 @@ def let_process_go(context, procs):
         avail_mem = procs.available_memory()
         proc_info = proc.callback_data()
         proc_pred_usage = proc_info["memory_size"]
+        proc_pred_usage += context.error_margin()
         active_mem_usage = 0.0
 
         let_go = False
