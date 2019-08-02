@@ -229,7 +229,7 @@ def let_process_go(context, procs):
 
             pred_avail_mem = min(total_mem-active_mem_usage, avail_mem)
 
-            if avail_mem > proc_pred_usage:
+            if pred_avail_mem > proc_pred_usage:
                 let_go = True
         else:
             pred_avail_mem = avail_mem 
