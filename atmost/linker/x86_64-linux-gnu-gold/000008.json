@@ -1,6 +1,0 @@
-[{"opt": 3, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 1040384, "plugin_count": 1, "b_dynamic": 0, "output_size": 31240, "static_count": 6, "b_static": 0, "static_size": 3011238}
-,{"opt": 2, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 966656, "plugin_count": 1, "b_dynamic": 0, "output_size": 31240, "static_count": 6, "b_static": 0, "static_size": 3011238}
-,{"opt": 1, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 1040384, "plugin_count": 1, "b_dynamic": 0, "output_size": 31320, "static_count": 6, "b_static": 0, "static_size": 3011238}
-,{"opt": 0, "shared_size": 171390, "shared_count": 3, "pie": 1, "memory_size": 974848, "plugin_count": 1, "b_dynamic": 0, "output_size": 31320, "static_count": 6, "b_static": 0, "static_size": 3011238}
-]
-
