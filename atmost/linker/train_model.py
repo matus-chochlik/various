@@ -139,10 +139,16 @@ def make_argparser():
     )
 
 # ------------------------------------------------------------------------------
+def open_json(filepath):
+    try: return gzip.open(filepath, mode="rt")
+    except: return open(filepath, mode="rt")
+# ------------------------------------------------------------------------------
 def load_json_data(options):
     transforms = [
         ("opt", lambda x: float(x)),
         ("pie", lambda x: float(x)),
+        ("no_mmap_whole_files", lambda x: float(x)),
+        ("no_mmap_output_file", lambda x: float(x)),
         ("static_count", lambda x: float(x)),
         ("static_size", lambda x: float(x)),
         ("shared_count", lambda x: float(x)),
@@ -151,7 +157,7 @@ def load_json_data(options):
     ]
     for filepath in options.input_paths:
         try:
-            with open(filepath, mode="rt") as jsonfile:
+            with open_json(filepath) as jsonfile:
                 for row in json.load(jsonfile):
                     try:
                         yield dict(
@@ -207,7 +213,7 @@ def train_model(options):
 
     scaler = StandardScaler()
     model = MLPClassifier(
-        hidden_layer_sizes=(55, 34),
+        hidden_layer_sizes=(70, 50),
         activation="relu"
     )
 

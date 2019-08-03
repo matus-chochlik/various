@@ -150,6 +150,8 @@ def get_ld_info(context, proc):
             "output_size": osz,
             "b_static": 1 if "-Bstatic" in args else 0,
             "b_dynamic": 1 if "-Bdynamic" in args else 0,
+            "no_mmap_whole_files": 1 if "--no-map-whole-files" in args else 0,
+            "no_mmap_output_file": 1 if "--no-map-output-file" in args else 0,
             "pie": pie,
             "opt": opt_level
         }
@@ -266,6 +268,8 @@ def process_finished(context, proc):
                     proc_real_usage / _1GB
                 )
             )
+
+            del info["outputs"]
 
             sys.stdout.write(",")
             json.dump(info, sys.stdout)
