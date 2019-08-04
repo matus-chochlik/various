@@ -329,8 +329,8 @@ class AtmostProcess(object):
                     self._psutil = psutil.Process(self._pid)
                     self._cwd = self._psutil.cwd()
                     self._arguid = self.command_line_uid()
-                    self._ready_time = time.time()
                     self._parent.client_ready(self)
+                    self._ready_time = time.time()
                 except:
                     pass
             else:
