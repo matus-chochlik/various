@@ -489,6 +489,7 @@ class AtmostDriver(object):
         for (conn, curr) in self._clients.values():
             if curr.is_ready() and not curr.got_response():
                 if self.let_go(AtmostFilterContext(clients, curr)):
+                    curr.update()
                     curr.go(conn)
 
     # --------------------------------------------------------------------------
