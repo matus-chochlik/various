@@ -1,11 +1,11 @@
-.TH ATMOST 1 "2019-07-16" "Limits concurrent execution of executable."
+.TH ATMOST 1 "2019-08-06" "Limits concurrent execution of executable."
 .SH "NAME"
 atmost \- tool for limiting the concurrent execution of a specified executable(s).
 .SH "SYNOPSIS"
 .SY atmost
 .OP \-v|\-\-verbose
-.OP \-f|--file file\-path
-.OP \-s|--socket socket\-path
+.OP \-f|\-\-file file\-path
+.OP \-s|\-\-socket socket\-path
 .OP \-r|\-\-reset
 .OP \-i|\-\-sleep\-interval seconds
 .OP \-c|\-\-print\-current
