@@ -5,6 +5,7 @@ atmost \- tool for limiting the concurrent execution of a specified executable(s
 .SY atmost
 .OP \-v|\-\-verbose
 .OP \-f|--file file\-path
+.OP \-s|--socket socket\-path
 .OP \-r|\-\-reset
 .OP \-i|\-\-sleep\-interval seconds
 .OP \-c|\-\-print\-current
@@ -47,12 +48,17 @@ Make output more verbose. Can be specified multiple times, each instance
 increases the verbosity level.
 .TP
 \fB-f\fR \fIfile-path\fR, \fB--file\fR \fIfile-path\fR
-Without this option \fBatmost\fR uses the real path of \fIEXECUTABLE\fR
+Without this option \fBatmost\fR uses the real path of \fIexecutable\fR
 to determine the number of concurrent running instances of the executable.
 If the -f option is specified, then \fIfile-path\fR is used instead as a token
 used to count concurrent processes. This means that different executables
 may be subject of a single counter. \fIfile-path\fR must be a path
 to an existing file.
+.TP
+\fB-s\fR \fIsocket-path\fR, \fB--socket\fR \fIsocket-path\fR
+Connect to a local \fBatmost_driver\fR server which will determine when
+to start executing the \fIexecutable\fR depending on the logic implemented
+by the driver callbacks script.
 .TP
 \fB-r\fR, \fB--reset\fR 
 Reset the instance counter associated with \fIexecutable\fR or with the
