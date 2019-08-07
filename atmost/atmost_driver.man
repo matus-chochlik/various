@@ -12,7 +12,20 @@ atmost_driver \- driver server for the atmost command.
 .B --help
 .YS
 .SH "DESCRIPTION"
-TODO
+\fBatmost_socket\fR acts as a server listening on a local Unix-domain socket
+(address specified by the \fB-s\fR command-line argument), accepting connections
+and handling requests requests from instances of the \fBatmost\fR command
+and determining when the executable handled by \fBatmost\fB shall be executed.
+.PP
+The request from \fBatmost\fR takes the form of a JSON object with at least
+the following mandatory attributes:
+.IP \(dqargs\(dq
+a JSON list of strings containing the command-line arguments of the
+\fIexecutable\fB managed by \fBatmost\fR as they will be passed to the
+\fBexec\fR system call.
+.IP \(dqpid\(dq
+the integer process identifier of the atmost client process handling the
+\fIexecutable\fR.
 
 .SH "OPTIONS"
 .SS "General options"
@@ -22,12 +35,16 @@ Show a help screen and exit.
 .TP
 \fB-s\fR \fIsocket-path\fR, \fB--socket\fR \fIsocket-path\fR
 TODO.
+Default \fI/tmp/atmost.socket\fB.
 
 .SH "EXAMPLES"
 .EX
 .B atmost_driver -c ./mycallbacks.py
 .EE
 .PP
+TODO.
+
+.SH "SEE ALSO"
 TODO.
 
 .SH "AUTHOR"
