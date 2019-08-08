@@ -4,10 +4,12 @@ atmost_driver \- driver server for the atmost command.
 .SH "SYNOPSIS"
 .SY atmost_driver
 .OP \-s|\-\-socket socket\-path
+.OP \-c|\-\-callbacks file\-path
+.OP \-u|\-\-update interval
 .YS
 .
 .SY atmost_driver
-.B -h
+.B \-h
 .SY atmost_driver
 .B --help
 .YS
@@ -26,26 +28,97 @@ a JSON list of strings containing the command-line arguments of the
 .IP \(dqpid\(dq
 the integer process identifier of the atmost client process handling the
 \fIexecutable\fR.
+.PP
+The response is a simple string with the following format \(dqOK-GO:%d\(dq,
+where \fB%d\fR is substituted with the process id of the receiving process.
 
 .SH "OPTIONS"
 .SS "General options"
 .TP
-\fB-h\fR, \fB--help\fR
+\fB\-h\fR, \fB\-\-help\fR
 Show a help screen and exit.
 .TP
-\fB-s\fR \fIsocket-path\fR, \fB--socket\fR \fIsocket-path\fR
-TODO.
-Default \fI/tmp/atmost.socket\fB.
+\fB\-s\fR \fIsocket-path\fR, \fB\-\-socket\fR \fIsocket-path\fR
+Unix domain socket path on which the driver accepts connections from instances
+of \fBatmost\fR. The \fBatmost\fR process is blocked until it receives a response
+from the driver.
+If this option is not specified, the default is \fI/tmp/atmost.socket\fB.
+.TP
+\fB\-u\fR \fIinterval\fR, \fB\-\-update\fR \fIinterval\fR
+The atmost driver  updates the internal information tracking the process state
+whenever new requests on the server socket arrive and also periodically.
+This option changes the periodic update interval. The \fIinterval\fR argument
+is a positive floating point value in seconds.
+If this option is not specified, the default is 1 second.
+.SS "Driver callbacks"
+.PP
+In order to manage and control the execution start time of the executables
+handled by the \fBatmost\fR utility the driver uses a set of callback functions
+which are imported by the driver from a user-specified Python script and invoked
+at particular events during the execution of the driver.
+.IP "def load_callback_data():"
+This function is called when the driver is initializing and it gives the callback
+script a chance to do global initialization and to load resources needed during
+the whole execution time of \fBatmost_driver\fR.
+The function may return a value, which is then stored within the driver and
+passed as the argument to the other callbacks.
+.IP "def save_callback_data(callback_data):"
+This function is called when the driver is finalizing and it allows the callback
+script to save any global state that should remain persistent between invocations
+of \fBatmost_driver\fR. The argument \fIcallback_data\fB is the same object
+that the \fBload_callback_data\fR function returned.
+.IP "def process_initialized(callback_data, proc):"
+This function is called after an instance of \fBatmost\fR connects to the driver
+and providers the necessary information about the managed and controlled
+\fIexecutable\fB. The \fIcallback_data\fR parameter is the same object that
+was returned by the \fBload_callback_data\fR function. The \fIproc\fR argument
+is a class providing information about the managed executable, like its
+command-line and about the process in which it will be executed.
+.IP "def let_process_go(context, procs):"
+This function is called repeatedly to determine if a waiting process can start
+executing its managed \fIexecutable\fB.
+The \fIcallback_data\fR parameter is the same object that
+was returned by the \fBload_callback_data\fR function.
+The \fIprocs\fR argument is a class providing information about all currently
+listed managed processes. The processes are divided into three groups:
+.IP \[bu] 2
+\fIactive\fR: list of processes already running the managed \fIexecutable\fB
+and consuming system resources.
+.IP \[bu] 2
+\fIcurrent\fR: the process for which we are determining if it should start execution.
+.IP \[bu] 2
+\fIwaiting\fR: list of processes prepared to be executed, but which were not yet
+let go.  This list does not contain the \fIcurrent\fR process.
+.PP
+The \fIprocs\fR object provides functions active(), current() and waiting()
+returning the groups of processes described above.
+.PP
+The function shall return \fITrue\fR if the managed executable can start execution,
+or return \fIFalse\fR otherwise.
+.IP "def process_finished(callback_data, proc):"
+This function is called after a managed \fBatmost\fR process has finished the
+execution if the managed \fIexecutable\fB.
+The \fIcallback_data\fR parameter is the same object that
+was returned by the \fBload_callback_data\fR function. The \fIproc\fR argument
+is a class providing information about the managed executable, like its
+command-line and about the process in which it was executed.
+
+.TP
+\fB\-c\fR \fIscript-path\fR, \fB\-\-callbacks\fR \fIscript-path\fR
+Specifies the filesystem path to a python script implementing one or more
+of the driver callback functions described above.
+If this option is not specified, then default, trivial callback functions
+are used.
 
 .SH "EXAMPLES"
 .EX
 .B atmost_driver -c ./mycallbacks.py
 .EE
 .PP
-TODO.
+Starts the driver, using \fI./mycallbacks.py\fB as the callback script.
 
 .SH "SEE ALSO"
-TODO.
+.BR atmost (1),
 
 .SH "AUTHOR"
 Matus Chochlik, chochlik@gmail.com
