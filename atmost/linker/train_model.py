@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # coding: UTF-8
 #  Copyright (c) 2019 Matus Chochlik
 import os
@@ -223,7 +224,7 @@ def train_model(options):
     y = data["memory_size"]
     scaler.fit(x)
     x = scaler.transform(x)
-    model.partial_fit(x, y, xrange(0, 64))
+    model.partial_fit(x, y, range(0, 64))
 
     fmt = "%4.3f|%6.2f|%5.2f|"
     steps = 0
