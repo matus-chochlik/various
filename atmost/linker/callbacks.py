@@ -1,3 +1,4 @@
+#!/usr/bin/python3 -B
 # coding: UTF-8
 #  Copyright (c) 2019 Matus Chochlik
 import os
@@ -170,12 +171,14 @@ class Context(object):
 
     # --------------------------------------------------------------------------
     def predict_ld_info(self, proc):
-        f = self._fields
         ldi = get_ld_info(self, proc)
         if ldi is not None:
-            fldi = {k: float(v) for k, v in ldi.items() if k in f}
-            df = pandas.DataFrame(fldi, index=[0])
+            fldi = {k: float(v) for k, v in ldi.items() if k in self._fields}
+            df = pandas.DataFrame(fldi, columns=self._fields, index=[0])
             cls = self._model.classes_
+            sys.stderr.write("%s\n" % self._fields)
+            sys.stderr.write("%s\n" % df)
+            sys.stderr.write("%s\n" % self._scaler.transform(df))
             pro = self._model.predict_proba(self._scaler.transform(df))
             pre = sum(p * c for p, c in zip(pro[0], cls)) * self._chunk_size
             ldi["memory_size"] = pre
@@ -190,7 +193,11 @@ class Context(object):
 def load_callback_data():
     sys.stdout.write("[{}\n")
     try:
-        return Context(pickle.load(gzip.open("atmost.linker.pickle.gz", "rb")))
+        return Context(
+            pickle.load(
+                gzip.open("atmost.linker.pickle.gz", "rb")
+            )
+        )
     except Exception as error:
         sys.stderr.write("atmost: error: %s\n" % error)
 

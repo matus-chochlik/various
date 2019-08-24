@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3 -B
 # coding: UTF-8
 #  Copyright (c) 2019 Matus Chochlik
 import os
