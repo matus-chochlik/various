@@ -176,9 +176,6 @@ class Context(object):
             fldi = {k: float(v) for k, v in ldi.items() if k in self._fields}
             df = pandas.DataFrame(fldi, columns=self._fields, index=[0])
             cls = self._model.classes_
-            sys.stderr.write("%s\n" % self._fields)
-            sys.stderr.write("%s\n" % df)
-            sys.stderr.write("%s\n" % self._scaler.transform(df))
             pro = self._model.predict_proba(self._scaler.transform(df))
             pre = sum(p * c for p, c in zip(pro[0], cls)) * self._chunk_size
             ldi["memory_size"] = pre
