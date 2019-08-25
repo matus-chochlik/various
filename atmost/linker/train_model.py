@@ -214,7 +214,7 @@ def train_model(options):
 
     scaler = StandardScaler()
     model = MLPClassifier(
-        hidden_layer_sizes=(80, 60),
+        hidden_layer_sizes=(85, 65),
         activation="relu"
     )
 
