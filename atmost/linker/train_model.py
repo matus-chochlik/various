@@ -8,9 +8,12 @@ import gzip
 import json
 import glob
 import math
+import queue
 import pandas
 import pickle
 import argparse
+import threading
+import multiprocessing
 
 # ------------------------------------------------------------------------------
 class TrainModelArgumentParser(argparse.ArgumentParser):
@@ -96,6 +99,15 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
             action="store"
         )
 
+        self.add_argument(
+            "--load-threads", "-L",
+            nargs='?',
+            dest="load_threads",
+            type=self._positive_int,
+            default=multiprocessing.cpu_count()*2,
+            action="store"
+        )
+
     # --------------------------------------------------------------------------
     def process_parsed_options(self, options):
         options.input_paths = list()
@@ -140,11 +152,58 @@ def make_argparser():
     )
 
 # ------------------------------------------------------------------------------
-def open_json(filepath):
-    try: return gzip.open(filepath, mode="rt")
-    except: return open(filepath, mode="rt")
+class LoadThread(threading.Thread):
+    def __init__(self, transforms, tid, input_queue, output_queue):
+        self._transforms = transforms
+        self._id = tid
+        self._input = input_queue
+        self._output = output_queue
+        threading.Thread.__init__(self,target=self._run)
+        threading.Thread.start(self)
+
+    # ----------------------------------------------------------------------
+    def _open_json(self, filepath):
+        try: return gzip.open(filepath, mode="rt")
+        except: return open(filepath, mode="rt")
+
+    # ----------------------------------------------------------------------
+    def _load_json_data(self, filepath):
+        try:
+            with self._open_json(filepath) as jsonfile:
+                for row in json.load(jsonfile):
+                    try:
+                        yield dict(
+                            (name, [transf(row[name])]) \
+                            for name, transf in self._transforms
+                        )
+                    except KeyError: pass
+                    except TypeError: pass
+        except Exception as error:
+            print("error: %s" % error)
+
+    # ----------------------------------------------------------------------
+    def _load_dataframes(self, filepath):
+        for d in self._load_json_data(filepath):
+            try: yield pandas.DataFrame.from_dict(d)
+            except KeyError: pass
+            except Exception as error:
+                print("error: %s" % error)
+
+    # ----------------------------------------------------------------------
+    def _process_input(self, filepath):
+        return pandas.concat(self._load_dataframes(filepath))
+
+    # ----------------------------------------------------------------------
+    def _run(self):
+        while True:
+            filepath = self._input.get()
+            if filepath is None:
+                self._output.put(None)
+                break
+            self._output.put(self._process_input(filepath))
+
 # ------------------------------------------------------------------------------
-def load_json_data(options):
+def load_dataframes(options):
     transforms = [
         ("opt", lambda x: float(x)),
         ("pie", lambda x: float(x)),
@@ -156,27 +215,31 @@ def load_json_data(options):
         ("shared_size", lambda x: float(x)),
         ("memory_size", lambda x: int(math.ceil(float(x) / options.chunk_size)))
     ]
-    for filepath in options.input_paths:
-        try:
-            with open_json(filepath) as jsonfile:
-                for row in json.load(jsonfile):
-                    try:
-                        yield dict(
-                            (name, [transf(row[name])]) \
-                            for name, transf in transforms
-                        )
-                    except KeyError: pass
-                    except TypeError: pass
-        except Exception as error:
-            print(error)
 
-# ------------------------------------------------------------------------------
-def load_dataframes(options):
-    for d in load_json_data(options):
-        try: yield pandas.DataFrame.from_dict(d)
-        except KeyError: pass
-        except Exception as error:
-            print("error: %s" % error)
+    input_paths = queue.Queue()
+    output_frames = queue.Queue()
+    load_threads = [
+        LoadThread(transforms, tid, input_paths, output_frames)
+        for tid in range(options.load_threads)
+    ]
+
+    for filepath in options.input_paths:
+        input_paths.put(filepath)
+
+    for lt in load_threads:
+        input_paths.put(None)
+
+    remaining = options.load_threads
+
+    while remaining:
+        dataframe = output_frames.get()
+        if dataframe is None:
+            remaining -= 1
+        else: 
+            yield dataframe
+
+    for lt in load_threads:
+        lt.join()
 
 # ------------------------------------------------------------------------------
 def load_dataframe(options):
