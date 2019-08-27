@@ -166,18 +166,35 @@ class Context(object):
         self._scaler = d["scaler"]
         self._model = d["model"]
         self._fields = d["fields"]
-        self._chunk_size = d["chunk_size"]
-        self._error_margin = d["error_margin"] * self._chunk_size
+        self._input_chunk_size = d["input_chunk_size"]
+        self._output_chunk_size = d["output_chunk_size"]
+        self._error_margin = d["error_margin"] * self._output_chunk_size
+        self._transforms = {
+            "static_size": lambda x: math.ceil(float(x)/self._input_chunk_size),
+            "shared_size": lambda x: math.ceil(float(x)/self._input_chunk_size)
+        }
+
+    # --------------------------------------------------------------------------
+    def _transform(self, k, v):
+        try:
+            return self._transforms[k](v)
+        except KeyError:
+            self._transforms[k] = lambda x: float(x)
+            return float(v)
 
     # --------------------------------------------------------------------------
     def predict_ld_info(self, proc):
         ldi = get_ld_info(self, proc)
         if ldi is not None:
-            fldi = {k: float(v) for k, v in ldi.items() if k in self._fields}
+            fldi = {
+                k: self._transform(k, v) \
+                for k, v in ldi.items() \
+                if k in self._fields
+            }
             df = pandas.DataFrame(fldi, columns=self._fields, index=[0])
             cls = self._model.classes_
             pro = self._model.predict_proba(self._scaler.transform(df))
-            pre = sum(p * c for p, c in zip(pro[0], cls)) * self._chunk_size
+            pre = sum(p * c for p, c in zip(pro[0], cls)) * self._output_chunk_size
             ldi["memory_size"] = pre
             return ldi
         return None

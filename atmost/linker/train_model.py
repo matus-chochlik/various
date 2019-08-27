@@ -73,9 +73,18 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
-            "--chunk-size", "-C",
+            "--input-chunk-size", "-S",
             nargs='?',
-            dest="chunk_size",
+            dest="input_chunk_size",
+            type=self._size_bytes,
+            default=1024*8,
+            action="store"
+        )
+
+        self.add_argument(
+            "--output-chunk-size", "-C",
+            nargs='?',
+            dest="output_chunk_size",
             type=self._size_bytes,
             default=1024*1024*256,
             action="store"
@@ -104,7 +113,7 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
             nargs='?',
             dest="load_threads",
             type=self._positive_int,
-            default=multiprocessing.cpu_count()*2,
+            default=multiprocessing.cpu_count()+1,
             action="store"
         )
 
@@ -129,7 +138,7 @@ class TrainModelArgumentParser(argparse.ArgumentParser):
         if options.output_path is None:
             options.output_path = os.path.realpath("atmost.linker.pickle.gz")
 
-        options.chunk_gib_mult = options.chunk_size/float(1024**3)
+        options.chunk_gib_mult = options.output_chunk_size/float(1024**3)
 
         del options.__dict__["input_args"]
         del options.__dict__["arguments"]
@@ -167,27 +176,37 @@ class LoadThread(threading.Thread):
         except: return open(filepath, mode="rt")
 
     # ----------------------------------------------------------------------
+    def _transform_attrib(self, dataset, name, transf):
+        for row in dataset:
+            try: yield transf(row[name])
+            except KeyError: pass
+            except TypeError: pass
+
+    # ----------------------------------------------------------------------
     def _load_json_data(self, filepath):
         try:
             with self._open_json(filepath) as jsonfile:
-                for row in json.load(jsonfile):
-                    try:
-                        yield dict(
-                            (name, [transf(row[name])]) \
-                            for name, transf in self._transforms
+                dataset = json.load(jsonfile)
+                result = dict()
+                for name, transf in self._transforms:
+                    result[name] = [
+                        val for val in self._transform_attrib(
+                            dataset,
+                            name,
+                            transf
                         )
-                    except KeyError: pass
-                    except TypeError: pass
+                    ]
+                return result
         except Exception as error:
             print("error: %s" % error)
 
     # ----------------------------------------------------------------------
     def _load_dataframes(self, filepath):
-        for d in self._load_json_data(filepath):
-            try: yield pandas.DataFrame.from_dict(d)
-            except KeyError: pass
-            except Exception as error:
-                print("error: %s" % error)
+        d = self._load_json_data(filepath)
+        try: yield pandas.DataFrame.from_dict(d)
+        except KeyError: pass
+        except Exception as error:
+            print("error: %s" % error)
 
     # ----------------------------------------------------------------------
     def _process_input(self, filepath):
@@ -203,19 +222,7 @@ class LoadThread(threading.Thread):
             self._output.put(self._process_input(filepath))
 
 # ------------------------------------------------------------------------------
-def load_dataframes(options):
-    transforms = [
-        ("opt", lambda x: float(x)),
-        ("pie", lambda x: float(x)),
-        ("no_mmap_whole_files", lambda x: float(x)),
-        ("no_mmap_output_file", lambda x: float(x)),
-        ("static_count", lambda x: float(x)),
-        ("static_size", lambda x: float(x)),
-        ("shared_count", lambda x: float(x)),
-        ("shared_size", lambda x: float(x)),
-        ("memory_size", lambda x: int(math.ceil(float(x) / options.chunk_size)))
-    ]
-
+def load_dataframes(options, transforms):
     input_paths = queue.Queue()
     output_frames = queue.Queue()
     load_threads = [
@@ -242,8 +249,8 @@ def load_dataframes(options):
         lt.join()
 
 # ------------------------------------------------------------------------------
-def load_dataframe(options):
-    return pandas.concat(load_dataframes(options))
+def load_dataframe(options, transforms):
+    return pandas.concat(load_dataframes(options, transforms))
 
 # ------------------------------------------------------------------------------
 def single_train_pass(options, model, x, y):
@@ -277,11 +284,23 @@ def train_model(options):
 
     scaler = StandardScaler()
     model = MLPClassifier(
-        hidden_layer_sizes=(85, 65),
+        hidden_layer_sizes=(85, 65, 45),
         activation="relu"
     )
 
-    data = load_dataframe(options)
+    transforms = [
+        ("opt", lambda x: float(x)),
+        ("pie", lambda x: float(x)),
+        ("no_mmap_whole_files", lambda x: float(x)),
+        ("no_mmap_output_file", lambda x: float(x)),
+        ("static_count", lambda x: float(x)),
+        ("static_size", lambda x: math.ceil(float(x)/options.input_chunk_size)),
+        ("shared_count", lambda x: float(x)),
+        ("shared_size", lambda x: math.ceil(float(x)/options.input_chunk_size)),
+        ("memory_size", lambda x: int(math.ceil(float(x) / options.output_chunk_size)))
+    ]
+
+    data = load_dataframe(options, transforms).drop_duplicates()
     x = data.drop(["memory_size"], axis=1)
     fields = list(x.columns.values)
     y = data["memory_size"]
@@ -312,7 +331,8 @@ def train_model(options):
         "scaler": scaler,
         "confidence": result[0],
         "error_margin": -result[1],
-        "chunk_size": options.chunk_size
+        "input_chunk_size": options.input_chunk_size,
+        "output_chunk_size": options.output_chunk_size
     }
     pickle.dump(archive, gzip.open(options.output_path, "wb"))
 # ------------------------------------------------------------------------------
