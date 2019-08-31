@@ -235,7 +235,7 @@ def let_process_go(context, procs):
         avail_mem = procs.available_memory()
         proc_info = proc.callback_data()
         proc_pred_usage = proc_info["memory_size"]
-        proc_pred_usage += context.error_margin()
+        proc_pred_error = context.error_margin()
         active_mem_usage = 0.0
 
         let_go = False
@@ -251,7 +251,7 @@ def let_process_go(context, procs):
 
             pred_avail_mem = min(total_mem-active_mem_usage, avail_mem)
 
-            if pred_avail_mem > proc_pred_usage:
+            if pred_avail_mem > (proc_pred_usage + proc_pred_error):
                 let_go = True
         else:
             pred_avail_mem = avail_mem 
@@ -260,9 +260,10 @@ def let_process_go(context, procs):
         if let_go:
             outputs = proc_info["outputs"]
             sys.stderr.write(
-                "atmost: linking '%s': (predicted=%4.2fG|available=%4.2fG)\n" % (
+                "atmost: linking '%s': (predicted=%4.2fG±%4.2fG|available=%4.2fG)\n" % (
                     os.path.basename(outputs[0]) if len(outputs) > 0 else "N/A",
                     proc_pred_usage / _1GB,
+                    proc_pred_error / _1GB,
                     pred_avail_mem / _1GB
                 )
             )
@@ -280,12 +281,13 @@ def process_finished(context, proc):
 
             proc_real_usage = info["memory_size"]
             proc_pred_usage = pred["memory_size"]
-            proc_pred_usage += context.error_margin()
+            proc_pred_error = context.error_margin()
 
             sys.stderr.write(
-                "atmost: linked  '%s': (predicted=%4.2fG|actual=%4.2fG)\n" % (
+                "atmost: linked  '%s': (predicted=%4.2fG±%4.2fG|actual=%4.2fG)\n" % (
                     os.path.basename(outputs[0]) if len(outputs) > 0 else "N/A",
                     proc_pred_usage / _1GB,
+                    proc_pred_error / _1GB,
                     proc_real_usage / _1GB
                 )
             )
