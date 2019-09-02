@@ -246,7 +246,7 @@ def let_process_go(context, procs):
                 ap_info = act_proc.callback_data()
                 est_usage = ap_info["memory_size"]
                 max_usage = act_proc.max_memory_bytes()
-                alpha = math.exp(-act_proc.run_time() / 120.0)
+                alpha = math.exp(-act_proc.run_time() / 300.0)
                 active_mem_usage += alpha*est_usage + (1.0-alpha)*max_usage
 
             pred_avail_mem = min(total_mem-active_mem_usage, avail_mem)
