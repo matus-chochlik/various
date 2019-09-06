@@ -330,7 +330,8 @@ def train_model(options):
         "model": model,
         "scaler": scaler,
         "confidence": result[0],
-        "error_margin": -result[1],
+        "neg_error_margin": -result[1],
+        "pos_error_margin": +result[2],
         "input_chunk_size": options.input_chunk_size,
         "output_chunk_size": options.output_chunk_size
     }

@@ -168,7 +168,8 @@ class Context(object):
         self._fields = d["fields"]
         self._input_chunk_size = d["input_chunk_size"]
         self._output_chunk_size = d["output_chunk_size"]
-        self._error_margin = d["error_margin"] * self._output_chunk_size
+        self._pos_error_margin = d["pos_error_margin"] * self._output_chunk_size
+        self._neg_error_margin = d["neg_error_margin"] * self._output_chunk_size
         self._transforms = {
             "static_size": lambda x: math.ceil(float(x)/self._input_chunk_size),
             "shared_size": lambda x: math.ceil(float(x)/self._input_chunk_size)
@@ -201,7 +202,7 @@ class Context(object):
 
     # --------------------------------------------------------------------------
     def error_margin(self):
-        return self._error_margin
+        return self._neg_error_margin
 
 # ------------------------------------------------------------------------------
 def load_callback_data():
@@ -244,8 +245,11 @@ def let_process_go(context, procs):
 
             for act_proc in actp:
                 ap_info = act_proc.callback_data()
-                est_usage = ap_info["memory_size"]
                 max_usage = act_proc.max_memory_bytes()
+                try:
+                    est_usage = ap_info["memory_size"]
+                except:
+                    est_usage = max_usage
                 alpha = math.exp(-act_proc.run_time() / 300.0)
                 active_mem_usage += alpha*est_usage + (1.0-alpha)*max_usage
 
