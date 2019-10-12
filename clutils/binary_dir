@@ -5,7 +5,6 @@
 Command returning paths to build directories corresponding to directories
 in source code repositories with a BINARY_DIR file containing directory path.
 """
-from __future__ import print_function
 import sys
 import os
 
