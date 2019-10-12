@@ -155,9 +155,9 @@ class options:
 		x = (x + self.xcells) % self.xcells
 		y = (y + self.ycells) % self.ycells
 
-		r = (256*x)/self.xcells
-		g = (256*y)/self.ycells
-		b = (256*self.cell_z_coord)
+		r = int((256*x)/self.xcells)
+		g = int((256*y)/self.ycells)
+		b = int((256*self.cell_z_coord))
 
 		return "#%02x%02x%02x" % (r, g, b)
 

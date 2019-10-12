@@ -1,11 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # coding: UTF-8
-#  Copyright (c) 2016 Matus Chochlik
+#  Copyright (c) 2016-2019 Matus Chochlik
 
-import sys, numpy
+import sys
+import numpy
+import random
 from math import atan2
 from math import log10
-from itertools import izip
 
 def perpendicular(v1):
 	v2 = numpy.empty_like(v1)
@@ -146,7 +147,7 @@ def get_argument_parser():
  
 class options:
 	def grayscale_color_str(self, v):
-		c = "%02x" % (255*v)
+		c = "%02x" % int(255*v)
 		return "#"+3*c
 
 	def get_rng0(self):
@@ -164,16 +165,16 @@ class options:
 			try: return random.SystemRandom()
 			except: return random.Random(time.time())
 		else:
-			return random.Random(get_rng0().randomint(sys.maxsize))
+			return random.Random(self.get_rng0().randrange(0, sys.maxsize))
 
 	def gen_random_values(self):
 
 		rc = self.get_rng()
 
 		cell_data = list()
-		for y in xrange(self.ycells):
+		for y in range(self.ycells):
 			r = list()
-			for x in xrange(self.xcells):
+			for x in range(self.xcells):
 				r.append(rc.random())
 			cell_data.append(r)
 		return cell_data
@@ -184,9 +185,9 @@ class options:
 		ry = self.get_rng()
 
 		cell_data = list()
-		for y in xrange(self.ycells):
+		for y in range(self.ycells):
 			r = list()
-			for x in xrange(self.xcells):
+			for x in range(self.xcells):
 				r.append((rx.random(), ry.random()))
 			cell_data.append(r)
 		return cell_data
@@ -211,9 +212,9 @@ class options:
 		x = (x + self.xcells) % self.xcells
 		y = (y + self.ycells) % self.ycells
 
-		r = (256*x)/self.xcells
-		g = (256*y)/self.ycells
-		b = (256*self.cell_z_coord)
+		r = int((256*x)/self.xcells)
+		g = int((256*y)/self.ycells)
+		b = int((256*self.cell_z_coord))
 
 		return "#%02x%02x%02x" % (r, g, b)
 
@@ -232,7 +233,7 @@ class options:
 		return self.full_cell_element_str(x, y, center, newcorners);
 
 	def flagstone_cell_element_str(self, x, y, center, corners):
-		zcorners = izip(corners, corners[1:] + [corners[0]])
+		zcorners = zip(corners, corners[1:] + [corners[0]])
 		c = self.cell_value(x, y)
 		newcorners = [segment_point(a, b, c) for (a, b) in zcorners]
 		return self.scaled_cell_element_str(x, y, center, newcorners);
@@ -242,11 +243,11 @@ class options:
 		apoints = [segment_point(m, c, self.scale) for c in corners]
 		bpoints = apoints[1:] + [apoints[0]]
 		c = self.cell_value(x, y)
-		zpoints = izip(apoints, bpoints)
+		zpoints = zip(apoints, bpoints)
 		cpoints = [segment_point(a, b, c) for (a, b) in zpoints]
 		dpoints = cpoints[1:] + [cpoints[0]]
 
-		zpoints = izip(bpoints, dpoints)
+		zpoints = zip(bpoints, dpoints)
 
 		cfmt = lambda c : "%.3f %.3f" % (c[0], c[1])
 
@@ -348,8 +349,8 @@ def make_cell(opts, x, y):
 
 	offsets = []
 
-	for j in xrange(-3, 3):
-		for i in xrange(-3, 3):
+	for j in range(-3, 3):
+		for i in range(-3, 3):
 			if j != 0 or i != 0:
 				offsets.append((i, j))
 
@@ -372,8 +373,8 @@ def make_cell(opts, x, y):
 
 	intersections = []
 
-	for cj in xrange(len(cuts)):
-		for ci in xrange(cj+1, len(cuts)):
+	for cj in range(len(cuts)):
+		for ci in range(cj+1, len(cuts)):
 			t = line_intersect_param(cuts[cj], cuts[ci])
 			if t is not None:
 				intersections.append(cuts[cj][0]+cuts[cj][1]*t)
@@ -420,8 +421,8 @@ def print_svg(opts):
 	contentStyleType="text/css"\n>\n""" % opts.values)
 	opts.output.write("""<g class="voronoi" stroke-width="1.0">\n""")
 
-	for y in xrange(-1, opts.ycells+1):
-		for x in xrange(-1, opts.xcells+1):
+	for y in range(-1, opts.ycells+1):
+		for x in range(-1, opts.xcells+1):
 			make_cell(opts, x, y)
 
 	opts.output.write("""\n""")
