@@ -1,9 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # coding: UTF-8
-#  Copyright (c) 2017 Matus Chochlik
+#  Copyright (c) 2017-2019 Matus Chochlik
 
-import sys, numpy
-from itertools import izip
+import sys
+import numpy
+import random
 from math import log10
 
 def get_argument_parser():
@@ -107,7 +108,7 @@ def get_argument_parser():
  
 class options:
 	def grayscale_color_str(self, v):
-		c = "%02x" % (255*v)
+		c = "%02x" % int(255*v)
 		return "#"+3*c
 
 	def get_rng0(self):
@@ -125,16 +126,16 @@ class options:
 			try: return random.SystemRandom()
 			except: return random.Random(time.time())
 		else:
-			return random.Random(get_rng0().randomint(sys.maxsize))
+			return random.Random(self.get_rng0().randrange(0, sys.maxsize))
 
 	def gen_random_values(self):
 
 		rc = self.get_rng()
 
 		cell_data = list()
-		for y in xrange(self.ycells):
+		for y in range(self.ycells):
 			r = list()
-			for x in xrange(self.xcells):
+			for x in range(self.xcells):
 				r.append(rc.random())
 			cell_data.append(r)
 		return cell_data
@@ -284,8 +285,8 @@ def print_svg(opts):
 	contentStyleType="text/css"\n>\n""" % opts.values)
 	opts.output.write("""<g class="voronoi" stroke-width="1.0">\n""")
 
-	for y in xrange(-1, opts.ycells+1):
-		for x in xrange(-1, opts.xcells+1):
+	for y in range(-1, opts.ycells+1):
+		for x in range(-1, opts.xcells+1):
 			make_cell(opts, x, y)
 
 	opts.output.write("""\n""")
