@@ -66,19 +66,8 @@ def make_argparser():
 # ------------------------------------------------------------------------------
 class StatusGetter(object):
     # --------------------------------------------------------------------------
-    def _read_lines(self, path):
-        with open(path, "rt") as f:
-            for l in f:
-                yield l
-    # --------------------------------------------------------------------------
-    def _read_words(self, path):
-        for l in self._read_lines(path):
-            for w in l.split():
-                yield w
-
-    # --------------------------------------------------------------------------
     def _update(self):
-        for t, la in zip([1, 5, 15], self._read_words("/proc/loadavg")):
+        for t, la in zip([1, 5, 15], psutil.getloadavg()):
             self._cache["cpu_load_%d" % t] = float(la)
 
     # --------------------------------------------------------------------------
@@ -92,9 +81,20 @@ class StatusGetter(object):
     def __init__(self):
         self._getters = {
             "count": lambda o: o.counter,
-            "cpu_percent": lambda o: psutil.cpu_percent(),
+            "cpu_perc": lambda o: psutil.cpu_percent(),
+            "cpu_freq": lambda o: psutil.cpu_freq().current,
+            "mem_total": lambda o: psutil.virtual_memory().total,
+            "mem_used": lambda o: psutil.virtual_memory().used,
+            "mem_free": lambda o: psutil.virtual_memory().free,
+            "mem_avail": lambda o: psutil.virtual_memory().available,
+            "swap_total": lambda o: psutil.swap_memory().total,
+            "swap_used": lambda o: psutil.swap_memory().used,
+            "swap_free": lambda o: psutil.swap_memory().free,
+            "swap_perc": lambda o: psutil.swap_memory().percent,
+            "batt_perc": lambda o: psutil.sensors_battery().percent,
             "age": lambda o: time.time() - o.start_time
         }
+
         self._cache = {}
         self._update()
 
