@@ -5,27 +5,34 @@
 import sys
 import numpy
 import random
+import argparse
 from math import atan2
 from math import log10
 
+# ------------------------------------------------------------------------------
 def perpendicular(v1):
 	v2 = numpy.empty_like(v1)
 	v2[0] = -v1[1]
 	v2[1] =  v1[0]
 	return v2
 
+# ------------------------------------------------------------------------------
 def set_center(points):
 	return sum(points)/len(points)
 
+# ------------------------------------------------------------------------------
 def segment_point(p1, p2, c):
 	return (1-c)*p1 + c*p2;
 
+# ------------------------------------------------------------------------------
 def segment_midpoint(p1, p2):
 	return (p1+p2)*0.5
 
+# ------------------------------------------------------------------------------
 def segment_normal(p1, p2):
 	return perpendicular(p2-p1)
 
+# ------------------------------------------------------------------------------
 def line_intersect_param(l1, l2):
 	d1 = l1[1]
 	d2 = l2[1]
@@ -38,118 +45,150 @@ def line_intersect_param(l1, l2):
 	if abs(den) > 0.00001: return num / den
 	else: return None
 
-def get_argument_parser():
-	import argparse
+# ------------------------------------------------------------------------------
+class VoronoiArgumentParser(argparse.ArgumentParser):
+    # --------------------------------------------------------------------------
+    def _nonnegative_int(self, x):
+        try:
+            i = int(x)
+            assert(i > 0)
+            return i
+        except:
+            self.error("`%s' is not a positive integer value" % str(x))
+    # --------------------------------------------------------------------------
+    def __init__(self, **kw):
+        argparse.ArgumentParser.__init__(self, **kw)
 
-	argparser = argparse.ArgumentParser(
-		prog="voronoi-svg"
+        self.add_argument(
+            'outfile',
+            nargs='?',
+            type=argparse.FileType('w'),
+            default=sys.stdout
+        )
+
+        self.add_argument(
+            '--x-cells', '-X',
+            type=int,
+            action="store",
+            default=32
+        )
+
+        self.add_argument(
+            '--y-cells', '-Y',
+            type=int,
+            action="store",
+            default=32
+        )
+
+        self.add_argument(
+            '--width', '-W',
+            type=float,
+            action="store",
+            default=512
+        )
+
+        self.add_argument(
+            '--height', '-H',
+            type=float,
+            action="store",
+            default=512
+        )
+
+        self.add_argument(
+            '--units', '-U',
+            action="store",
+            default="px"
+        )
+
+        self.add_argument(
+            '--stroke-width', '-s',
+            type=float,
+            action="store",
+            default=0.5
+        )
+
+        self.add_argument(
+            '--value-low', '-vl',
+            type=float,
+            action="store",
+            default=0.05
+        )
+
+        self.add_argument(
+            '--value-high', '-vh',
+            type=float,
+            action="store",
+            default=0.95
+        )
+
+        self.add_argument(
+            '--cell-z-coord', '-cz',
+            type=float,
+            action="store",
+            default=0.0
+        )
+
+        self.add_argument(
+            '--scale', '-S',
+            type=float,
+            action="store",
+            default=0.9
+        )
+
+        self.add_argument(
+            '--seed', '-rs',
+            type=float,
+            action="store",
+            default=None
+        )
+
+        self.add_argument(
+            '--color-mode', '-M',
+            type=str,
+            choices=["grayscale", "cell-coord"],
+            action="store",
+            default="grayscale"
+        )
+
+        self.add_argument(
+            '--cell-mode', '-C',
+            type=str,
+            choices=["full", "scaled", "flagstone","pebble"],
+            action="store",
+            default="full"
+        )
+
+        self.add_argument(
+            '--verbose', '-v',
+            action="store_true",
+            default=False
+        )
+    # --------------------------------------------------------------------------
+    def process_parsed_options(self, options):
+        return options
+    # --------------------------------------------------------------------------
+    def parse_args(self):
+        return self.process_parsed_options(
+            argparse.ArgumentParser.parse_args(self)
+        )
+
+# ------------------------------------------------------------------------------
+def make_argument_parser():
+	return VoronoiArgumentParser(
+            prog="voronoi-svg",
+            description="""
+            Utility annotating lines read from standard input
+		"""
 	)
 
-	argparser.add_argument(
-		'outfile',
-		nargs='?',
-		type=argparse.FileType('w'),
-		default=sys.stdout
-	)
-
-	argparser.add_argument(
-		'--x-cells', '-X',
-		type=int,
-		action="store",
-		default=32
-	)
-
-	argparser.add_argument(
-		'--y-cells', '-Y',
-		type=int,
-		action="store",
-		default=32
-	)
-
-	argparser.add_argument(
-		'--width', '-W',
-		type=float,
-		action="store",
-		default=512
-	)
-
-	argparser.add_argument(
-		'--height', '-H',
-		type=float,
-		action="store",
-		default=512
-	)
-
-	argparser.add_argument(
-		'--units', '-U',
-		action="store",
-		default="px"
-	)
-
-	argparser.add_argument(
-		'--value-low', '-vl',
-		type=float,
-		action="store",
-		default=0.05
-	)
-
-	argparser.add_argument(
-		'--value-high', '-vh',
-		type=float,
-		action="store",
-		default=0.95
-	)
-
-	argparser.add_argument(
-		'--cell-z-coord', '-cz',
-		type=float,
-		action="store",
-		default=0.0
-	)
-
-	argparser.add_argument(
-		'--scale', '-S',
-		type=float,
-		action="store",
-		default=0.9
-	)
-
-	argparser.add_argument(
-		'--seed', '-rs',
-		type=float,
-		action="store",
-		default=None
-	)
-
-	argparser.add_argument(
-		'--color-mode', '-M',
-		type=str,
-		choices=["grayscale", "cell-coord"],
-		action="store",
-		default="grayscale"
-	)
-
-	argparser.add_argument(
-		'--cell-mode', '-C',
-		type=str,
-		choices=["full", "scaled", "flagstone","pebble"],
-		action="store",
-		default="full"
-	)
-
-	argparser.add_argument(
-		'--verbose', '-v',
-		action="store_true",
-		default=False
-	)
-
-	return argparser
- 
-class options:
+# ------------------------------------------------------------------------------
+class Renderer(object):
+    # --------------------------------------------------------------------------
 	def grayscale_color_str(self, v):
 		c = "%02x" % int(255*v)
 		return "#"+3*c
 
+    # --------------------------------------------------------------------------
 	def get_rng0(self):
 		try:
 			return self.rng0
@@ -157,6 +196,7 @@ class options:
 			self.rng0 = random.Random(self.seed)
 			return self.rng0
 
+    # --------------------------------------------------------------------------
 	def get_rng(self):
 		import random
 
@@ -167,6 +207,7 @@ class options:
 		else:
 			return random.Random(self.get_rng0().randrange(0, sys.maxsize))
 
+    # --------------------------------------------------------------------------
 	def gen_random_values(self):
 
 		rc = self.get_rng()
@@ -179,6 +220,7 @@ class options:
 			cell_data.append(r)
 		return cell_data
 
+    # --------------------------------------------------------------------------
 	def gen_random_offsets(self):
 
 		rx = self.get_rng()
@@ -192,22 +234,25 @@ class options:
 			cell_data.append(r)
 		return cell_data
 
+    # --------------------------------------------------------------------------
 	def cell_offset(self, x, y):
 		cy = (y+self.ycells)%self.ycells
 		cx = (x+self.xcells)%self.xcells
 		return self.cell_offsets[cy][cx]
 
+    # --------------------------------------------------------------------------
 	def cell_value(self, x, y):
 		cy = (y+self.ycells)%self.ycells
 		cx = (x+self.xcells)%self.xcells
 		return self.cell_values[cy][cx]
 
-
+    # --------------------------------------------------------------------------
 	def cell_grayscale_color(self, x, y):
 		cv = self.cell_value(x, y)
 		v = self.value_low + cv*(self.value_high-self.value_low)
 		return self.grayscale_color_str(v)
 
+    # --------------------------------------------------------------------------
 	def cell_coord_color(self, x, y):
 		x = (x + self.xcells) % self.xcells
 		y = (y + self.ycells) % self.ycells
@@ -218,6 +263,7 @@ class options:
 
 		return "#%02x%02x%02x" % (r, g, b)
 
+    # --------------------------------------------------------------------------
 	def full_cell_element_str(self, x, y, unused, corners):
 		clist = ["%.3f %.3f" % (c[0], c[1]) for c in corners]
 		pathstr = "M"+" L".join(clist)+" Z"
@@ -227,17 +273,20 @@ class options:
 			"color": self.cell_color(x, y)
 		}
 
+    # --------------------------------------------------------------------------
 	def scaled_cell_element_str(self, x, y, center, corners):
 		m = set_center(corners)
 		newcorners = [segment_point(m, c, self.scale) for c in corners]
 		return self.full_cell_element_str(x, y, center, newcorners);
 
+    # --------------------------------------------------------------------------
 	def flagstone_cell_element_str(self, x, y, center, corners):
 		zcorners = zip(corners, corners[1:] + [corners[0]])
 		c = self.cell_value(x, y)
 		newcorners = [segment_point(a, b, c) for (a, b) in zcorners]
 		return self.scaled_cell_element_str(x, y, center, newcorners);
 
+    # --------------------------------------------------------------------------
 	def pebble_cell_element_str(self, x, y, center, corners):
 		m = set_center(corners)
 		apoints = [segment_point(m, c, self.scale) for c in corners]
@@ -259,10 +308,10 @@ class options:
 			"color": self.cell_color(x, y)
 		}
 
-
+    # --------------------------------------------------------------------------
 	def __init__(self):
 
-		useropts = get_argument_parser().parse_args(sys.argv[1:])
+		useropts = make_argument_parser().parse_args()
 
 		self.verbose = useropts.verbose
 		self.cell_mode = useropts.cell_mode
@@ -277,6 +326,8 @@ class options:
 
 		self.width = useropts.width
 		self.height = useropts.height
+
+		self.stroke_width= useropts.stroke_width
 
 		self.value_low = useropts.value_low
 		self.value_high = useropts.value_high
@@ -313,38 +364,44 @@ class options:
 			int(log10(self.ycells)+1)
 		)
 
-def cell_world_coord(opts, x, y):
+# ------------------------------------------------------------------------------
+def cell_world_coord(renderer, x, y):
 
-	c = opts.cell_offset(x, y)
+	c = renderer.cell_offset(x, y)
 	return numpy.array([
-		(x+c[0])*(opts.width/opts.xcells),
-		(y+c[1])*(opts.height/opts.ycells)
+		(x+c[0])*(renderer.width/renderer.xcells),
+		(y+c[1])*(renderer.height/renderer.ycells)
 	])
 
-def cell_value(opts, x, y):
-	return opts.get_value(x, y)
+# ------------------------------------------------------------------------------
+def cell_value(renderer, x, y):
+	return renderer.get_value(x, y)
 
-def cell_color(opts, x, y):
+# ------------------------------------------------------------------------------
+def cell_color(renderer, x, y):
 	return grayscalestr(
-		opts.value_low+
-		cell_value(opts, x, y)*
-		(opts.value_high-opts.value_low)
+		renderer.value_low+
+		cell_value(renderer, x, y)*
+		(renderer.value_high-renderer.value_low)
 	)
 
-def offs_cell_world_coord(opts, x, y, o):
-	return cell_world_coord(opts, x+o[0], y+o[1])
+# ------------------------------------------------------------------------------
+def offs_cell_world_coord(renderer, x, y, o):
+	return cell_world_coord(renderer, x+o[0], y+o[1])
 
-def print_cell(opts, x, y, center, corners):
-	opts.output.write(opts.cell_element_str(x, y, center, corners))
+# ------------------------------------------------------------------------------
+def print_cell(renderer, x, y, center, corners):
+	renderer.output.write(renderer.cell_element_str(x, y, center, corners))
 
-def make_cell(opts, x, y):
+# ------------------------------------------------------------------------------
+def make_cell(renderer, x, y):
 
-	if opts.verbose:
-		opts.log.write(opts.cell_fmt % (x, y))
+	if renderer.verbose:
+		renderer.log.write(renderer.cell_fmt % (x, y))
 
-	owc = cell_world_coord(opts, x, y)
+	owc = cell_world_coord(renderer, x, y)
 
-	#opts.output.write("""
+	#renderer.output.write("""
 	#<ellipse cx="%f" cy="%f" rx="1.7" ry="2.7" fill="black"/>""" % (owc[0], owc[1]))
 
 	offsets = []
@@ -357,9 +414,9 @@ def make_cell(opts, x, y):
 	cuts = []
 
 	for o in offsets:
-		cwc = offs_cell_world_coord(opts, x, y, o)
+		cwc = offs_cell_world_coord(renderer, x, y, o)
 
-		#opts.output.write("""
+		#renderer.output.write("""
 		#<ellipse cx="%f" cy="%f" rx="2.7" ry="1.7" fill="black"/>""" % (cwc[0], cwc[1]))
 		sm = segment_midpoint(owc, cwc)
 		sn = segment_normal(owc, cwc)
@@ -368,7 +425,7 @@ def make_cell(opts, x, y):
 		p1 = sm-sn*100
 		p2 = sm+sn*100
 
-		#opts.output.write("""
+		#renderer.output.write("""
 		#<line x1="%f" y1="%f" x2="%f" y2="%f"/>""" % (p1[0], p1[1], p2[0], p2[1]))
 
 	intersections = []
@@ -392,12 +449,12 @@ def make_cell(opts, x, y):
 				skip = True
 				break
 
-		#opts.output.write("""
+		#renderer.output.write("""
 		#<ellipse cx="%f" cy="%f" rx="0.5" ry="0.5" fill="black"/>""" % (isc[0], isc[1]))
 
 		if not skip:
 			corners.append(isc)
-			#opts.output.write("""
+			#renderer.output.write("""
 			#<ellipse cx="%f" cy="%f" rx="1" ry="1" fill="black"/>""" % (isc[0], isc[1]))
 			
 
@@ -406,35 +463,38 @@ def make_cell(opts, x, y):
 		return atan2(v[1], v[0])
 		
 
-	print_cell(opts, x,y, owc, sorted(corners, key=corner_angle))
-
+	print_cell(renderer, x,y, owc, sorted(corners, key=corner_angle))
 	
-
-def print_svg(opts):
-	opts.output.write("""<?xml version="1.0" encoding="utf8"?>\n""")
-	opts.output.write("""<svg xmlns="http://www.w3.org/2000/svg"
+# ------------------------------------------------------------------------------
+def print_svg(renderer):
+	renderer.output.write("""<?xml version="1.0" encoding="utf8"?>\n""")
+	renderer.output.write("""<svg xmlns="http://www.w3.org/2000/svg"
 	xmlns:svg="http://www.w3.org/2000/svg"
 	width="%(width)s%(wunit)s" height="%(height)s%(hunit)s"
 	viewBox="0 0 %(width)s %(height)s"
 	version="1.1"
 	contentScriptType="text/ecmascript"
-	contentStyleType="text/css"\n>\n""" % opts.values)
-	opts.output.write("""<g class="voronoi" stroke-width="1.0">\n""")
+	contentStyleType="text/css"\n>\n""" % renderer.values)
+	renderer.output.write(
+        """<g class="voronoi" stroke-width="0.0">\n""" % {
+            "stroke_width": renderer.stroke_width
+        }
+    )
 
-	for y in range(-1, opts.ycells+1):
-		for x in range(-1, opts.xcells+1):
-			make_cell(opts, x, y)
+	for y in range(-1, renderer.ycells+1):
+		for x in range(-1, renderer.xcells+1):
+			make_cell(renderer, x, y)
 
-	opts.output.write("""\n""")
+	renderer.output.write("""\n""")
 
-	opts.output.write("""</g>\n""")
-	opts.output.write("""</svg>\n""")
+	renderer.output.write("""</g>\n""")
+	renderer.output.write("""</svg>\n""")
 
+# ------------------------------------------------------------------------------
 def main():
-	opts = options()
-
-	print_svg(opts)
+	renderer = Renderer()
+	print_svg(renderer)
 	
-
+# ------------------------------------------------------------------------------
 if __name__ == "__main__": main()
 
