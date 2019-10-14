@@ -7,6 +7,7 @@ import sys
 import numpy
 import random
 import argparse
+import multiprocessing
 from math import atan2
 from math import log10
 
@@ -98,6 +99,14 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
             '--log', '-l',
             type=argparse.FileType('w'),
             default=sys.stderr
+        )
+
+        self.add_argument(
+            '--jobs', '-j',
+            dest="job_count",
+            type=self._nonnegative_int,
+            action="store",
+            default=multiprocessing.cpu_count()
         )
 
         self.add_argument(
@@ -429,19 +438,9 @@ def offs_cell_world_coord(renderer, x, y, o):
     return cell_world_coord(renderer, x+o[0], y+o[1])
 
 # ------------------------------------------------------------------------------
-def print_cell(renderer, x, y, center, corners):
-    renderer.output.write(renderer.cell_element_str(x, y, center, corners))
-
-# ------------------------------------------------------------------------------
 def make_cell(renderer, x, y):
 
-    if renderer.verbose:
-        renderer.log.write(renderer.cell_fmt % (x, y))
-
     owc = cell_world_coord(renderer, x, y)
-
-    #renderer.output.write("""
-    #<ellipse cx="%f" cy="%f" rx="1.7" ry="2.7" fill="black"/>""" % (owc[0], owc[1]))
 
     offsets = []
 
@@ -455,17 +454,12 @@ def make_cell(renderer, x, y):
     for o in offsets:
         cwc = offs_cell_world_coord(renderer, x, y, o)
 
-        #renderer.output.write("""
-        #<ellipse cx="%f" cy="%f" rx="2.7" ry="1.7" fill="black"/>""" % (cwc[0], cwc[1]))
         sm = segment_midpoint(owc, cwc)
         sn = segment_normal(owc, cwc)
         cuts.append((sm, sn))
 
         p1 = sm-sn*100
         p2 = sm+sn*100
-
-        #renderer.output.write("""
-        #<line x1="%f" y1="%f" x2="%f" y2="%f"/>""" % (p1[0], p1[1], p2[0], p2[1]))
 
     intersections = []
 
@@ -488,22 +482,56 @@ def make_cell(renderer, x, y):
                 skip = True
                 break
 
-        #renderer.output.write("""
-        #<ellipse cx="%f" cy="%f" rx="0.5" ry="0.5" fill="black"/>""" % (isc[0], isc[1]))
-
         if not skip:
             corners.append(isc)
-            #renderer.output.write("""
-            #<ellipse cx="%f" cy="%f" rx="1" ry="1" fill="black"/>""" % (isc[0], isc[1]))
-            
 
     def corner_angle(p):
         v = p - owc
         return atan2(v[1], v[0])
-        
 
-    print_cell(renderer, x,y, owc, sorted(corners, key=corner_angle))
+    return owc, sorted(corners, key=corner_angle)
     
+# ------------------------------------------------------------------------------
+def do_make_cell(renderer, job, output_lock):
+    w = renderer.x_cells + 2
+    h = renderer.y_cells + 2
+    k = job
+    n = w * h
+
+    res = []
+    log = []
+
+    def _flush(res, log):
+        r = str().join(res)
+        if renderer.verbose:
+            l = str().join(log)
+        try:
+            output_lock.acquire()
+            renderer.output.write(r)
+            if renderer.verbose:
+                renderer.log.write(l)
+        finally:
+            output_lock.release()
+        return ([], [])
+
+    while k < n:
+        y = int(k / w) - 1
+        x = int(k % w) - 1
+
+        center, corners = make_cell(renderer, x, y)
+        res.append(renderer.cell_element_str(x, y, center, corners))
+        if renderer.verbose:
+            log.append(renderer.cell_fmt % (x, y))
+        else:
+            log.append(None)
+
+        if len(res) >= renderer.job_count:
+            res, log = _flush(res, log)
+
+        k += renderer.job_count
+
+    _flush(res, log)
+
 # ------------------------------------------------------------------------------
 def print_svg(renderer):
     renderer.output.write("""<?xml version="1.0" encoding="utf8"?>\n""")
@@ -520,9 +548,18 @@ def print_svg(renderer):
         }
     )
 
-    for y in range(-1, renderer.y_cells+1):
-        for x in range(-1, renderer.x_cells+1):
-            make_cell(renderer, x, y)
+    output_lock = multiprocessing.Lock()
+    tasks = []
+    for job in range(renderer.job_count):
+        t = multiprocessing.Process(
+            target=do_make_cell,
+            args=(renderer, job, output_lock)
+        )
+        t.start()
+        tasks.append(t)
+
+    for t in tasks:
+        t.join()
 
     renderer.output.write("""\n""")
 
