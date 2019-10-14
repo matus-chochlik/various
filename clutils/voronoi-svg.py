@@ -47,6 +47,33 @@ def line_intersect_param(l1, l2):
     else: return None
 
 # ------------------------------------------------------------------------------
+class ImageSampler(object):
+    # --------------------------------------------------------------------------
+    def __init__(self, path, width, height):
+        self._w = width
+        self._h = height
+
+        import PIL.Image
+        src_im = PIL.Image.open(path).convert("RGB")
+        self._im = src_im.resize((width, height), PIL.Image.BICUBIC)
+
+    # --------------------------------------------------------------------------
+    def get_pixel(self, x, y):
+        x = max(min(x, self._w-1), 0)
+        y = max(min(y, self._h-1), 0)
+        return self._im.getpixel((x, y))
+
+# ------------------------------------------------------------------------------
+class NoImageSampler(object):
+    # --------------------------------------------------------------------------
+    def __init__(self):
+        pass
+
+    # --------------------------------------------------------------------------
+    def get_pixel(self, x, y):
+        return (0, 0, 0)
+
+# ------------------------------------------------------------------------------
 class VoronoiArgumentParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
     def _nonnegative_int(self, x):
@@ -180,6 +207,14 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
         )
     # --------------------------------------------------------------------------
     def process_parsed_options(self, options):
+        if options.image_path is not None:
+            options.image = ImageSampler(
+                options.image_path,
+                options.x_cells,
+                options.y_cells
+            )
+        else:
+            options.image = NoImageSampler()
         return options
     # --------------------------------------------------------------------------
     def parse_args(self):
@@ -279,6 +314,12 @@ class Renderer(object):
         return "#%02x%02x%02x" % (r, g, b)
 
     # --------------------------------------------------------------------------
+    def cell_image_color(self, x, y):
+        r, g, b = self.image.get_pixel(x, y)
+
+        return "#%02x%02x%02x" % (r, g, b)
+
+    # --------------------------------------------------------------------------
     def full_cell_element_str(self, x, y, unused, corners):
         clist = ["%.3f %.3f" % (c[0], c[1]) for c in corners]
         pathstr = "M"+" L".join(clist)+" Z"
@@ -337,6 +378,8 @@ class Renderer(object):
             self.cell_color = lambda x, y: self.cell_grayscale_color(x, y)
         elif self.color_mode == "cell-coord":
             self.cell_color = lambda x, y: self.cell_coord_color(x, y)
+        elif self.color_mode == "image-rgb":
+            self.cell_color = lambda x, y: self.cell_image_color(x, y)
 
         if self.cell_mode == "full":
             self.cell_element_str = self.full_cell_element_str
@@ -472,7 +515,7 @@ def print_svg(renderer):
     contentScriptType="text/ecmascript"
     contentStyleType="text/css"\n>\n""" % renderer.values)
     renderer.output.write(
-        """<g class="voronoi" stroke-width="0.0">\n""" % {
+        """<g class="voronoi" stroke-width="%(stroke_width)f">\n""" % {
             "stroke_width": renderer.stroke_width
         }
     )
