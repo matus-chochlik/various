@@ -51,12 +51,27 @@ def line_intersect_param(l1, l2):
 class ImageSampler(object):
     # --------------------------------------------------------------------------
     def __init__(self, path, width, height):
-        self._w = width
-        self._h = height
 
         import PIL.Image
-        src_im = PIL.Image.open(path).convert("RGB")
-        self._im = src_im.resize((width, height), PIL.Image.BICUBIC)
+        self._im = PIL.Image.open(path).convert("RGB")
+
+        if width is None:
+            width, unused = self._im .size
+        if height is None:
+            unused, height = self._im .size
+
+        self._w = width
+        self._h = height
+        if (width, height) != self._im .size:
+            self._im = self._im .resize((width, height), PIL.Image.BICUBIC)
+
+    # --------------------------------------------------------------------------
+    def width(self):
+        return self._w
+
+    # --------------------------------------------------------------------------
+    def height(self):
+        return self._h
 
     # --------------------------------------------------------------------------
     def get_pixel(self, x, y):
@@ -113,14 +128,14 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
             '--x-cells', '-X',
             type=self._nonnegative_int,
             action="store",
-            default=32
+            default=None
         )
 
         self.add_argument(
             '--y-cells', '-Y',
             type=self._nonnegative_int,
             action="store",
-            default=32
+            default=None
         )
 
         self.add_argument(
@@ -222,8 +237,18 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
                 options.x_cells,
                 options.y_cells
             )
+
+            if options.x_cells is None:
+                options.x_cells = options.image.width()
+            if options.y_cells is None:
+                options.y_cells = options.image.height()
         else:
             options.image = NoImageSampler()
+            if options.x_cells is None:
+                options.x_cells = 32
+            if options.y_cells is None:
+                options.y_cells = 32
+
         return options
     # --------------------------------------------------------------------------
     def parse_args(self):
