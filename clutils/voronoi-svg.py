@@ -4,12 +4,11 @@
 
 import os
 import sys
+import math
 import numpy
 import random
 import argparse
 import multiprocessing
-from math import atan2
-from math import log10
 
 # ------------------------------------------------------------------------------
 def perpendicular(v1):
@@ -50,20 +49,25 @@ def line_intersect_param(l1, l2):
 # ------------------------------------------------------------------------------
 class ImageSampler(object):
     # --------------------------------------------------------------------------
-    def __init__(self, path, width, height):
-
-        import PIL.Image
-        self._im = PIL.Image.open(path).convert("RGB")
-
-        if width is None:
-            width, unused = self._im .size
-        if height is None:
-            unused, height = self._im .size
-
+    def __init__(self, image, width, height):
+        self._im = image
         self._w = width
         self._h = height
-        if (width, height) != self._im .size:
-            self._im = self._im .resize((width, height), PIL.Image.BICUBIC)
+
+    # --------------------------------------------------------------------------
+    @classmethod
+    def from_file(cls, path, width, height):
+        import PIL.Image
+        image = PIL.Image.open(path).convert("RGB")
+
+        if width is None:
+            width, unused = image.size
+        if height is None:
+            unused, height = image.size
+
+        if (width, height) != image.size:
+            image = image.resize((width, height), PIL.Image.BICUBIC)
+        return cls(image, width, height)
 
     # --------------------------------------------------------------------------
     def width(self):
@@ -77,7 +81,13 @@ class ImageSampler(object):
     def get_pixel(self, x, y):
         x = max(min(x, self._w-1), 0)
         y = max(min(y, self._h-1), 0)
-        return self._im.getpixel((x, y))
+        c0, c1, c2 = self._im.getpixel((x, y))
+
+        return (c0/255.0, c1/255.0, c2/255.0)
+
+    # --------------------------------------------------------------------------
+    def converted(self, mode):
+        return ImageSampler(self._im.convert(mode), self._w, self._h)
 
 # ------------------------------------------------------------------------------
 class NoImageSampler(object):
@@ -87,7 +97,142 @@ class NoImageSampler(object):
 
     # --------------------------------------------------------------------------
     def get_pixel(self, x, y):
-        return (0, 0, 0)
+        return (0.0, 0.0, 0.0)
+
+# ------------------------------------------------------------------------------
+class Randomized(object):
+    # --------------------------------------------------------------------------
+    def get_rng0(self):
+        try:
+            return self.rng0
+        except:
+            self.rng0 = random.Random(self.seed)
+            return self.rng0
+
+    # --------------------------------------------------------------------------
+    def get_rng(self):
+        import random
+
+        if self.seed is None:
+            import time
+            try: return random.SystemRandom()
+            except: return random.Random(time.time())
+        else:
+            return random.Random(self.get_rng0().randrange(0, sys.maxsize))
+
+    # --------------------------------------------------------------------------
+    def __init__(self, seed):
+        self.seed = seed
+
+# ------------------------------------------------------------------------------
+class RandomCellValues(Randomized):
+    # --------------------------------------------------------------------------
+    def _gen_values(self, w, h):
+
+        rc = self.get_rng()
+
+        cell_data = list()
+        for y in range(h):
+            r = list()
+            for x in range(w):
+                r.append(rc.random())
+            cell_data.append(r)
+        return cell_data
+
+    # --------------------------------------------------------------------------
+    def __init__(self, options, w, h):
+        Randomized.__init__(self, options.seed)
+        self._values = self._gen_values(w, h)
+
+    # --------------------------------------------------------------------------
+    def get(self, x, y):
+        return self._values[y][x]
+
+# ------------------------------------------------------------------------------
+class RandomCellOffsets(Randomized):
+    # --------------------------------------------------------------------------
+    def _gen_offsets(self, w, h):
+
+        rx = self.get_rng()
+        ry = self.get_rng()
+
+        cell_data = list()
+        for y in range(h+1):
+            row = list()
+            for x in range(w+1):
+                row.append((rx.random(), ry.random()))
+            cell_data.append(row)
+        return cell_data
+    # --------------------------------------------------------------------------
+    def __init__(self, options, w, h):
+        Randomized.__init__(self, options)
+        self._offsets = self._gen_offsets(w, h)
+
+    # --------------------------------------------------------------------------
+    def get(self, x, y):
+        return self._offsets[y][x]
+
+# ------------------------------------------------------------------------------
+class TestCellOffsets(Randomized):
+    # --------------------------------------------------------------------------
+    def _gen_offsets(self, im, w, h):
+        rx = self.get_rng()
+        ry = self.get_rng()
+
+        _mix = lambda r, i, f: (1.0-f)*r.random() + f*i
+
+        kernel = [
+            (-1, -1),
+            ( 0, -1),
+            ( 1, -1),
+            (-1,  0),
+            ( 1,  0),
+            (-1,  1),
+            ( 0,  1),
+            ( 1,  1)
+        ]
+        kn = 1.0/(len(kernel)-1.0)
+
+
+        cell_data = list()
+        for y in range(h):
+            row = list()
+            for x in range(w):
+                nx = 0.0
+                ny = 0.0
+                dispw = 0.0
+
+                h, s, v = im.get_pixel(x, y)
+                for ox, oy in kernel:
+                    oh, os, ov = im.get_pixel(x+ox, y+oy)
+                    dh = h - oh
+                    ds = s - os
+                    dv = v - ov
+                    dw = dv if abs(dv) > abs(ds) else ds
+                    dispw += dw*dw
+                    vx, vy = ox, oy
+                    vl = math.sqrt(vx*vx + vy*vy)
+                    vx /= vl
+                    vy /= vl
+                    nx += vx*dw
+                    ny += vy*dw
+
+                dispw = math.sqrt(dispw)*kn
+                dispw = math.sqrt(math.sqrt(dispw))
+                nx = 0.5 + 0.5*nx*kn
+                ny = 0.5 + 0.5*ny*kn
+                row.append((_mix(rx, nx, dispw), _mix(ry, ny, dispw)))
+
+            cell_data.append(row)
+        return cell_data
+    # --------------------------------------------------------------------------
+    def __init__(self, options, w, h):
+        Randomized.__init__(self, options.seed)
+        self._offsets = self._gen_offsets(options.image.converted("HSV"), w, h)
+
+    # --------------------------------------------------------------------------
+    def get(self, x, y):
+        return self._offsets[y][x]
 
 # ------------------------------------------------------------------------------
 class VoronoiArgumentParser(argparse.ArgumentParser):
@@ -232,7 +377,7 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
     def process_parsed_options(self, options):
         if options.image_path is not None:
-            options.image = ImageSampler(
+            options.image = ImageSampler.from_file(
                 options.image_path,
                 options.x_cells,
                 options.y_cells
@@ -266,69 +411,23 @@ def make_argument_parser():
     )
 
 # ------------------------------------------------------------------------------
-class Renderer(object):
+class Renderer(Randomized):
     # --------------------------------------------------------------------------
     def grayscale_color_str(self, v):
         c = "%02x" % int(255*v)
         return "#"+3*c
 
     # --------------------------------------------------------------------------
-    def get_rng0(self):
-        try:
-            return self.rng0
-        except:
-            self.rng0 = random.Random(self.seed)
-            return self.rng0
-
-    # --------------------------------------------------------------------------
-    def get_rng(self):
-        import random
-
-        if self.seed is None:
-            import time
-            try: return random.SystemRandom()
-            except: return random.Random(time.time())
-        else:
-            return random.Random(self.get_rng0().randrange(0, sys.maxsize))
-
-    # --------------------------------------------------------------------------
-    def gen_random_values(self):
-
-        rc = self.get_rng()
-
-        cell_data = list()
-        for y in range(self.y_cells):
-            r = list()
-            for x in range(self.x_cells):
-                r.append(rc.random())
-            cell_data.append(r)
-        return cell_data
-
-    # --------------------------------------------------------------------------
-    def gen_random_offsets(self):
-
-        rx = self.get_rng()
-        ry = self.get_rng()
-
-        cell_data = list()
-        for y in range(self.y_cells):
-            r = list()
-            for x in range(self.x_cells):
-                r.append((rx.random(), ry.random()))
-            cell_data.append(r)
-        return cell_data
-
-    # --------------------------------------------------------------------------
     def cell_offset(self, x, y):
         cy = (y+self.y_cells)%self.y_cells
         cx = (x+self.x_cells)%self.x_cells
-        return self.cell_offsets[cy][cx]
+        return self.cell_offsets.get(cx, cy)
 
     # --------------------------------------------------------------------------
     def cell_value(self, x, y):
         cy = (y+self.y_cells)%self.y_cells
         cx = (x+self.x_cells)%self.x_cells
-        return self.cell_values[cy][cx]
+        return self.cell_values.get(cx, cy)
 
     # --------------------------------------------------------------------------
     def cell_grayscale_color(self, x, y):
@@ -351,7 +450,7 @@ class Renderer(object):
     def cell_image_color(self, x, y):
         r, g, b = self.image.get_pixel(x, y)
 
-        return "#%02x%02x%02x" % (r, g, b)
+        return "#%02x%02x%02x" % (int(r*255), int(g*255), int(b*255))
 
     # --------------------------------------------------------------------------
     def full_cell_element_str(self, x, y, unused, corners):
@@ -403,10 +502,10 @@ class Renderer(object):
 
         useropts = make_argument_parser().parse_args()
 
+        Randomized.__init__(self, useropts.seed)
+
         for k, v in useropts.__dict__.items():
             self.__dict__[k] = v
-
-        self.cell_values = self.gen_random_values()
 
         if self.color_mode == "grayscale":
             self.cell_color = lambda x, y: self.cell_grayscale_color(x, y)
@@ -424,7 +523,16 @@ class Renderer(object):
         elif self.cell_mode == "pebble":
             self.cell_element_str = self.pebble_cell_element_str
 
-        self.cell_offsets = self.gen_random_offsets()
+        self.cell_values = RandomCellValues(
+            self,
+            self.x_cells,
+            self.y_cells)
+
+        #self.cell_offsets = RandomCellOffsets(
+        self.cell_offsets = TestCellOffsets(
+            self,
+            self.x_cells,
+            self.y_cells)
 
         self.values = dict()
         self.values["width"] = self.width
@@ -433,8 +541,8 @@ class Renderer(object):
         self.values["hunit"] = self.units
 
         self.cell_fmt = "%%%dd %%%dd\n" % (
-            int(log10(self.x_cells)+1),
-            int(log10(self.y_cells)+1)
+            int(math.log10(self.x_cells)+1),
+            int(math.log10(self.y_cells)+1)
         )
 
 # ------------------------------------------------------------------------------
@@ -512,7 +620,7 @@ def make_cell(renderer, x, y):
 
     def corner_angle(p):
         v = p - owc
-        return atan2(v[1], v[0])
+        return math.atan2(v[1], v[0])
 
     return owc, sorted(corners, key=corner_angle)
     
