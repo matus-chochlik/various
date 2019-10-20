@@ -204,7 +204,6 @@ class PrettyCellOffsets(Randomized):
             for x in range(w):
                 nx = 0.0
                 ny = 0.0
-                dispw = 0.0
 
                 h, s, v = im.get_pixel(x, y)
                 for ox, oy in kernel:
@@ -216,7 +215,6 @@ class PrettyCellOffsets(Randomized):
                     ads = abs(ds)
                     adv = abs(dv)
                     dw = dv if adv > ads else ds if ads > adh else dh
-                    dispw += dw*dw
                     vx, vy = ox, oy
                     vl = math.sqrt(vx*vx + vy*vy)
                     vx /= vl
@@ -224,10 +222,11 @@ class PrettyCellOffsets(Randomized):
                     nx += vx*dw
                     ny += vy*dw
 
-                dispw = math.sqrt(dispw)*kn
-                dispw = math.sqrt(math.sqrt(dispw))
-                nx = 0.5 + 0.5*nx*kn
-                ny = 0.5 + 0.5*ny*kn
+                nx = nx*kn
+                ny = ny*kn
+                dispw = math.sqrt(max(abs(nx), abs(ny)))
+                nx = 0.5 + 0.5*nx
+                ny = 0.5 + 0.5*ny
                 row.append((_mix(rx, nx, dispw), _mix(ry, ny, dispw)))
 
             cell_data.append(row)
@@ -688,18 +687,21 @@ def print_svg(renderer):
         }
     )
 
-    output_lock = multiprocessing.Lock()
-    tasks = []
-    for job in range(renderer.job_count):
-        t = multiprocessing.Process(
-            target=do_make_cell,
-            args=(renderer, job, output_lock)
-        )
-        t.start()
-        tasks.append(t)
+    try:
+        output_lock = multiprocessing.Lock()
+        tasks = []
+        for job in range(renderer.job_count):
+            t = multiprocessing.Process(
+                target=do_make_cell,
+                args=(renderer, job, output_lock)
+            )
+            t.start()
+            tasks.append(t)
 
-    for t in tasks:
-        t.join()
+        for t in tasks:
+            t.join()
+    except KeyboardInterrupt:
+        pass
 
     renderer.output.write("""\n""")
 
