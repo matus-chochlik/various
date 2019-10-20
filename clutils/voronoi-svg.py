@@ -181,6 +181,10 @@ class PrettyCellOffsets(Randomized):
 
         _mix = lambda r, i, f: (1.0-f)*r.random() + f*i
 
+        def _distmod(x, y):
+            d = abs(x - y)
+            return d if d < 0.5 else 1.0-d
+
         kernel = [
             (-1, -1),
             ( 0, -1),
@@ -191,7 +195,7 @@ class PrettyCellOffsets(Randomized):
             ( 0,  1),
             ( 1,  1)
         ]
-        kn = 1.0/(len(kernel)-1.0)
+        kn = 1.0/(len(kernel))
 
 
         cell_data = list()
@@ -205,7 +209,7 @@ class PrettyCellOffsets(Randomized):
                 h, s, v = im.get_pixel(x, y)
                 for ox, oy in kernel:
                     oh, os, ov = im.get_pixel(x+ox, y+oy)
-                    dh = h - oh
+                    dh = _distmod(h, oh)
                     ds = s - os
                     dv = v - ov
                     adh = abs(dh)
