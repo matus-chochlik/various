@@ -173,7 +173,7 @@ class RandomCellOffsets(Randomized):
         return self._offsets[y][x]
 
 # ------------------------------------------------------------------------------
-class TestCellOffsets(Randomized):
+class PrettyCellOffsets(Randomized):
     # --------------------------------------------------------------------------
     def _gen_offsets(self, im, w, h):
         rx = self.get_rng()
@@ -208,7 +208,10 @@ class TestCellOffsets(Randomized):
                     dh = h - oh
                     ds = s - os
                     dv = v - ov
-                    dw = dv if abs(dv) > abs(ds) else ds
+                    adh = abs(dh)
+                    ads = abs(ds)
+                    adv = abs(dv)
+                    dw = dv if adv > ads else ds if ads > adh else dh
                     dispw += dw*dw
                     vx, vy = ox, oy
                     vl = math.sqrt(vx*vx + vy*vy)
@@ -529,7 +532,7 @@ class Renderer(Randomized):
             self.y_cells)
 
         #self.cell_offsets = RandomCellOffsets(
-        self.cell_offsets = TestCellOffsets(
+        self.cell_offsets = PrettyCellOffsets(
             self,
             self.x_cells,
             self.y_cells)
