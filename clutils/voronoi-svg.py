@@ -11,6 +11,16 @@ import argparse
 import multiprocessing
 
 # ------------------------------------------------------------------------------
+def inverse_logistic(x):
+    eps = 0.001
+    return math.log(max(x, eps)) - math.log(max(1.0 - x, eps ))
+# ------------------------------------------------------------------------------
+def logistic(x):
+    return 1.0 / (1.0 + math.exp(-x))
+# ------------------------------------------------------------------------------
+def sigmoid(x, c):
+    return logistic(c * inverse_logistic(x))
+# ------------------------------------------------------------------------------
 def perpendicular(v1):
     v2 = numpy.empty_like(v1)
     v2[0] = -v1[1]
@@ -205,6 +215,9 @@ class PrettyCellOffsets(Randomized):
                 nx = 0.0
                 ny = 0.0
 
+                dispx = 0.0
+                dispy = 0.0
+
                 h, s, v = im.get_pixel(x, y)
                 for ox, oy in kernel:
                     oh, os, ov = im.get_pixel(x+ox, y+oy)
@@ -221,10 +234,19 @@ class PrettyCellOffsets(Randomized):
                     vy /= vl
                     nx += vx*dw
                     ny += vy*dw
+                    dispx += nx*nx
+                    dispy += ny*ny
 
                 nx = nx*kn
                 ny = ny*kn
-                dispw = math.sqrt(max(abs(nx), abs(ny)))
+                dispx = math.sqrt(dispx)*kn
+                dispy = math.sqrt(dispy)*kn
+                dispw = sigmoid(
+                    math.sqrt(
+                        max(abs(nx), abs(ny), abs(dispx-dispy))
+                    ),
+                    2.5
+                    )
                 nx = 0.5 + 0.5*nx
                 ny = 0.5 + 0.5*ny
                 row.append((_mix(rx, nx, dispw), _mix(ry, ny, dispw)))
@@ -653,21 +675,24 @@ def do_make_cell(renderer, job, output_lock):
             output_lock.release()
         return ([], [])
 
-    while k < n:
-        y = int(k / w) - 1
-        x = int(k % w) - 1
+    try:
+        while k < n:
+            y = int(k / w) - 1
+            x = int(k % w) - 1
 
-        center, corners = make_cell(renderer, x, y)
-        res.append(renderer.cell_element_str(x, y, center, corners))
-        if renderer.verbose:
-            log.append(renderer.cell_fmt % (x, y))
-        else:
-            log.append(None)
+            center, corners = make_cell(renderer, x, y)
+            res.append(renderer.cell_element_str(x, y, center, corners))
+            if renderer.verbose:
+                log.append(renderer.cell_fmt % (x, y))
+            else:
+                log.append(None)
 
-        if len(res) >= renderer.job_count:
-            res, log = _flush(res, log)
+            if len(res) >= renderer.job_count:
+                res, log = _flush(res, log)
 
-        k += renderer.job_count
+            k += renderer.job_count
+    except KeyboardInterrupt:
+        pass
 
     _flush(res, log)
 
