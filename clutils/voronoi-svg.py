@@ -183,13 +183,10 @@ class RandomCellOffsets(Randomized):
         return self._offsets[y][x]
 
 # ------------------------------------------------------------------------------
-class PrettyCellOffsets(Randomized):
+class ImageContourCellOffsets(object):
     # --------------------------------------------------------------------------
-    def _gen_offsets(self, im, w, h):
-        rx = self.get_rng()
-        ry = self.get_rng()
-
-        _mix = lambda r, i, f: (1.0-f)*r.random() + f*i
+    def _gen_offsets(self, im, bg, w, h):
+        _mix = lambda b, i, f: (1.0-f)*b + f*i
 
         def _distmod(x, y):
             d = abs(x - y)
@@ -246,17 +243,20 @@ class PrettyCellOffsets(Randomized):
                         max(abs(nx), abs(ny), abs(dispx-dispy))
                     ),
                     2.5
-                    )
+                )
                 nx = 0.5 + 0.5*nx
                 ny = 0.5 + 0.5*ny
-                row.append((_mix(rx, nx, dispw), _mix(ry, ny, dispw)))
+                bx, by = bg.get(x, y)
+                row.append((_mix(bx, nx, dispw), _mix(by, ny, dispw)))
 
             cell_data.append(row)
         return cell_data
     # --------------------------------------------------------------------------
-    def __init__(self, options, w, h):
-        Randomized.__init__(self, options.seed)
-        self._offsets = self._gen_offsets(options.image.converted("HSV"), w, h)
+    def __init__(self, options, bg, w, h):
+        self._offsets = self._gen_offsets(
+            options.image.converted("HSV"),
+            bg,
+            w, h)
 
     # --------------------------------------------------------------------------
     def get(self, x, y):
@@ -556,11 +556,16 @@ class Renderer(Randomized):
             self.x_cells,
             self.y_cells)
 
-        #self.cell_offsets = RandomCellOffsets(
-        self.cell_offsets = PrettyCellOffsets(
+        self.cell_offsets = ImageContourCellOffsets(
             self,
+            RandomCellOffsets(
+                self,
+                self.x_cells,
+                self.y_cells
+            ),
             self.x_cells,
-            self.y_cells)
+            self.y_cells
+        )
 
         self.values = dict()
         self.values["width"] = self.width
