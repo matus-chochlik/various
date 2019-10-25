@@ -44,15 +44,33 @@ class AnnotateArgumentParser(argparse.ArgumentParser):
             default=None,
             action="store"
         )
+
+        self.add_argument(
+            "--json", "-J",
+            dest='json_format',
+            default=False,
+            action="store_true"
+        )
     # --------------------------------------------------------------------------
     def process_parsed_options(self, options):
-        options.format_args = re.findall("%\((\w+)\)", options.format_str)
+        if options.json_format and options.format_str:
+            self.error("user format and JSON format cannot be specified simultaneously")
         return options
     # --------------------------------------------------------------------------
     def parse_args(self):
         return self.process_parsed_options(
             argparse.ArgumentParser.parse_args(self)
         )
+    # --------------------------------------------------------------------------
+    def postprocess_options(self, options, getter):
+        options.getter = getter
+        if options.json_format:
+            options.format_str = getter.make_json_format()
+        options.format_args = re.findall(
+            "%\((\w+)\)",
+            options.format_str if options.format_str else ""
+        )
+        return options
 
 # ------------------------------------------------------------------------------
 def make_argparser():
@@ -103,6 +121,14 @@ class StatusGetter(object):
         self._update()
         return {arg: self._get(arg, options) for arg in options.format_args}
 
+    # --------------------------------------------------------------------------
+    def make_json_format(self):
+        attrlist = [
+            '"%(name)s": %%(%(name)s)f' % {"name": name}
+            for name in self._getters
+        ]
+        return "{"+",".join(attrlist)+"}"
+
 # ------------------------------------------------------------------------------
 def annotation(line, options):
     return options.format_str % options.getter.get(options)
@@ -112,8 +138,9 @@ def main():
     """ The main entry point.
     """
 
-    options = make_argparser().parse_args()
-    options.getter = StatusGetter()
+    arg_parser = make_argparser();
+    options = arg_parser.parse_args()
+    options = arg_parser.postprocess_options(options, StatusGetter())
     options.start_time = time.time()
 
     try:
