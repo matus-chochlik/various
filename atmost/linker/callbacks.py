@@ -158,6 +158,7 @@ def get_ld_info(context, proc):
         }
     except Exception as error:
         sys.stderr.write("atmost: error: %s\n" % error)
+        sys.stderr.flush()
 
 # ------------------------------------------------------------------------------
 class Context(object):
@@ -215,6 +216,7 @@ def load_callback_data():
         )
     except Exception as error:
         sys.stderr.write("atmost: error: %s\n" % error)
+        sys.stderr.flush()
 
 # ------------------------------------------------------------------------------
 def save_callback_data(context):
@@ -271,6 +273,7 @@ def let_process_go(context, procs):
                     pred_avail_mem / _1GB
                 )
             )
+            sys.stderr.flush()
             return True
         return False
     return actn <  multiprocessing.cpu_count()
@@ -295,6 +298,7 @@ def process_finished(context, proc):
                     proc_real_usage / _1GB
                 )
             )
+            sys.stderr.flush()
 
             del info["outputs"]
 
