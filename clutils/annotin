@@ -95,6 +95,8 @@ class StatusGetter(object):
             return self._getters[name](options)
         except KeyError:
             return self._cache[name]
+        except AttributeError:
+            return 0
 
     # --------------------------------------------------------------------------
     def __init__(self):
@@ -165,6 +167,8 @@ def main():
             sys.stdout.write(options.separator)
             sys.stdout.write(line)
             options.counter += 1
+    except BrokenPipeError:
+        pass
     except KeyboardInterrupt:
         pass
 
