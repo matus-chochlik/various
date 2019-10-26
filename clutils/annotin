@@ -63,13 +63,14 @@ class AnnotateArgumentParser(argparse.ArgumentParser):
         )
     # --------------------------------------------------------------------------
     def postprocess_options(self, options, getter):
+        options.start_time = time.time()
         options.getter = getter
         if options.json_format:
-            options.format_str = getter.make_json_format()
-        options.format_args = re.findall(
-            "%\((\w+)\)",
+            options.format_str = getter.make_json_format(options)
+        options.format_args = [f[1] for f in re.findall(
+            "%(\.[0-9]+)?\((\w+)\)",
             options.format_str if options.format_str else ""
-        )
+        )]
         return options
 
 # ------------------------------------------------------------------------------
@@ -122,12 +123,26 @@ class StatusGetter(object):
         return {arg: self._get(arg, options) for arg in options.format_args}
 
     # --------------------------------------------------------------------------
-    def make_json_format(self):
-        attrlist = [
-            '"%(name)s": %%(%(name)s)f' % {"name": name}
-            for name in self._getters
+    def make_json_format(self, options):
+        attr_list = [
+            (name, type(getter(options)))
+            for name, getter in self._getters.items()
         ]
-        return "{"+",".join(attrlist)+"}"
+        attr_list += [("cpu_load_%d" % t, float) for t in [1, 5, 15]]
+
+        post_fmt = {
+            int: "d",
+            float: ".2f",
+            str: "s"
+        }
+
+        json_list = [
+            '"%(name)s": %%(%(name)s)%(post_fmt)s' % {
+                "post_fmt": post_fmt.get(typ, "s"),
+                "name": name
+            } for name, typ in attr_list
+        ]
+        return "{"+",".join(json_list)+"}"
 
 # ------------------------------------------------------------------------------
 def annotation(line, options):
@@ -141,7 +156,6 @@ def main():
     arg_parser = make_argparser();
     options = arg_parser.parse_args()
     options = arg_parser.postprocess_options(options, StatusGetter())
-    options.start_time = time.time()
 
     try:
         while True:
