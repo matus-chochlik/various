@@ -227,6 +227,13 @@ def process_initialized(context, proc):
     if is_linker(proc):
         proc_info = context.predict_ld_info(proc)
         proc.set_callback_data(proc_info)
+        outputs = proc_info["outputs"]
+        sys.stderr.write(
+            "atmost: arrived '%s'\n" % (
+                os.path.basename(outputs[0]) if len(outputs) > 0 else "N/A"
+            )
+        )
+        sys.stderr.flush()
 
 # ------------------------------------------------------------------------------
 def let_process_go(context, procs):
