@@ -26,3 +26,17 @@ class DictObject(object):
         except OSError:
             return Class.make(json.load(open(path, "rt")))
 # ------------------------------------------------------------------------------
+def reduce_by(lst, fact, func = lambda l: float(sum(l))/len(l)):
+    t = []
+    r = []
+
+    for e in lst:
+        t.append(e)
+        if len(t) >= fact:
+            r.append(func(t))
+            t = []
+
+    try: r.append(func(t))
+    except: pass
+    return r
+# ------------------------------------------------------------------------------
