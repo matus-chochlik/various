@@ -45,13 +45,16 @@ def do_plot(options):
     stats = DictObject.loadJson(options.input_path)
     for run in stats:
         for tgt in run.targets:
-            s = max(math.ceil(tgt.linked.actual), 1)
-            try: count[s][run.jobs] += 1
+            try:
+                s = max(math.ceil(tgt.linked.actual), 1)
+                count[s][run.jobs] += 1
             except KeyError:
                 try:
                     count[s][run.jobs] = 0
                 except KeyError:
                     count[s] = {run.jobs: 0}
+            except AttributeError:
+                pass
 
     fig, spl = plt.subplots()
 
