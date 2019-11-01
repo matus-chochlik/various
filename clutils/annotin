@@ -46,6 +46,14 @@ class AnnotateArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
+            "--file", "-F",
+            dest='watched_files',
+            default=[],
+            type=os.path.realpath,
+            action="append"
+        )
+
+        self.add_argument(
             "--json", "-J",
             dest='json_format',
             default=False,
@@ -68,7 +76,7 @@ class AnnotateArgumentParser(argparse.ArgumentParser):
         if options.json_format:
             options.format_str = getter.make_json_format(options)
         options.format_args = [f[1] for f in re.findall(
-            "%(\.[0-9]+)?\((\w+)\)",
+            "%(\.[0-9]+)?\(((\w|[/])+)\)",
             options.format_str if options.format_str else ""
         )]
         return options
@@ -99,7 +107,13 @@ class StatusGetter(object):
             return 0
 
     # --------------------------------------------------------------------------
-    def __init__(self):
+    def _file_getter(self, path):
+        def _get_line(path):
+            with open(path, "rt") as f:
+                return f.readline().strip()
+        return lambda o: _get_line(path)
+    # --------------------------------------------------------------------------
+    def __init__(self, options):
         self._getters = {
             "count": lambda o: o.counter,
             "cpu_perc": lambda o: psutil.cpu_percent(),
@@ -115,6 +129,9 @@ class StatusGetter(object):
             "batt_perc": lambda o: psutil.sensors_battery().percent,
             "age": lambda o: time.time() - o.start_time
         }
+
+        for path in options.watched_files:
+            self._getters[path] = self._file_getter(path)
 
         self._cache = {}
         self._update()
@@ -157,12 +174,15 @@ def main():
 
     arg_parser = make_argparser();
     options = arg_parser.parse_args()
-    options = arg_parser.postprocess_options(options, StatusGetter())
+    options = arg_parser.postprocess_options(
+        options,
+        StatusGetter(options)
+    )
 
     try:
         while True:
             line = sys.stdin.readline()
-            if line is None: break
+            if not(line): break
             sys.stdout.write(annotation(line, options))
             sys.stdout.write(options.separator)
             sys.stdout.write(line)
