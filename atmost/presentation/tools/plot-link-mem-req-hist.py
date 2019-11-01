@@ -14,14 +14,6 @@ from common import DictObject
 # ------------------------------------------------------------------------------
 class ArgParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
-    def _positive_int(self, x):
-        try:
-            i = int(x)
-            assert(i > 0)
-            return i
-        except:
-            self.error("`%s' is not a positive integer value" % str(x))
-    # --------------------------------------------------------------------------
     def __init__(self, **kw):
         argparse.ArgumentParser.__init__(self, **kw)
 
@@ -58,10 +50,13 @@ def do_plot(options):
 
     fig, spl = plt.subplots()
 
+    bins = {k: sum(l.values()) for k, l in count.items()}
+    total = sum(bins.values())
+
     spl.xaxis.set_major_formatter(pltckr.FuncFormatter(_format_size))
-    spl.bar(count.keys(), [mean(l.values()) for l in count.values()])
+    spl.bar(bins.keys(), [(100.0*v)/total for v in bins.values()])
     spl.set_xlabel("Linker memory requirements [GB]", fontsize=18)
-    spl.set_ylabel("Number of processes", fontsize=18)
+    spl.set_ylabel("Percent of processes", fontsize=18)
     spl.grid(axis="y")
 
     plt.show()
