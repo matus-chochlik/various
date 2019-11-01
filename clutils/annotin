@@ -76,7 +76,7 @@ class AnnotateArgumentParser(argparse.ArgumentParser):
         if options.json_format:
             options.format_str = getter.make_json_format(options)
         options.format_args = [f[1] for f in re.findall(
-            "%(\.[0-9]+)?\(((\w|[/])+)\)",
+            "%(\.[0-9]+)?\(((\w|[/.-])+)\)",
             options.format_str if options.format_str else ""
         )]
         return options
