@@ -1,6 +1,8 @@
 # ------------------------------------------------------------------------------
+import os
 import gzip
 import json
+import argparse
 # ------------------------------------------------------------------------------
 class DictObject(object):
     # --------------------------------------------------------------------------
@@ -25,6 +27,66 @@ class DictObject(object):
             return Class.make(json.load(gzip.open(path, "rt")))
         except OSError:
             return Class.make(json.load(open(path, "rt")))
+# ------------------------------------------------------------------------------
+class PresArgParser(argparse.ArgumentParser):
+    # --------------------------------------------------------------------------
+    def _positive_int(self, x):
+        try:
+            i = int(x)
+            assert(i > 0)
+            return i
+        except:
+            self.error("`%s' is not a positive integer value" % str(x))
+    # --------------------------------------------------------------------------
+    def _add_jobs_arg(self):
+        self.add_argument(
+            '-j', '--jobs',
+            metavar='COUNT',
+            dest='job_count',
+            nargs='?',
+            default=1,
+            type=self._positive_int
+        )
+    # --------------------------------------------------------------------------
+    def __init__(self, **kw):
+        argparse.ArgumentParser.__init__(self, **kw)
+
+        self.add_argument(
+            '-W', '--view',
+            dest='viewer',
+            default=False,
+            action="store_true"
+        )
+
+        self.add_argument(
+            '-o', '--output',
+            metavar='OUTPUT-FILE',
+            dest='output_path',
+            nargs='?',
+            type=os.path.realpath
+        )
+    # --------------------------------------------------------------------------
+    def make_options(self):
+        opts = self.parse_args()
+        # ----------------------------------------------------------------------
+        class _Options(object):
+            # ------------------------------------------------------------------
+            def __init__(self, base):
+                self.__dict__.update(base.__dict__)
+            # ------------------------------------------------------------------
+            def finalize(self, plot):
+                if self.viewer:
+                    plot.show()
+                elif self.output_path:
+                    plot.savefig(
+                        self.output_path,
+                        papertype="a5",
+                        orientation="landscape",
+                        transparent=True,
+                        format="svg"
+                    )
+
+        return _Options(opts)
 # ------------------------------------------------------------------------------
 def reduce_by(lst, fact, func = lambda l: float(sum(l))/len(l)):
     t = []

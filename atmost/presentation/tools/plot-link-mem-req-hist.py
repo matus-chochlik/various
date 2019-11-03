@@ -4,18 +4,17 @@
 import os
 import sys
 import math
-import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as pltckr
 import numpy as np
 from statistics import mean
 
-from common import DictObject
+from common import DictObject, PresArgParser
 # ------------------------------------------------------------------------------
-class ArgParser(argparse.ArgumentParser):
+class ArgParser(PresArgParser):
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
-        argparse.ArgumentParser.__init__(self, **kw)
+        PresArgParser.__init__(self, **kw)
 
         self.add_argument(
             '-i', '--input',
@@ -59,10 +58,10 @@ def do_plot(options):
     spl.set_ylabel("Percent of processes", fontsize=18)
     spl.grid(axis="y")
 
-    plt.show()
+    options.finalize(plt)
 # ------------------------------------------------------------------------------
 def main():
-    do_plot(make_argparser().parse_args())
+    do_plot(make_argparser().make_options())
     return 0
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":

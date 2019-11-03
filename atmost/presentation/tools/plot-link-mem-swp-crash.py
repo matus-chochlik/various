@@ -3,7 +3,6 @@
 # ------------------------------------------------------------------------------
 import os
 import sys
-import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as pltckr
 import matplotlib.collections as collections
@@ -11,7 +10,7 @@ import numpy as np
 
 from statistics import mean
 
-from common import DictObject
+from common import DictObject, PresArgParser
 from common import reduce_by
 # ------------------------------------------------------------------------------
 def _format_hhmm(s, pos=None):
@@ -20,18 +19,10 @@ def _format_hhmm(s, pos=None):
     m = int(s/60)
     return "%d:%02d" % (h, m)
 # ------------------------------------------------------------------------------
-class ArgParser(argparse.ArgumentParser):
-    # --------------------------------------------------------------------------
-    def _positive_int(self, x):
-        try:
-            i = int(x)
-            assert(i > 0)
-            return i
-        except:
-            self.error("`%s' is not a positive integer value" % str(x))
+class ArgParser(PresArgParser):
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
-        argparse.ArgumentParser.__init__(self, **kw)
+        PresArgParser.__init__(self, **kw)
 
         self.add_argument(
             '-i', '--input',
@@ -164,13 +155,12 @@ def do_plot(options):
         fontsize=22
     )
 
-
     spl.legend()
 
-    plt.show()
+    options.finalize(plt)
 # ------------------------------------------------------------------------------
 def main():
-    do_plot(make_argparser().parse_args())
+    do_plot(make_argparser().make_options())
     return 0
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":

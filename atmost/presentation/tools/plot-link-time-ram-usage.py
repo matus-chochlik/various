@@ -3,12 +3,11 @@
 # ------------------------------------------------------------------------------
 import os
 import sys
-import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as pltckr
 import numpy as np
 
-from common import DictObject
+from common import DictObject, PresArgParser
 # ------------------------------------------------------------------------------
 def _format_hhmm(s, pos=None):
     h = int(s/3600)
@@ -21,18 +20,10 @@ def _format_mmss(s, pos=None):
     s -= m*60
     return "%2d:%02d" % (m, s)
 # ------------------------------------------------------------------------------
-class ArgParser(argparse.ArgumentParser):
-    # --------------------------------------------------------------------------
-    def _positive_int(self, x):
-        try:
-            i = int(x)
-            assert(i > 0)
-            return i
-        except:
-            self.error("`%s' is not a positive integer value" % str(x))
+class ArgParser(PresArgParser):
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
-        argparse.ArgumentParser.__init__(self, **kw)
+        PresArgParser.__init__(self, **kw)
 
         self.add_argument(
             '-i', '--input',
@@ -42,22 +33,7 @@ class ArgParser(argparse.ArgumentParser):
             type=os.path.realpath
         )
 
-        self.add_argument(
-            '-J', '--jobs',
-            metavar='COUNT',
-            dest='job_count',
-            nargs='?',
-            default=1,
-            type=self._positive_int
-        )
-    # --------------------------------------------------------------------------
-    def process_parsed_options(self, options):
-        return options
-    # --------------------------------------------------------------------------
-    def parse_args(self):
-        return self.process_parsed_options(
-            argparse.ArgumentParser.parse_args(self)
-        )
+        self._add_jobs_arg()
 # ------------------------------------------------------------------------------
 def make_argparser():
     return ArgParser(prog=os.path.basename(__file__))
@@ -144,10 +120,10 @@ def do_plot(options):
     trd.grid(which="both", axis="both")
     trd.legend()
 
-    plt.show()
+    options.finalize(plt)
 # ------------------------------------------------------------------------------
 def main():
-    do_plot(make_argparser().parse_args())
+    do_plot(make_argparser().make_options())
     return 0
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
