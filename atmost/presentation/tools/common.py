@@ -38,6 +38,25 @@ class PresArgParser(argparse.ArgumentParser):
         except:
             self.error("`%s' is not a positive integer value" % str(x))
     # --------------------------------------------------------------------------
+    def _add_single_input_arg(self):
+        self.add_argument(
+            '-i', '--input',
+            metavar='INPUT-FILE',
+            dest='input_path',
+            nargs='?',
+            type=os.path.realpath
+        )
+    # --------------------------------------------------------------------------
+    def _add_multi_input_arg(self):
+        self.add_argument(
+            '-i', '--input',
+            metavar='INPUT-FILE',
+            dest='input_path',
+            nargs='?',
+            type=os.path.realpath,
+            action="append"
+        )
+    # --------------------------------------------------------------------------
     def _add_jobs_arg(self):
         self.add_argument(
             '-j', '--jobs',

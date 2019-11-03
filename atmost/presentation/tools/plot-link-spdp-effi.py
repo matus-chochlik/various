@@ -18,14 +18,7 @@ class ArgParser(PresArgParser):
     def __init__(self, **kw):
         PresArgParser.__init__(self, **kw)
 
-        self.add_argument(
-            '-i', '--input-path',
-            metavar='INPUT-FILE',
-            dest='input_path',
-            nargs='?',
-            type=os.path.realpath,
-            action="append"
-        )
+        self._add_multi_input_arg()
 # ------------------------------------------------------------------------------
 def make_argparser():
     return ArgParser(prog=os.path.basename(__file__))
