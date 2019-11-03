@@ -24,9 +24,6 @@ def make_argparser():
     return ArgParser(prog=os.path.basename(__file__))
 # ------------------------------------------------------------------------------
 def do_plot(options):
-    def _age(t):
-        try: return t.linked.age
-        except AttributeError: return t.linking.age
 
     data = {}
     error = 0.0
@@ -57,7 +54,7 @@ def do_plot(options):
     avp = spls[0]
     avp.xaxis.set_major_locator(pltckr.NullLocator())
     avp.set_xlabel("Link targets", fontsize=18)
-    avp.set_ylabel("Actual - predicted memory usage [GB]", fontsize=18)
+    avp.set_ylabel("(Actual - Predicted) memory usage [GB]", fontsize=18)
     avp.grid()
 
     act = spls[1]
