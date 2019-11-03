@@ -50,27 +50,59 @@ def do_plot(options):
         for run in stats:
             data[p][run.jobs] = max(_age(t) for t in run.targets)
 
-    fig, spls = plt.subplots(2, 1)
+    fig, spls = plt.subplots(3, 1)
 
     speedup = spls[0]
     speedup.xaxis.set_ticks_position("top")
     speedup.set_ylabel("Speedup", fontsize=18)
     speedup.grid()
 
-    effcncy = spls[1]
+    margsup = spls[1]
+    margsup.xaxis.set_ticks_position("top")
+    margsup.yaxis.set_label_position("right")
+    margsup.set_ylabel("Marginal speedup", fontsize=18)
+    margsup.grid()
+
+    effcncy = spls[2]
     effcncy.set_xlabel("Number of jobs", fontsize=18)
     effcncy.set_ylabel("Efficiency", fontsize=18)
     effcncy.grid()
 
     for p in options.input_path:
         d = data[p]
-        sd = sorted(d.items())
+        sd = []
+        w = None
+        for k, v in sorted(d.items()):
+            sd.append((k,v,w))
+            w = v
         speedup.plot(
-            *zip(*[(j,d[1]/v) for j,v in sd]),
+            *zip(*[(j,d[1]/v) for j,v,w in sd]),
+            label=p
+        )
+
+        x = [j for j,v,w in sd]
+        y = np.array([(w if w else v)/v for j,v,w in sd])
+        z = np.array([1.0 for t in sd])
+        margsup.fill_between(
+            x, y, z,
+            where=(y >= z),
+            interpolate=True,
+            color="green",
+            alpha=0.1
+        )
+        margsup.fill_between(
+            x, y, z,
+            where=(y <= z),
+            interpolate=True,
+            color="red",
+            alpha=0.2
+        )
+        margsup.plot(
+            *zip(*[(j,(w if w else v)/v) for j,v,w in sd]),
             label=p
         )
         effcncy.plot(
-            *zip(*[(j,(d[1]/v)/j) for j,v in sd]),
+            *zip(*[(j,(d[1]/v)/j) for j,v,w in sd]),
             label=p
         )
 

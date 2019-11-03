@@ -113,6 +113,14 @@ def do_plot(options):
 
     fig, spl = plt.subplots()
 
+    spl.fill_between(
+        x,
+        np.array([ge(s) for s in yf]),
+        np.array([ge(s) for s in ys]),
+        color="orange",
+        alpha=0.2
+    )
+
     for s in target_stats.values():
         l = pltlns.Line2D(
             xdata=(gi(gs(s)), gi(gf(s))),

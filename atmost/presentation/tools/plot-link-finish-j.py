@@ -110,12 +110,21 @@ def do_plot(options):
     fig, spl = plt.subplots()
 
     for i in range(1, len(jobs)):
+        ya = np.array([ge(s) for s in ys[jobs[i-1]]])
+        yb = np.array([ge(s) for s in ys[jobs[i-0]]])
+        spl.fill_between(
+            x, ya, yb,
+            color="gray",
+            alpha=0.2
+        )
+
+    for i in range(1, len(jobs)):
         for s in target_stats.values():
             l = pltlns.Line2D(
                 xdata=(gi(s[jobs[i-1]]), gi(s[jobs[i]])),
                 ydata=(ge(s[jobs[i-1]]), ge(s[jobs[i]])),
                 color="black",
-                alpha=0.1
+                alpha=0.2
             )
             spl.add_line(l)
 
