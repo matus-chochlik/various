@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import time
+import json
 import psutil
 import argparse
 
@@ -76,7 +77,7 @@ class AnnotateArgumentParser(argparse.ArgumentParser):
         if options.json_format:
             options.format_str = getter.make_json_format(options)
         options.format_args = [f[1] for f in re.findall(
-            "%(\.[0-9]+)?\(((\w|[/.-])+)\)",
+            "%(\.[0-9]+)?\(((\w|[_/:.-])+)\)",
             options.format_str if options.format_str else ""
         )]
         return options
@@ -100,7 +101,7 @@ class StatusGetter(object):
     # --------------------------------------------------------------------------
     def _get(self, name, options):
         try:
-            return self._getters[name](options)
+            return json.dumps(self._getters[name](options))
         except KeyError:
             return self._cache[name]
         except AttributeError:
@@ -109,8 +110,15 @@ class StatusGetter(object):
     # --------------------------------------------------------------------------
     def _file_getter(self, path):
         def _get_line(path):
-            with open(path, "rt") as f:
-                return f.readline().strip()
+            try:
+                with open(path, "rt") as f:
+                    r = f.readline().strip()
+                    try: return int(r)
+                    except ValueError: pass
+                    try: return float(r)
+                    except ValueError: pass
+                    return r
+            except: return None
         return lambda o: _get_line(path)
     # --------------------------------------------------------------------------
     def __init__(self, options):
@@ -139,7 +147,10 @@ class StatusGetter(object):
     # --------------------------------------------------------------------------
     def get(self, options):
         self._update()
-        return {arg: self._get(arg, options) for arg in options.format_args}
+        return {
+            arg: self._get(arg, options)
+            for arg in options.format_args
+        }
 
     # --------------------------------------------------------------------------
     def make_json_format(self, options):
@@ -149,15 +160,8 @@ class StatusGetter(object):
         ]
         attr_list += [("cpu_load_%d" % t, float) for t in [1, 5, 15]]
 
-        post_fmt = {
-            int: "d",
-            float: ".2f",
-            str: "s"
-        }
-
         json_list = [
-            '"%(name)s": %%(%(name)s)%(post_fmt)s' % {
-                "post_fmt": post_fmt.get(typ, "s"),
+            '"%(name)s": %%(%(name)s)s' % {
                 "name": name
             } for name, typ in attr_list
         ]
