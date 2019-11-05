@@ -43,6 +43,7 @@ def do_plot(options):
             data[p][run.jobs] = max(_age(t) for t in run.targets)
 
     fig, spls = plt.subplots(3, 1)
+    options.initialize(plt, fig)
 
     speedup = spls[0]
     speedup.xaxis.set_ticks_position("top")

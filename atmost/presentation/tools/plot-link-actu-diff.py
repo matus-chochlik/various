@@ -32,6 +32,7 @@ def do_plot(options):
                     pass
 
     fig, spl = plt.subplots()
+    options.initialize(plt, fig)
 
     spl.set_xlabel("Actual memory usage [GB]", fontsize=18)
     spl.set_ylabel("(Actual - Predicted) memory usage [GB]", fontsize=18)

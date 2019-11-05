@@ -1,0 +1,277 @@
+\documentclass[compress,table,xcolor=table]{beamer}
+\mode<presentation>
+\usetheme{Montpellier}
+\hypersetup{pdfstartview={Fit}}
+
+\usecolortheme{beaver}
+\useoutertheme{smoothbars}
+
+\setbeamertemplate{bibliography item}[text]
+\addtobeamertemplate{frametitle}{}{\vspace{-1em}}
+
+
+
+\usepackage[utf8]{inputenc}
+\usepackage{url}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{dirtytalk}
+\usepackage{multirow}
+\usepackage{graphicx}
+
+\newcommand{\fitfig}[1]{%
+  \makebox[\linewidth][c]{%
+    \begin{minipage}{\dimexpr\textwidth+1.2in\relax}
+    \includegraphics[
+        width=\textwidth,
+        height=\textheight,
+        keepaspectratio
+    ]{/tmp/atmost_presentation/#1}
+    \end{minipage}%
+  }%
+}
+
+\definecolor{light-gray}{gray}{0.95}
+
+\newcommand{\shelltext}[1]{\texttt{\colorbox{light-gray}{#1}}}
+
+\usepackage{listings}
+\lstset{
+    basicstyle=\footnotesize\ttfamily,
+    language=C++,
+    breaklines=true,
+    tabsize=2,
+    escapeinside={(*@}{@*)}
+}
+
+
+\setlist[itemize,1]{label=$\bullet$}
+\setlist[itemize,2]{label=$\bullet$}
+\setlist[itemize,3]{label=$\bullet$}
+
+\begin{document}
+% ------------------------------------------------------------------------------
+\title{External process synchronization\\for fun and profit}
+% - Titlepage ------------------------------------------------------------------
+\frame{\titlepage}
+% - Motivation -----------------------------------------------------------------
+\section{Motivation}
+\subsection{Building bigger projects}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{The LLVM project}
+  \begin{itemize}
+      \item{\LARGE{\say{a collection of modular and reusable compiler and toolchain technologies}}}
+        \begin{itemize}
+          \item{\shelltext{llvm} -- code generator and optimizer for many CPUs}
+          \item{\shelltext{lldb} -- debugger}
+          \item{\shelltext{lld} -- linker}
+          \item{\shelltext{clang} -- C/C++/Objective-C compiler}
+          \item{\shelltext{clang-tidy} -- C/C++/Objective-C static analysis tool}
+          \item{\shelltext{clang-format} -- C/C++/Objective-C code format tool}
+          \item{\ldots}
+        \end{itemize}
+      \item{\url{https://llvm.org/}}
+      \item{\url{https://github.com/llvm/llvm-project}}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Let's build \shelltext{llvm} and \shelltext{clang}}
+  \begin{itemize}
+      \large
+      \item[$\$\rangle$]{\shelltext{git clone \url{https://github.com/llvm/llvm-project.git}}}
+      \item[$\$\rangle$]{\shelltext{mkdir \_build}}
+      \item[$\$\rangle$]{\shelltext{cd \_build}}
+      \item[$\$\rangle$]{\shelltext{cmake -DCMAKE\_BUILD\_TYPE=Debug ..}}
+      \item[$\$\rangle$]{\shelltext{make}}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{make}: system resource usage}
+  \fitfig{resusage-llvm-16GB-ld-noccache-1j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{That didn't go so well\ldots}
+  \begin{itemize}
+    \Large
+    \item{System resource usage is low}
+    \item{Build takes cca. 5 hours -- unacceptably long}
+    \item{Let's try some tricks:}
+    \begin{itemize}
+      \large
+      \item use \shelltext{ccache}
+      \item use more \shelltext{make} jobs
+      \item use \shelltext{distcc} for distributed compilation
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{ccache -- compiler cache}
+  \begin{itemize}
+      \item{\LARGE{\say{speeds up recompilation by caching previous compilations and detecting when the same compilation is being done again}}}
+      \item{\url{https://ccache.dev/}}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{make}: uncached clean build vs. 100\% cached}
+  \fitfig{time-llvm-16GB-ld-noccache-vs-ccache-1j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{More jobs: \shelltext{make clean \&\& make -j 2}}
+  \fitfig{resusage-llvm-16GB-ld-noccache-2j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{That's somewhat better\ldots}
+  \begin{itemize}
+    \Large
+    \item{System resource usage is still low}
+    \item{Build takes more than 2 and half hours -- still too long}
+    \item{Parallelization shows potential}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Keep going: \shelltext{make clean \&\&  make -j 3}}
+  \fitfig{resusage-llvm-16GB-ld-noccache-3j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{What happened?}
+  \begin{itemize}
+    \Large
+    \item{System usage starts to climb}
+    \begin{itemize}
+      \large
+      \item{especially memory usage}
+      \item{signs of correlation with linker execution}
+    \end{itemize}
+    \item{Build \emph{failed} after 2 hours 20 minutes -- looooong}
+    \begin{itemize}
+      \large
+      \item{Linux OOM\footnote{Out Of Memory} process killer, kills some linker jobs}
+    \end{itemize}
+    \item{Parallelization still shows potential}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Meh. MOAR jobs! \shelltext{make clean \&\&  make -j 7}}
+  \fitfig{resusage-llvm-16GB-ld-noccache-7j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Not great, not terrible}
+  \begin{itemize}
+    \Large
+    \item{System usage very high toward the end of the build}
+    \begin{itemize}
+      \large
+      \item{especially memory usage}
+      \item{still correlated with linker execution}
+    \end{itemize}
+    \item{Build \emph{failed} after 1 hours 5 minutes -- getting better}
+    \begin{itemize}
+      \large
+      \item{Linux OOM process killer, kills some linker jobs}
+    \end{itemize}
+    \item{Parallelization rules!}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Still come cores left\dots \shelltext{make clean \&\&  make -j 9}}
+  \fitfig{reboot-llvm-16GB-ld-noccache-9j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{What have we learned so far}
+  \begin{itemize}
+    \LARGE
+    \item{Most of the build time is spent by compilation}
+    \item{Compilation caching -- good.}
+    \item{Compilation paralelization -- good.}
+    \begin{itemize}
+      \Large
+      \item{We have not even tried \shelltext{distcc} yet.}
+    \end{itemize}
+    \item{Linking paralelization -- bad! Why?}
+    \begin{itemize}
+      \Large
+      \item{Let's have a closer look!}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Linker memory usage vs link time -- no cache}
+    \fitfig{scatter-llvm-buildtime-ramusage-noccache-8G-8C.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Linker memory usage vs link time -- cached}
+    \fitfig{scatter-llvm-buildtime-ramusage-ccache-8G-8C.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link target memory requirements -- classification}
+    \fitfig{hist-llvm-link-mem-req.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+    \frametitle{Linking \shelltext{llvm} and \shelltext{clang} in a nutshell}
+  \begin{itemize}
+    \large
+    \item{Around 100 different link targets}
+    \begin{itemize}
+      \normalsize
+      \item{Executables, Shared libraries}
+      \item{Many of them are {\normalsize small}.}
+      \item{Few of the {\LARGE huge}.}
+    \end{itemize}
+    \item{Most of the linking is done {\Large towards the end} of the build process.}
+    \begin{itemize}
+      \large
+      \item[$\implies$]{Using many parellel jobs, multiple instances of linker run concurrently.}
+      \begin{itemize}
+        \item[$\implies$]{Many {\Large big targets} are linked {\Large at the same time}.}
+        \begin{itemize}
+          \item[$\implies$]{\Huge{OOM!}}
+        \end{itemize}
+      \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+    \frametitle{Making parallel linking work}
+  \begin{itemize}
+    \LARGE
+    \item Let's try some additional tricks:
+    \begin{itemize}
+      \Large
+      \item Use GNU \shelltext{gold} instead of GNU \shelltext{ld}.
+      \begin{itemize}
+        \large
+        \item[$+$] Faster than \shelltext{ld}.
+        \item[$+$] {\Large Uses less memory} than \shelltext{ld}.
+        \item[$-$] Can link only in ELF format.
+      \end{itemize}
+      \item Make only some targets
+      \begin{itemize}
+        \large
+        \item Practical when developing and debugging.
+        \item Sometimes you just need to do \shelltext{make all}.
+      \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\end{document}
+

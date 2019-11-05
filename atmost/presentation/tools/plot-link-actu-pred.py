@@ -50,6 +50,7 @@ def do_plot(options):
     z = np.array([0.0 for i in values])
 
     fig, spls = plt.subplots(2, 1)
+    options.initialize(plt, fig)
 
     avp = spls[0]
     avp.xaxis.set_major_locator(pltckr.NullLocator())

@@ -42,14 +42,15 @@ def do_plot(options):
                 pass
 
     fig, spl = plt.subplots()
+    options.initialize(plt, fig)
 
     bins = {k: sum(l.values()) for k, l in count.items()}
     total = sum(bins.values())
 
     spl.xaxis.set_major_formatter(pltckr.FuncFormatter(_format_size))
     spl.bar(bins.keys(), [(100.0*v)/total for v in bins.values()])
-    spl.set_xlabel("Linker memory requirements [GB]", fontsize=18)
-    spl.set_ylabel("Percent of processes", fontsize=18)
+    spl.set_xlabel("Linker memory requirements [GB]")
+    spl.set_ylabel("Percent of processes")
     spl.grid(axis="y")
 
     options.finalize(plt)

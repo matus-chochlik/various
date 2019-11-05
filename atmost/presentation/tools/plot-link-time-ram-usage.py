@@ -58,6 +58,7 @@ def do_plot(options):
     x_interval = max(data["age"])
 
     fig, spls = plt.subplots(2, 1)
+    options.initialize(plt, fig)
 
     tick_opts = [5,10,15,30,60]
     x_tick_maj = tick_opts[0]*60

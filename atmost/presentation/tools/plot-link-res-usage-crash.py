@@ -68,10 +68,11 @@ def do_plot(options):
         if ma < su:
             trashing.append((ag, (ma+su)*0.5))
 
-    plt.xkcd()
     fig, spl = plt.subplots()
-    spl.set_ylabel("Byte size [GB]", fontsize=20)
-    spl.set_xlabel("Build progress time [HH:MM]", fontsize=18)
+    options.initialize(plt, fig)
+
+    spl.set_ylabel("Byte size [GB]")
+    spl.set_xlabel("Build progress time [HH:MM]")
     spl.xaxis.set_major_locator(pltckr.MultipleLocator(x_tick_maj))
     spl.xaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))
 
@@ -118,7 +119,7 @@ def do_plot(options):
             xy=(mean(x for x,y in trashing), min(y for x,y in trashing)),
             xytext=(
                 min(x for x,y in trashing)-x_interval*0.05,
-                max(y for x,y in trashing)+y_interval*0.10
+                max(y for x,y in trashing)-y_interval*0.05
             ),
             arrowprops=dict(facecolor="black", shrink=0.05),
             horizontalalignment="right",
@@ -149,6 +150,7 @@ def do_plot(options):
         fontsize=22
     )
 
+    spl.grid()
     spl.legend()
 
     options.finalize(plt)

@@ -26,12 +26,29 @@ class ArgParser(PresArgParser):
         )
 
         self.add_argument(
+            '-F', '--fast-label',
+            metavar='LABEL',
+            dest='fast_label',
+            nargs='?',
+            default="fast"
+        )
+
+        self.add_argument(
             '-s', '--input-slow',
             metavar='INPUT-FILE',
             dest='input_path_slow',
             nargs='?',
             type=os.path.realpath
         )
+
+        self.add_argument(
+            '-S', '--slow-label',
+            metavar='LABEL',
+            dest='slow_label',
+            nargs='?',
+            default="slow"
+        )
+
         self._add_jobs_arg()
 # ------------------------------------------------------------------------------
 def make_argparser():
@@ -95,6 +112,7 @@ def do_plot(options):
         sf["idx"] = i
 
     fig, spl = plt.subplots()
+    options.initialize(plt, fig)
 
     spl.fill_between(
         x,
@@ -113,17 +131,18 @@ def do_plot(options):
         )
         spl.add_line(l)
 
-    spl.plot(x, [ge(s) for s in ys], color="red")
+    spl.plot(x, [ge(s) for s in ys], color="red", label=options.slow_label)
     spl.scatter(x, [ge(s) for s in ys], color="red")
-    spl.plot(x, [ge(s) for s in yf], color="green")
+    spl.plot(x, [ge(s) for s in yf], color="green", label=options.fast_label)
     spl.scatter(x, [ge(s) for s in yf], color="green")
 
     spl.xaxis.set_major_locator(pltckr.NullLocator())
     spl.yaxis.set_major_locator(pltckr.MultipleLocator(y_tick_maj))
     spl.yaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))
-    spl.set_xlabel("Linked targets", fontsize=18)
-    spl.set_ylabel("Link finish time [HH:MM]", fontsize=18)
+    spl.set_xlabel("Linked targets")
+    spl.set_ylabel("Link finish time [HH:MM]")
     spl.grid(axis="y")
+    spl.legend()
 
     options.finalize(plt)
 # ------------------------------------------------------------------------------

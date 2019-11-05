@@ -93,6 +93,7 @@ def do_plot(options):
             y["idx"] = i
 
     fig, spl = plt.subplots()
+    options.initialize(plt, fig)
 
     for i in range(1, len(jobs)):
         ya = np.array([ge(s) for s in ys[jobs[i-1]]])

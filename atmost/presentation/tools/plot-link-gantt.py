@@ -98,6 +98,7 @@ def do_plot(options):
     q = [len(l) for l in lanes.values()]
 
     fig, spl = plt.subplots()
+    options.initialize(plt, fig)
 
     for idx, lane in zip(range(len(lanes)), lanes.values()):
         for n,a,b,e, in lane:

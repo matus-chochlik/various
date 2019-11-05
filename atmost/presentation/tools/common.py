@@ -93,16 +93,20 @@ class PresArgParser(argparse.ArgumentParser):
             def __init__(self, base):
                 self.__dict__.update(base.__dict__)
             # ------------------------------------------------------------------
+            def initialize(self, plot, fig):
+                if self.output_path:
+                    fig.set_size_inches(9, 5.1)
+            # ------------------------------------------------------------------
             def finalize(self, plot):
                 if self.viewer:
                     plot.show()
                 elif self.output_path:
                     plot.savefig(
                         self.output_path,
-                        papertype="a5",
+                        papertype="a3",
                         orientation="landscape",
                         transparent=True,
-                        format="svg"
+                        format="pdf"
                     )
 
         return _Options(opts)

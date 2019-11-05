@@ -72,10 +72,11 @@ def do_plot(options):
     distcc_count = reduce_by(distcc_count, red, max)
     linker_count = reduce_by(linker_count, red, max)
 
-    plt.xkcd()
     fig, spls = plt.subplots(3, 1)
+    options.initialize(plt, fig)
+
     cld = spls[0]
-    cld.set_ylabel("CPU load [percent]", fontsize=20)
+    cld.set_ylabel("CPU load [percent]")
     cld.xaxis.set_major_locator(pltckr.MultipleLocator(x_tick_maj))
     cld.xaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))
     cld.xaxis.set_ticks_position("top")
@@ -92,11 +93,14 @@ def do_plot(options):
         age, cpu_load_15,
         label="15 min. load avg."
     )
+    cld.grid()
     cld.legend()
 
     prc = spls[1]
-    prc.set_ylabel("Process count", fontsize=20)
-    prc.xaxis.set_major_locator(pltckr.NullLocator())
+    prc.set_ylabel("Process count")
+    prc.xaxis.set_major_locator(pltckr.MultipleLocator(x_tick_maj))
+    prc.xaxis.set_major_formatter(pltckr.FuncFormatter(lambda x, p: ""))
+    prc.yaxis.set_label_position("right")
 
     prc.plot(
         age, distcc_count,
@@ -112,19 +116,19 @@ def do_plot(options):
                 "Build\nfailed",
                 xy=(age[-1], distcc_count[-1]),
                 xytext=(
-                    age[-1],
-                    distcc_count[-1]+y_interval*0.15
+                    age[-1]-x_interval*0.1,
+                    distcc_count[-1]-1
                 ),
                 arrowprops=dict(facecolor="black", shrink=0.05),
-                horizontalalignment="center",
-                fontsize=22
+                horizontalalignment="right"
             )
     except AttributeError: pass
+    prc.grid()
     prc.legend()
 
     rsw = spls[2]
-    rsw.set_ylabel("Byte size [GB]", fontsize=20)
-    rsw.set_xlabel("Build progress time [HH:MM]", fontsize=18)
+    rsw.set_ylabel("Byte size [GB]")
+    rsw.set_xlabel("Build progress time [HH:MM]")
     rsw.xaxis.set_major_locator(pltckr.MultipleLocator(x_tick_maj))
     rsw.xaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))
     rsw.xaxis.set_ticks_position("bottom")
@@ -144,6 +148,7 @@ def do_plot(options):
         age, swap_used,
         label="Swap space used"
     )
+    rsw.grid()
     rsw.legend()
 
     options.finalize(plt)
