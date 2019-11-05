@@ -52,11 +52,9 @@
 \begin{document}
 % ------------------------------------------------------------------------------
 \title{External process synchronization\\for fun and profit}
-% - Titlepage ------------------------------------------------------------------
+% - Intro ----------------------------------------------------------------------
+\section{Intro}
 \frame{\titlepage}
-% - Motivation -----------------------------------------------------------------
-\section{Motivation}
-\subsection{Building bigger projects}
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{The LLVM project}
@@ -75,6 +73,9 @@
       \item{\url{https://github.com/llvm/llvm-project}}
   \end{itemize}
 \end{frame}
+% - Motivation -----------------------------------------------------------------
+\section{Motivation}
+\subsection{Building bigger projects}
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{Let's build \shelltext{llvm} and \shelltext{clang}}
@@ -179,7 +180,7 @@
     \item{Build \emph{failed} after 1 hours 5 minutes -- getting better}
     \begin{itemize}
       \large
-      \item{Linux OOM process killer, kills some linker jobs}
+      \item{OOM process killer, kills some linker jobs}
     \end{itemize}
     \item{Parallelization rules!}
   \end{itemize}
@@ -199,7 +200,7 @@
     \item{Compilation paralelization -- good.}
     \begin{itemize}
       \Large
-      \item{We have not even tried \shelltext{distcc} yet.}
+    \item{We have not even {\LARGE really used} \shelltext{distcc} yet.}
     \end{itemize}
     \item{Linking paralelization -- bad! Why?}
     \begin{itemize}
@@ -246,6 +247,7 @@
         \end{itemize}
       \end{itemize}
     \end{itemize}
+    \item{BTW: so much swapping is bad for the SSDs.}
   \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -261,14 +263,65 @@
         \large
         \item[$+$] Faster than \shelltext{ld}.
         \item[$+$] {\Large Uses less memory} than \shelltext{ld}.
-        \item[$-$] Can link only in ELF format.
+	    \normalsize 
+		\item[$-$] {Can link only in ELF format.}
+      \end{itemize}
+      \item Use \shelltext{zram}.
+      \begin{itemize}
+        \normalsize
+        \item a Linux kernel module for creating a compressed block device in RAM
+        \item can be used as swap device -- part of swap is in compressed RAM
       \end{itemize}
       \item Make only some targets
       \begin{itemize}
-        \large
-        \item Practical when developing and debugging.
+        \normalsize
+        \item Practical when {\large developing and debugging}.
         \item Sometimes you just need to do \shelltext{make all}.
       \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{zram}+\shelltext{distcc}+\shelltext{ccache}+\shelltext{gold}+\shelltext{make -j 12}}
+  \fitfig{resusage-llvm-16GB-gold-ccache-12j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+    \frametitle{If only\ldots}
+  \begin{itemize}
+    \LARGE
+    \item \ldots we could
+    \begin{itemize}
+      \Large
+      \item prevent so many big targets from being linked at once,
+      \item prevent excessive swapping to disk,
+    \end{itemize}
+    \item but still
+    \begin{itemize}
+      \Large
+      \item use the hardware resources efficiently,
+	  \item use available remote cores via \shelltext{distcc} to full extent.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% - Solution -------------------------------------------------------------------
+\section{Solution}
+\subsection{The idea}
+% ------------------------------------------------------------------------------
+\begin{frame}
+	\frametitle{Let's synchronize the execution of \shelltext{ld}/\shelltext{gold}}
+  \begin{itemize}
+    \LARGE
+    \item \shelltext{atmost} FTW!
+    \begin{itemize}
+	  \large
+      \item Simple utility written in C.
+      \item Takes a command-line (executable + arguments).
+      \item Waits until specified conditions are met.
+	  \item \shelltext{exec}-utes the command line.
+	  \item {\small\url{https://github.com/matus-chochlik/various}/atmost}
+	  
     \end{itemize}
   \end{itemize}
 \end{frame}

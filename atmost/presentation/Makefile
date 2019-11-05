@@ -14,6 +14,7 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/resusage-llvm-16GB-ld-noccache-3j.pdf \
 	$(TMP)/resusage-llvm-16GB-ld-noccache-7j.pdf \
 	$(TMP)/reboot-llvm-16GB-ld-noccache-9j.pdf \
+	$(TMP)/resusage-llvm-16GB-gold-ccache-12j.pdf \
 	$(TMP)/time-llvm-16GB-ld-noccache-vs-ccache-1j.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-ccache-8G-8C.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-noccache-8G-8C.pdf \
@@ -27,6 +28,13 @@ $(TMP)/resusage-llvm-16GB-ld-noccache-%j.pdf: \
 	tools/plot-link-res-usage.py | $(TMP)
 	tools/plot-link-res-usage.py \
 		-i data/llvm.ld.16GB.nozram.noccache.$*.json.gz  \
+		-o $@
+
+$(TMP)/resusage-llvm-16GB-gold-ccache-%j.pdf: \
+	data/llvm.gold.16GB.zram.ccache.%.json.gz \
+	tools/plot-link-res-usage.py | $(TMP)
+	tools/plot-link-res-usage.py \
+		-i data/llvm.gold.16GB.zram.ccache.$*.json.gz  \
 		-o $@
 
 $(TMP)/reboot-llvm-16GB-ld-noccache-%j.pdf: \
@@ -59,10 +67,12 @@ $(TMP)/scatter-llvm-buildtime-ramusage-%-8G-8C.pdf: \
 $(TMP)/hist-llvm-link-mem-req.pdf: \
 	data/llvm-gold-distcc-ccache-8G-8C.json.gz \
 	data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+	data/llvm-gold-distcc-ccache-8G-8C-7J.json.gz \
 	tools/plot-link-mem-req-hist.py | $(TMP)
 	tools/plot-link-mem-req-hist.py \
 		-i data/llvm-gold-distcc-ccache-8G-8C.json.gz \
 		-i data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+		-i data/llvm-gold-distcc-ccache-8G-8C-7J.json.gz \
 		-o $@
 
 $(TMP):

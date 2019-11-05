@@ -138,7 +138,7 @@ def do_plot(options):
         where=swap_used > mem_avail,
         hatch="/",
         color="red",
-        alpha=0.1
+        alpha=0.2
     )
     rsw.plot(
         age, mem_avail,
