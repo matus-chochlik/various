@@ -124,8 +124,8 @@ def do_plot(options):
     spl.xaxis.set_major_locator(pltckr.MultipleLocator(x_tick_maj))
     spl.xaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))
     spl.yaxis.set_major_locator(pltckr.MultipleLocator(1))
-    spl.set_xlabel("Build progress time [HH:MM]", fontsize=18)
-    spl.set_ylabel("Parallel jobs", fontsize=18)
+    spl.set_xlabel("Build progress time [HH:MM]")
+    spl.set_ylabel("Parallel jobs")
     spl.grid(axis="y")
 
     options.finalize(plt)

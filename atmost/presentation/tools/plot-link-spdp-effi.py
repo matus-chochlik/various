@@ -47,18 +47,18 @@ def do_plot(options):
 
     speedup = spls[0]
     speedup.xaxis.set_ticks_position("top")
-    speedup.set_ylabel("Speedup", fontsize=18)
+    speedup.set_ylabel("Speedup")
     speedup.grid()
 
     margsup = spls[1]
     margsup.xaxis.set_ticks_position("top")
     margsup.yaxis.set_label_position("right")
-    margsup.set_ylabel("Marginal speedup", fontsize=18)
+    margsup.set_ylabel("Marginal speedup")
     margsup.grid()
 
     effcncy = spls[2]
-    effcncy.set_xlabel("Number of jobs", fontsize=18)
-    effcncy.set_ylabel("Efficiency", fontsize=18)
+    effcncy.set_xlabel("Number of jobs")
+    effcncy.set_ylabel("Efficiency")
     effcncy.grid()
 
     for p in options.input_path:

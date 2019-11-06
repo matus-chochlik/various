@@ -54,14 +54,14 @@ def do_plot(options):
 
     avp = spls[0]
     avp.xaxis.set_major_locator(pltckr.NullLocator())
-    avp.set_xlabel("Link targets", fontsize=18)
-    avp.set_ylabel("(Actual - Predicted) memory usage [GB]", fontsize=18)
+    avp.set_xlabel("Link targets")
+    avp.set_ylabel("Actual - Predicted [GB]")
     avp.grid()
 
     act = spls[1]
     act.xaxis.set_major_locator(pltckr.NullLocator())
-    act.set_xlabel("Link targets", fontsize=18)
-    act.set_ylabel("Actual memory usage [GB]", fontsize=18)
+    act.set_xlabel("Link targets")
+    act.set_ylabel("Actual [GB]")
     act.grid()
 
     avp.fill_between(

@@ -15,10 +15,21 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/resusage-llvm-16GB-ld-noccache-7j.pdf \
 	$(TMP)/reboot-llvm-16GB-ld-noccache-9j.pdf \
 	$(TMP)/resusage-llvm-16GB-gold-ccache-12j.pdf \
-	$(TMP)/time-llvm-16GB-ld-noccache-vs-ccache-1j.pdf \
+	$(TMP)/time-llvm-8GB-ld-noccache-vs-ccache-1j.pdf \
+	$(TMP)/time-llvm-8GB-ld-noccache-1j-4j.pdf \
+	$(TMP)/time-llvm-8GB-ld-noccache-1j-8j.pdf \
+	$(TMP)/time-llvm-8GB-ld-noccache-1j-16j.pdf \
+	$(TMP)/time-llvm-8GB-ld-noccache-1j-24j.pdf \
+	$(TMP)/time-llvm-8GB-ld-ccache-1j-16j.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-ccache-8G-8C.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-noccache-8G-8C.pdf \
 	$(TMP)/hist-llvm-link-mem-req.pdf \
+	$(TMP)/prediction-actual-vs-predicted.pdf \
+	$(TMP)/gantt-noccache-8G-10j.pdf \
+	$(TMP)/gantt-noccache-8G-20j.pdf \
+	$(TMP)/gantt-ccache-8G-20j.pdf \
+	$(TMP)/stats-noccache-8G-8C.pdf \
+	$(TMP)/stats-ccache-8G-8C.pdf \
 	$(TMP)/diagram-components.pdf
 
 $(TMP)/%.tex: %.tex
@@ -45,7 +56,7 @@ $(TMP)/reboot-llvm-16GB-ld-noccache-%j.pdf: \
 		-i data/llvm.ld.16GB.nozram.noccache.$*.json.gz  \
 		-o $@
 
-$(TMP)/time-llvm-16GB-ld-noccache-vs-ccache-%j.pdf: \
+$(TMP)/time-llvm-8GB-ld-noccache-vs-ccache-%j.pdf: \
 	data/llvm-gold-distcc-ccache-8G-8C.json.gz \
 	data/llvm-gold-distcc-noccache-8G-8C.json.gz \
 	tools/plot-link-slow-fast.py | $(TMP)
@@ -54,6 +65,24 @@ $(TMP)/time-llvm-16GB-ld-noccache-vs-ccache-%j.pdf: \
 		-F "ccached with 100% hit rate" \
 		-s data/llvm-gold-distcc-noccache-8G-8C.json.gz \
 		-S "clean build without ccache" \
+		-j $* \
+		-o $@
+
+$(TMP)/time-llvm-8GB-ld-noccache-1j-%j.pdf: \
+	data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+	tools/plot-link-finish-j.py | $(TMP)
+	tools/plot-link-finish-j.py \
+		-i data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+		-j 1 \
+		-j $* \
+		-o $@
+
+$(TMP)/time-llvm-8GB-ld-ccache-1j-%j.pdf: \
+	data/llvm-gold-distcc-ccache-8G-8C.json.gz \
+	tools/plot-link-finish-j.py | $(TMP)
+	tools/plot-link-finish-j.py \
+		-i data/llvm-gold-distcc-ccache-8G-8C.json.gz \
+		-j 1 \
 		-j $* \
 		-o $@
 
@@ -74,6 +103,40 @@ $(TMP)/hist-llvm-link-mem-req.pdf: \
 		-i data/llvm-gold-distcc-ccache-8G-8C.json.gz \
 		-i data/llvm-gold-distcc-noccache-8G-8C.json.gz \
 		-i data/llvm-gold-distcc-ccache-8G-8C-7J.json.gz \
+		-o $@
+
+$(TMP)/prediction-actual-vs-predicted.pdf: \
+	data/llvm-gold-distcc-ccache-8G-8C.json.gz \
+	data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+	data/llvm-gold-distcc-ccache-8G-8C-7J.json.gz \
+	tools/plot-link-actu-pred.py | $(TMP)
+	tools/plot-link-actu-pred.py \
+		-i data/llvm-gold-distcc-ccache-8G-8C.json.gz \
+		-i data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+		-i data/llvm-gold-distcc-ccache-8G-8C-7J.json.gz \
+		-o $@
+
+$(TMP)/gantt-noccache-8G-%j.pdf: \
+	data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+	tools/plot-link-gantt.py | $(TMP)
+	tools/plot-link-gantt.py \
+		-i data/llvm-gold-distcc-noccache-8G-8C.json.gz \
+		-j $* \
+		-o $@
+
+$(TMP)/gantt-ccache-8G-%j.pdf: \
+	data/llvm-gold-distcc-ccache-8G-8C.json.gz \
+	tools/plot-link-gantt.py | $(TMP)
+	tools/plot-link-gantt.py \
+		-i data/llvm-gold-distcc-ccache-8G-8C.json.gz \
+		-j $* \
+		-o $@
+
+$(TMP)/stats-%-8G-8C.pdf: \
+	data/llvm-gold-distcc-%-8G-8C.json.gz \
+	tools/plot-link-spdp-effi.py | $(TMP)
+	tools/plot-link-spdp-effi.py \
+		-i data/llvm-gold-distcc-$*-8G-8C.json.gz \
 		-o $@
 
 $(TMP)/diagram-%.pdf: images/%.dot

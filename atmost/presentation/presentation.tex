@@ -9,8 +9,6 @@
 \setbeamertemplate{bibliography item}[text]
 \addtobeamertemplate{frametitle}{}{\vspace{-1em}}
 
-
-
 \usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{caption}
@@ -37,9 +35,12 @@
 
 \usepackage{listings}
 \lstset{
-    basicstyle=\footnotesize\ttfamily,
-    language=C++,
+    basicstyle=\normalsize\ttfamily,
+    backgroundcolor = \color{light-gray},
+    language=Python,
     breaklines=true,
+    showstringspaces=false,
+    keywordstyle=\itshape\bfseries\color{red!65!black},
     tabsize=2,
     escapeinside={(*@}{@*)}
 }
@@ -78,15 +79,18 @@
 \subsection{Building bigger projects}
 % ------------------------------------------------------------------------------
 \begin{frame}
+  \Huge
+  \centering
+  Motivation
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
   \frametitle{Let's build \shelltext{llvm} and \shelltext{clang}}
-  \begin{itemize}
-      \large
-      \item[$\$\rangle$]{\shelltext{git clone \url{https://github.com/llvm/llvm-project.git}}}
-      \item[$\$\rangle$]{\shelltext{mkdir \_build}}
-      \item[$\$\rangle$]{\shelltext{cd \_build}}
-      \item[$\$\rangle$]{\shelltext{cmake -DCMAKE\_BUILD\_TYPE=Debug ..}}
-      \item[$\$\rangle$]{\shelltext{make}}
-  \end{itemize}
+  {\shelltext{\$ git clone \url{https://github.com/llvm/llvm-project.git}}}\\
+  {\shelltext{\$ mkdir \_build}}\\
+  {\shelltext{\$ cd \_build}}\\
+  {\shelltext{\$ cmake -DCMAKE\_BUILD\_TYPE=Debug ..}}\\
+  {\shelltext{\$ make}}\\
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
@@ -120,7 +124,7 @@
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{\shelltext{make}: uncached clean build vs. 100\% cached}
-  \fitfig{time-llvm-16GB-ld-noccache-vs-ccache-1j.pdf}
+  \fitfig{time-llvm-8GB-ld-noccache-vs-ccache-1j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
@@ -319,7 +323,7 @@
       \item Simple utility written in C.
       \item Takes a command-line (executable + arguments).
       \item Waits until specified conditions are met.
-	  \item Executes the command line.
+	  \item Executes the command-line.
 	  \item {\small\url{https://github.com/matus-chochlik/various}/atmost}
 	  
     \end{itemize}
@@ -327,7 +331,7 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}[fragile]
-  \frametitle{\shelltext{atmost --help}}
+  \frametitle{RTFM -- \shelltext{man atmost}}
 \scriptsize
 \begin{verbatim}
 ATMOST(1)                 General Commands Manual                ATMOST(1)
@@ -459,6 +463,267 @@ SYNOPSIS
 \begin{frame}
   \frametitle{\shelltext{atmost}+\shelltext{atmost\_driver}+callbacks}
   \fitfig{diagram-components.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{Callback -- \shelltext{load\_callback\_data}}
+  \begin{lstlisting}
+  def load_callback_data():
+    resources = do_load_resources(...)
+    return resources
+  \end{lstlisting}
+  \begin{itemize}
+    \Large
+    \item Called once, when the \shelltext{atmost\_driver} is being started.
+    \item Typically does startup initialization.
+    \item Can load resources used by the other callbacks.
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{Callback -- \shelltext{save\_callback\_data}}
+  \begin{lstlisting}
+  def save_callback_data(resources):
+    do_cleanup_resources(resources)
+  \end{lstlisting}
+  \begin{itemize}
+    \Large
+    \item Called once, when the \shelltext{atmost\_driver} is being shutdown.
+    \item The \shelltext{resource} parameter is the return value from
+      \shelltext{load\_callback\_data}.
+    \item Can cleanup and/or save resources used and data generated during the run.
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{Callback -- \shelltext{process\_initialized}}
+  \begin{lstlisting}
+  def process_initialized(resources, proc):
+    # handle new process
+    proc.set_callback_data(callback_data)
+  \end{lstlisting}
+  \begin{itemize}
+    \Large
+    \item Called when \shelltext{atmost} sends the driver information about a
+      new process.
+    \item The \shelltext{proc} parameter provides information about the new process.
+    \begin{itemize}
+      \normalsize
+      \item PID, command-line, environment, working-directory, etc.
+      \item The callback can store its bookkeeping data in \shelltext{proc}.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{Callback -- \shelltext{let\_process\_go}}
+  \begin{lstlisting}
+  def let_process_go(resources, procs):
+    if can_process_start(resource, procs):
+      return True
+    return False
+  \end{lstlisting}
+  \begin{itemize}
+    \Large
+    \item Called repeatedly.
+    \item Determines if a process can start executing the synchronized executable.
+    \item The \shelltext{procs} argument contains info about {\em all} currently
+      managed processes, split into 3 groups.
+    \begin{itemize}
+      \large
+      \item \shelltext{active} -- processes that are already executing.
+      \item \shelltext{waiting} -- processes that are waiting for execution.
+      \item \shelltext{current} -- the process to be let go.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{Callback -- \shelltext{process\_finished}}
+  \begin{lstlisting}
+  def process_finished(resources, proc):
+    callback_data = proc.callback_data()
+    # cleanup info about the process
+  \end{lstlisting}
+  \begin{itemize}
+    \Large
+    \item Called when a process handled by the driver has finished.
+    \item The callback can retrieve its bookkeeping data from \shelltext{proc}.
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{RTFM -- \shelltext{man atmost\_driver}}
+\scriptsize
+\begin{verbatim}
+ATMOST(1)                 General Commands Manual                ATMOST(1)
+
+NAME
+       atmost_driver - driver server for the atmost command.
+
+SYNOPSIS
+       atmost_driver [-s|--socket socket-path] [-c|--callbacks file-path]
+                     [-u|--update interval]
+
+       atmost_driver -h
+       atmost_driver --help
+\end{verbatim}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Back to linking\ldots}
+  \begin{itemize}
+  \Large
+  \item What if the memory usage can be determined from the linker command-line
+    arguments?
+    \begin{itemize}
+    \large
+    \item[1)] Run a lot of builds of various projects.
+    \item[2)] Gather {\Large a lot} of data
+      \begin{itemize}
+        \item command line arguments,
+        \item input file sizes,
+        \item actual linker memory usage,
+        \item etc.
+      \end{itemize}
+    \item[3)] {\Large ???}
+    \item[4)] {\LARGE Profit!}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{What exactly is step 3) ???}
+  \begin{itemize}
+  \Large
+  \item Feed the gathered data into a machine learning model and train it.
+  \item Use the trained ML model to {\LARGE predict} linker {\LARGE memory usage}
+    from command-line arguments.
+  \item Integrate the ML classifier into a \shelltext{atmost\_driver} callback
+    script.
+    \begin{itemize}
+      \large
+      \item Keep track of available memory.
+      \item Predict the memory usage of new instances of linker.
+      \item Let the new linkers go only if there is enough available memory.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{The ML part}
+  \begin{itemize}
+  \Large
+  \item Uses the \shelltext{neural\_network.MLPClassifier} from the
+    \shelltext{sklearn}\footnote{\url{https://scikit-learn.org/stable/documentation.html}}
+    Python package.
+  \item Inputs:
+    \begin{itemize}
+      \large
+      \item optimization level, the PIE\footnote{position-independent executable} flag,
+      \item count and combined size of input shared and static object files,
+      \item etc.
+    \end{itemize}
+  \item Output:
+    \begin{itemize}
+      \large
+      \item the predicted memory requirements, as a multiple of 256MB chunks,
+      \item i.e. if the output is $5$ the predicted size is $5*256[MB] = 1.25[GB]$.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% - Results --------------------------------------------------------------------
+\section{Results}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Classifier prediction accuracy}
+  \fitfig{prediction-actual-vs-predicted.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Integrating classifier with \shelltext{atmost\_driver}}
+  \begin{itemize}
+  \Large
+  \item \shelltext{load\_callback\_data} -- load the trained ML model.
+  \item \shelltext{process\_initialized} -- use the model to predict memory usage.
+  \item \shelltext{let\_process\_go} -- only if predicted linker memory usage is
+    less than current available memory.
+  \item \shelltext{process\_finished} -- output actual memory usage that can be
+    stored and used for addtional model training.
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Linker schedule (no ccache, 8GB RAM) -- \shelltext{make -j 10}}
+  \fitfig{gantt-noccache-8G-10j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Linker schedule (no ccache, 8GB RAM) -- \shelltext{make -j 20}}
+  \fitfig{gantt-noccache-8G-20j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Linker schedule (ccached, 8GB RAM) -- \shelltext{make -j 20}}
+  \fitfig{gantt-ccache-8G-20j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 4 jobs)}
+  \fitfig{time-llvm-8GB-ld-noccache-1j-4j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 8 jobs)}
+  \fitfig{time-llvm-8GB-ld-noccache-1j-8j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 16 jobs)}
+  \fitfig{time-llvm-8GB-ld-noccache-1j-16j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 24 jobs)}
+  \fitfig{time-llvm-8GB-ld-noccache-1j-24j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link order vs. time (ccached, 8GB, 8+8 cores, 16 jobs)}
+  \fitfig{time-llvm-8GB-ld-ccache-1j-16j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Parallelization statistic indicators}
+  \begin{itemize}
+    \LARGE
+  \item {\em Run time {\Large with $j$ jobs}}
+    \begin{itemize}
+    \item $T_j$
+    \end{itemize}
+  \item {\em Speedup {\Large with $j$ jobs}}
+    \begin{itemize}
+    \item $S_j = T_1 / T_j$
+    \end{itemize}
+  \item {\em Marginal speedup {\Large with $j$ jobs}}
+    \begin{itemize}
+    \item $M_j = T_{j-1} / T_j$
+    \end{itemize}
+  \item {\em Efficiency {\Large with $j$ jobs}}
+    \begin{itemize}
+    \item $E_j = S_j / j$
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Parallelization statistics (no ccache, 8GB, 8+8 cores)}
+  \fitfig{stats-noccache-8G-8C.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Parallelization statistics (ccached, 8GB, 8+8 cores)}
+  \fitfig{stats-ccache-8G-8C.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \end{document}
