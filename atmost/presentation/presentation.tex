@@ -310,7 +310,7 @@
 \subsection{The idea}
 % ------------------------------------------------------------------------------
 \begin{frame}
-	\frametitle{Let's synchronize the execution of \shelltext{ld}/\shelltext{gold}}
+  \frametitle{Let's synchronize the execution of \shelltext{ld}/\shelltext{gold}}
   \begin{itemize}
     \LARGE
     \item \shelltext{atmost} FTW!
@@ -319,11 +319,146 @@
       \item Simple utility written in C.
       \item Takes a command-line (executable + arguments).
       \item Waits until specified conditions are met.
-	  \item \shelltext{exec}-utes the command line.
+	  \item Executes the command line.
 	  \item {\small\url{https://github.com/matus-chochlik/various}/atmost}
 	  
     \end{itemize}
   \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost --help}}
+\scriptsize
+\begin{verbatim}
+ATMOST(1)                 General Commands Manual                ATMOST(1)
+
+NAME
+       atmost  - tool for limiting the concurrent execution of a specified
+       executable(s).
+
+SYNOPSIS
+       atmost [-v|--verbose] [-f|--file file-path]
+              [-s|--socket socket-path] [-r|--reset]
+              [-i|--sleep-interval seconds] [-c|--print-current]
+              [-C|--print-all-current] [-n|--max-instances count]
+              [-l|--max-cpu-load-1m percent]
+              [-L|--max-cpu-load-5m percent] [-m|--min-avail-ram percent]
+              [-M|--min-free-ram percent] [-S|--min-free-swap percent]
+              [-p|--max-total-procs count] [-tc|--max-cpu-temp temp]
+              [-tg|--max-gpu-temp temp] [-tb|--max-bat-temp temp]
+              [-io|--max-io-ops count] [-nw|--max-nw-speed speed]
+              [-snw|--slow-nw-speed speed] [-- executable [args...]]
+
+       atmost --help
+\end{verbatim}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{atmost} -- description}
+  \Large
+    \say{The atmost utility allows to~{\LARGE limit concurrent execution}
+    of~a~single executable
+    or~a~set of~executables, depending on~various criteria like CPU load,
+    memory and~swap usage, thermal zone temperatures, current number
+    of~I/O~operations, etc., or just {\LARGE by a maximum number}.}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{atmost -n NUMBER -- EXECUTABLE} -- basic usage}
+  \begin{itemize}
+    \Large
+    \item Limits the concurrent execution of \shelltext{EXECUTABLE} to the specified \shelltext{NUMBER} of instances.
+    \item Uses an IPC semaphore set\footnote{see \shelltext{man 2 semget}}.
+    \begin{itemize}
+      \large 
+      \item {\em Acquires\footnote{see \shelltext{man 2 semop}}} the semaphore before executing \shelltext{EXECUTABLE}.
+      \item {\em Releases} the semaphore after executing \shelltext{EXECUTABLE}.
+      \item \shelltext{realpath}\footnote{see \shelltext{man 3 realpath}} of \shelltext{EXECUTABLE} is used as the semaphore set token\footnote{see \shelltext{man 3 ftok}}.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{Using \shelltext{atmost} -- wrapper scripts}
+  \begin{itemize}
+    \large
+    \item In order to synchronize a \shelltext{EXECUTABLE} with \shelltext{atmost}:
+    \begin{itemize}
+      \item Create a shell script with the name of \shelltext{EXECUTABLE}.
+      \item From the script call \shelltext{atmost} with appropriate arguments.
+      \item Put the wrapper script to \shelltext{\$\{PATH\}}
+    \end{itemize}
+  \end{itemize}
+  \shelltext{\$ vim /opt/bin/ld}
+  \begin{verbatim}
+  #!/bin/bash
+  atmost -n 2 -- /usr/bin/x86_64-linux-gnu-gold "${@}"
+  \end{verbatim}
+  \shelltext{\$ chmod u+x /opt/bin/ld}
+  \shelltext{\$ export PATH="/opt/bin:\$\{PATH\}"}\\
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{atmost -n 2 -- ld}}
+  \begin{itemize}
+  \Large
+  \item [+] Empirically we have found that 2 instances of \shelltext{ld} can run
+    safely with 16GB RAM.
+  \item [+] Simple
+  \item [+] Low overhead
+  \item [-] Too coarse and restrictive
+    \begin{itemize}
+      \large
+      \item The majority of the \shelltext{llvm} targets has low RAM requirements for linking.
+      \item Targets from other projects also have low linker RAM requirements.
+      \item We could safely use {\Large more parallel link jobs}.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{What if\dots}
+  \begin{itemize}
+    \large
+  \item \dots we could {\LARGE determine} if it is safe to start the linker {\LARGE per each invocation}?
+    \begin{itemize}
+      \LARGE
+      \item Enter \shelltext{atmost\_driver}!
+      \begin{itemize}
+        \large
+        \item Running as a local \shelltext{AF\_UNIX} socket server.
+        \item \shelltext{atmost} is the client (with the \shelltext{--socket PATH} option).
+        \item When \shelltext{atmost} is started, it connects to the {\em driver} and sends information about the wrapped \shelltext{EXECUTABLE}.
+        \item When the {\em driver} determines that it's safe to run \shelltext{EXECUTABLE}, it responds to \shelltext{atmost}.
+        \item Then \shelltext{atmost} executes \shelltext{EXECUTABLE}.
+      \end{itemize}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Let's make it even more flexible}
+  \begin{itemize}
+    \LARGE
+    \item \shelltext{atmost\_driver} callbacks:
+    \begin{itemize}
+      \large
+      \item The \shelltext{atmost\_driver} implements the reusable {\Large common
+        server functionality}.
+      \item The specific logic determining when it is safe to start executing,
+        is implemented in a {\Large set of callbacks}.
+      \item \shelltext{load\_callback\_data}
+      \item \shelltext{save\_callback\_data}
+      \item \shelltext{process\_initialized}
+      \item \shelltext{let\_process\_go}
+      \item \shelltext{process\_finished}
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{atmost}+\shelltext{atmost\_driver}+callbacks}
+  \fitfig{diagram-components.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \end{document}

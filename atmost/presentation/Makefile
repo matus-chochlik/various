@@ -18,7 +18,8 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/time-llvm-16GB-ld-noccache-vs-ccache-1j.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-ccache-8G-8C.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-noccache-8G-8C.pdf \
-	$(TMP)/hist-llvm-link-mem-req.pdf
+	$(TMP)/hist-llvm-link-mem-req.pdf \
+	$(TMP)/diagram-components.pdf
 
 $(TMP)/%.tex: %.tex
 	cp $< $@
@@ -74,6 +75,9 @@ $(TMP)/hist-llvm-link-mem-req.pdf: \
 		-i data/llvm-gold-distcc-noccache-8G-8C.json.gz \
 		-i data/llvm-gold-distcc-ccache-8G-8C-7J.json.gz \
 		-o $@
+
+$(TMP)/diagram-%.pdf: images/%.dot
+	dot -Gnewrank -Tpdf -o $@ $<
 
 $(TMP):
 	mkdir -p $@

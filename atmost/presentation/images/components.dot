@@ -1,0 +1,40 @@
+digraph AtmostComponents {
+	fontname="helvetica"
+	sep=2.1
+	ranksep=0.4
+	maxiter=1000000
+
+	node [ fontname="helvetica" ]
+	node [ penwidth=2 ]
+	edge [ fontname="helvetica" ]
+	edge [ penwidth=1 ]
+
+    node [style="filled" shape="box"]
+
+    subgraph cluster_gold {
+        gold_wrap [label="gold (wrapper)" fillcolor="#E0E0A0"]
+        gold_real [label="gold (actual)" fillcolor="#E0E0A0"]
+        gold_atmost [label="atmost" fillcolor="#F0F0E0"]
+        gold_driver [label="atmost_driver" fillcolor="#E0E0D0"]
+        gold_callbacks [label="gold callbacks" fillcolor="#E0E0A0"]
+
+        gold_wrap -> gold_atmost [label="calls"]
+        gold_atmost -> gold_real [label="executes"]
+        gold_atmost -> gold_driver [label="AF_UNIX" dir="both" arrowhead="vee" arrowtail="vee"]
+        gold_driver -> gold_callbacks [label="imports" arrowtail="odiamond"]
+    }
+
+    subgraph cluster_tidy {
+        tidy_wrap [label="clang-tidy (wrapper)" fillcolor="#80E080"]
+        tidy_real [label="clang-tidy (actual)" fillcolor="#80E080"]
+        tidy_atmost [label="atmost" fillcolor="#F0F0E0"]
+        tidy_driver [label="atmost_driver" fillcolor="#E0E0D0"]
+        tidy_callbacks [label="clang-tidy callbacks" fillcolor="#80E080"]
+
+        tidy_wrap -> tidy_atmost [label="calls"]
+        tidy_atmost -> tidy_real [label="executes"]
+        tidy_atmost -> tidy_driver [label="AF_UNIX" dir="both" arrowhead="vee" arrowtail="vee"]
+        tidy_driver -> tidy_callbacks [label="imports" dir="both" arrowtail="odiamond"]
+    }
+
+}
