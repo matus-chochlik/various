@@ -11,6 +11,7 @@
 
 \usepackage[utf8]{inputenc}
 \usepackage{url}
+\usepackage{gensymb}
 \usepackage{caption}
 \usepackage{enumitem}
 \usepackage{dirtytalk}
@@ -76,13 +77,6 @@
 \end{frame}
 % - Motivation -----------------------------------------------------------------
 \section{Motivation}
-\subsection{Building bigger projects}
-% ------------------------------------------------------------------------------
-\begin{frame}
-  \Huge
-  \centering
-  Motivation
-\end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{Let's build \shelltext{llvm} and \shelltext{clang}}
@@ -117,8 +111,18 @@
 \begin{frame}
   \frametitle{ccache -- compiler cache}
   \begin{itemize}
-      \item{\LARGE{\say{speeds up recompilation by caching previous compilations and detecting when the same compilation is being done again}}}
+      \item{\LARGE{\say{speeds up recompilation by caching previous compilations
+        and detecting when the same compilation is being done again}}}
       \item{\url{https://ccache.dev/}}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{distcc -- distributed compilation for C and C++}
+  \begin{itemize}
+      \item{\LARGE{\say{distributes compilation of C or C++ code across several
+        machines on a network}}}
+      \item{\url{https://github.com/distcc/distcc}}
   \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -311,7 +315,6 @@
 \end{frame}
 % - Solution -------------------------------------------------------------------
 \section{Solution}
-\subsection{The idea}
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{Let's synchronize the execution of \shelltext{ld}/\shelltext{gold}}
@@ -669,11 +672,6 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 4 jobs)}
-  \fitfig{time-llvm-8GB-ld-noccache-1j-4j.pdf}
-\end{frame}
-% ------------------------------------------------------------------------------
-\begin{frame}
   \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 8 jobs)}
   \fitfig{time-llvm-8GB-ld-noccache-1j-8j.pdf}
 \end{frame}
@@ -681,11 +679,6 @@ SYNOPSIS
 \begin{frame}
   \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 16 jobs)}
   \fitfig{time-llvm-8GB-ld-noccache-1j-16j.pdf}
-\end{frame}
-% ------------------------------------------------------------------------------
-\begin{frame}
-  \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 24 jobs)}
-  \fitfig{time-llvm-8GB-ld-noccache-1j-24j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
@@ -724,6 +717,207 @@ SYNOPSIS
 \begin{frame}
   \frametitle{Parallelization statistics (ccached, 8GB, 8+8 cores)}
   \fitfig{stats-ccache-8G-8C.pdf}
+\end{frame}
+% - Conclusion -----------------------------------------------------------------
+\section{Conclusion}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Conclusions}
+  \begin{itemize}
+    \Large
+    \item \shelltext{atmost} is a highly flexible tool for synchronizing
+      execution of parallel processes,
+    \begin{itemize}
+    \large
+    \item improves build times by allowing many
+      parallel \shelltext{make} jobs while serializing huge link jobs,
+    \item prevents system stalls, crashing and reboots due to low memory conditions,
+    \item makes building big projects safer,
+    \item allows to build \shelltext{llvm} on systems with low RAM capacity,
+    \item reduces the amount of writes to swap disk partitions.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Further improvements}
+  \begin{itemize}
+    \Large
+    \item Try to improve the prediction of memory usage based on command-line
+      arguments.
+    \begin{itemize}
+      \item Examine the arguments more deeply.
+      \item Use a different classifier.
+      \item Develop a custom model.
+      \item etc.
+    \end{itemize}
+    \item Allow to change environment variables for the synchronized process
+      from the \shelltext{atmost\_driver} callbacks.
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \centering
+  \Huge
+  Thank you!\\Questions?
+\end{frame}
+% - Extras ---------------------------------------------------------------------
+\section{Extras}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \centering
+  \Huge
+  Extras
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{atmost} -- additional options}
+  \begin{itemize}
+    \Large
+    \item Besides the basic semaphore-based synchronization and the customizable
+      driver-based synchronization, \shelltext{atmost} supports synchronization
+      depending on:
+    \begin{itemize}
+      \large
+      \item 1 and 5 minutes average load,
+      \item amount of available RAM,
+      \item amount of free swap,
+      \item CPU temperature,
+      \item network speed,
+      \item battery status,
+      \item etc.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost} -- average load}
+  \begin{itemize}
+    \item \shelltext{-l} or \shelltext{--max-cpu-load-1m}
+    \item \shelltext{-L} or \shelltext{--max-cpu-load-5m}
+  \end{itemize}
+
+  \large
+  Start executing only if 1 minute average load is less than or equal 15\%:
+  \normalsize
+  \begin{verbatim}
+  atmost -l 15 -- executable arguments...
+  \end{verbatim}
+
+  \large
+  Start executing only if 5 minute average load is less than or equal 8.5\%:
+  \normalsize
+  \begin{verbatim}
+  atmost -L 8.5 -- executable arguments...
+  \end{verbatim}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost} -- memory / swap usage}
+  \begin{itemize}
+    \item \shelltext{-m} or \shelltext{--min-avail-ram}
+    \item \shelltext{-M} or \shelltext{--min-free-ram}
+    \item \shelltext{-S} or \shelltext{--min-free-swap}
+  \end{itemize}
+
+  \large
+  Start executing only if at least $20\%$ or RAM is available:
+  \normalsize
+  \begin{verbatim}
+  atmost -m 20 -- executable arguments...
+  \end{verbatim}
+
+  \large
+  Start executing only if at least $70\%$ or swap is free:
+  \normalsize
+  \begin{verbatim}
+  atmost -S 70 -- executable arguments...
+  \end{verbatim}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost} -- total process count}
+  \begin{itemize}
+    \item \shelltext{-p} or \shelltext{--max-total-procs}
+  \end{itemize}
+
+  \large
+  Start executing only if the number of currently running processes is $\leq 1000$:
+  \normalsize
+  \begin{verbatim}
+  atmost -p 1000 -- executable arguments...
+  \end{verbatim}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost} -- thermal zone temperatures}
+  \begin{itemize}
+    \item \shelltext{-tc} or \shelltext{--max-cpu-temp}
+    \item \shelltext{-tg} or \shelltext{--max-gpu-temp}
+    \item \shelltext{-tb} or \shelltext{--max-bat-temp}
+  \end{itemize}
+
+  \large
+  Start executing only if the CPU temperature is less than or equal
+  to $70\degree C$:
+  \normalsize
+  \begin{verbatim}
+  atmost -tc 70 -- executable arguments...
+  \end{verbatim}
+
+  \large
+  Start executing only if the battery temperature is less than or equal
+  to $55.5\degree C$:
+  \normalsize
+  \begin{verbatim}
+  atmost -tb 55.5 -- executable arguments...
+  \end{verbatim}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost} -- modifiers}
+  \begin{itemize}
+    \Large
+    \item Modifiers allow to change the limits by a specified amount under
+      special conditions.
+    \begin{itemize}
+      \large
+      \item when running on battery,
+      \item when connected to \say{slow} network,
+      \item when disconnected from network.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost} -- on A/C vs. on battery}
+  \begin{itemize}
+    \item \shelltext{-batt} or \shelltext{--on-battery}
+  \end{itemize}
+
+  \large
+  When on A/C start only if 1 minute average load is less than or equal to $15\%$,\\
+  when on battery start only if average load is less than or equal to $5\% = (15-10)$:
+  \normalsize
+  \begin{verbatim}
+  atmost -l 15 -batt 10 -- executable arguments...
+  \end{verbatim}
+
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{\shelltext{atmost} -- combining limits and modifiers}
+
+  \large
+  When on A/C start only if 1 minute load is $\leq 20\%$ and
+  5 minutes load is $\leq 10\%$,\\
+  when on battery start only if 1 minute load is $\leq 8\%$ and
+  5 minutes load is $\leq 4\%$:
+  \normalsize
+  \begin{verbatim}
+  atmost -l 20 -batt 12 -L 10 -batt 6 -- executable ...
+  \end{verbatim}
+
 \end{frame}
 % ------------------------------------------------------------------------------
 \end{document}

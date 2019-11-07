@@ -16,10 +16,8 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/reboot-llvm-16GB-ld-noccache-9j.pdf \
 	$(TMP)/resusage-llvm-16GB-gold-ccache-12j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-vs-ccache-1j.pdf \
-	$(TMP)/time-llvm-8GB-ld-noccache-1j-4j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-1j-8j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-1j-16j.pdf \
-	$(TMP)/time-llvm-8GB-ld-noccache-1j-24j.pdf \
 	$(TMP)/time-llvm-8GB-ld-ccache-1j-16j.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-ccache-8G-8C.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-noccache-8G-8C.pdf \

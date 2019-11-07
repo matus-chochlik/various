@@ -65,9 +65,10 @@ def do_plot(options):
         d = data[p]
         sd = []
         w = None
-        for k, v in sorted(d.items()):
-            sd.append((k,v,w))
+        for j, v in sorted(d.items()):
+            sd.append((j,v,w))
             w = v
+
         speedup.plot(
             *zip(*[(j,d[1]/v) for j,v,w in sd]),
             label=p
