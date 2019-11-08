@@ -26,6 +26,7 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/gantt-noccache-8G-10j.pdf \
 	$(TMP)/gantt-noccache-8G-20j.pdf \
 	$(TMP)/gantt-ccache-8G-20j.pdf \
+	$(TMP)/stats-noccache-16G-4C.pdf \
 	$(TMP)/stats-noccache-8G-8C.pdf \
 	$(TMP)/stats-ccache-8G-8C.pdf \
 	$(TMP)/diagram-components.pdf
@@ -128,6 +129,13 @@ $(TMP)/gantt-ccache-8G-%j.pdf: \
 	tools/plot-link-gantt.py \
 		-i data/llvm-gold-distcc-ccache-8G-8C.json.gz \
 		-j $* \
+		-o $@
+
+$(TMP)/stats-%-16G-4C.pdf: \
+	data/llvm-gold-distcc-%-16G-4C.json.gz \
+	tools/plot-link-spdp-effi.py | $(TMP)
+	tools/plot-link-spdp-effi.py \
+		-i data/llvm-gold-distcc-$*-16G-4C.json.gz \
 		-o $@
 
 $(TMP)/stats-%-8G-8C.pdf: \
