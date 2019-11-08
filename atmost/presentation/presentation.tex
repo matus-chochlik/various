@@ -657,6 +657,16 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
+  \frametitle{Linker schedule (no ccache, 16GB RAM) -- \shelltext{make -j 10}}
+  \fitfig{gantt-noccache-16G-10j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Linker schedule (no ccache, 16GB RAM) -- \shelltext{make -j 20}}
+  \fitfig{gantt-noccache-16G-20j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
   \frametitle{Linker schedule (no ccache, 8GB RAM) -- \shelltext{make -j 10}}
   \fitfig{gantt-noccache-8G-10j.pdf}
 \end{frame}
@@ -669,6 +679,16 @@ SYNOPSIS
 \begin{frame}
   \frametitle{Linker schedule (ccached, 8GB RAM) -- \shelltext{make -j 20}}
   \fitfig{gantt-ccache-8G-20j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link order vs. time (no ccache, 16GB, 4+12 cores, 8 jobs)}
+  \fitfig{time-llvm-16GB-ld-noccache-1j-8j.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Link order vs. time (no ccache, 16GB, 4+12 cores, 16 jobs)}
+  \fitfig{time-llvm-16GB-ld-noccache-1j-16j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
@@ -710,6 +730,11 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
+  \frametitle{Parallelization statistics (no ccache, 16GB, 4+12 cores)}
+  \fitfig{stats-noccache-16G-4C.pdf}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
   \frametitle{Parallelization statistics (no ccache, 8GB, 8+8 cores)}
   \fitfig{stats-noccache-8G-8C.pdf}
 \end{frame}
@@ -740,6 +765,32 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
+  \frametitle{the {\em Fun} part}
+  \begin{itemize}
+    \LARGE
+    \item Learned new things:
+    \Large
+    \begin{itemize}
+      \item new Python 3 features
+      \item Python {\em SciKit-Learn} package
+      \item Python {\em MatPlotLib} package
+      \item Secure \shelltext{distcc} setup over \shelltext{ssh}.
+      \item etc.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{the {\em Profit} part}
+  \begin{itemize}
+    \LARGE
+    \item Safe and relatively quick \shelltext{llvm}/\shelltext{clang} builds.
+    \item Saving the SSDs from excessive wear.
+    \item Not getting random reboots during development and building.
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
   \frametitle{Further improvements}
   \begin{itemize}
     \Large
@@ -759,7 +810,10 @@ SYNOPSIS
 \begin{frame}
   \centering
   \Huge
-  Thank you!\\Questions?
+  Thank you!\\Questions?\\
+  \vfill
+  \Large
+  \url{https://github.com/matus-chochlik/various}/atmost/presentation/embedmeet.pdf
 \end{frame}
 % - Extras ---------------------------------------------------------------------
 \section{Extras}

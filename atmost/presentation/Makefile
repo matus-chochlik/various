@@ -16,6 +16,8 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/reboot-llvm-16GB-ld-noccache-9j.pdf \
 	$(TMP)/resusage-llvm-16GB-gold-ccache-12j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-vs-ccache-1j.pdf \
+	$(TMP)/time-llvm-16GB-ld-noccache-1j-8j.pdf \
+	$(TMP)/time-llvm-16GB-ld-noccache-1j-16j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-1j-8j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-1j-16j.pdf \
 	$(TMP)/time-llvm-8GB-ld-ccache-1j-16j.pdf \
@@ -23,6 +25,8 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/scatter-llvm-buildtime-ramusage-noccache-8G-8C.pdf \
 	$(TMP)/hist-llvm-link-mem-req.pdf \
 	$(TMP)/prediction-actual-vs-predicted.pdf \
+	$(TMP)/gantt-noccache-16G-10j.pdf \
+	$(TMP)/gantt-noccache-16G-20j.pdf \
 	$(TMP)/gantt-noccache-8G-10j.pdf \
 	$(TMP)/gantt-noccache-8G-20j.pdf \
 	$(TMP)/gantt-ccache-8G-20j.pdf \
@@ -64,6 +68,15 @@ $(TMP)/time-llvm-8GB-ld-noccache-vs-ccache-%j.pdf: \
 		-F "ccached with 100% hit rate" \
 		-s data/llvm-gold-distcc-noccache-8G-8C.json.gz \
 		-S "clean build without ccache" \
+		-j $* \
+		-o $@
+
+$(TMP)/time-llvm-16GB-ld-noccache-1j-%j.pdf: \
+	data/llvm-gold-distcc-noccache-16G-4C.json.gz \
+	tools/plot-link-finish-j.py | $(TMP)
+	tools/plot-link-finish-j.py \
+		-i data/llvm-gold-distcc-noccache-16G-4C.json.gz \
+		-j 1 \
 		-j $* \
 		-o $@
 
@@ -113,6 +126,14 @@ $(TMP)/prediction-actual-vs-predicted.pdf: \
 		-i data/llvm-gold-distcc-ccache-8G-8C.json.gz \
 		-i data/llvm-gold-distcc-noccache-8G-8C.json.gz \
 		-i data/llvm-gold-distcc-ccache-8G-8C-7J.json.gz \
+		-o $@
+
+$(TMP)/gantt-noccache-16G-%j.pdf: \
+	data/llvm-gold-distcc-noccache-16G-4C.json.gz \
+	tools/plot-link-gantt.py | $(TMP)
+	tools/plot-link-gantt.py \
+		-i data/llvm-gold-distcc-noccache-16G-4C.json.gz \
+		-j $* \
 		-o $@
 
 $(TMP)/gantt-noccache-8G-%j.pdf: \

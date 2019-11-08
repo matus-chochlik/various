@@ -45,12 +45,15 @@ def do_plot(options):
     for run in stats:
         if run.jobs == options.job_count:
             for tgt in sorted(run.targets, key=lambda t: t.arrived.age):
-                lanes[0].append((
-                    tgt.name,
-                    tgt.arrived.age,
-                    tgt.linking.age,
-                    tgt.linked.age,
-                ))
+                try:
+                    lanes[0].append((
+                        tgt.name,
+                        tgt.arrived.age,
+                        tgt.linking.age,
+                        tgt.linked.age,
+                    ))
+                except AttributeError:
+                    pass
 
     x_interval = max(t[3] for t in lanes[0])
 
