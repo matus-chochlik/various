@@ -682,18 +682,8 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{Link order vs. time (no ccache, 16GB, 4+12 cores, 8 jobs)}
-  \fitfig{time-llvm-16GB-ld-noccache-1j-8j.pdf}
-\end{frame}
-% ------------------------------------------------------------------------------
-\begin{frame}
   \frametitle{Link order vs. time (no ccache, 16GB, 4+12 cores, 16 jobs)}
   \fitfig{time-llvm-16GB-ld-noccache-1j-16j.pdf}
-\end{frame}
-% ------------------------------------------------------------------------------
-\begin{frame}
-  \frametitle{Link order vs. time (no ccache, 8GB, 8+8 cores, 8 jobs)}
-  \fitfig{time-llvm-8GB-ld-noccache-1j-8j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
@@ -731,17 +721,17 @@ SYNOPSIS
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{Parallelization statistics (no ccache, 16GB, 4+12 cores)}
-  \fitfig{stats-noccache-16G-4C.pdf}
+  \fitfig{stats-llvm-noccache-16G-4C.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{Parallelization statistics (no ccache, 8GB, 8+8 cores)}
-  \fitfig{stats-noccache-8G-8C.pdf}
+  \fitfig{stats-llvm-noccache-8G-8C.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
   \frametitle{Parallelization statistics (ccached, 8GB, 8+8 cores)}
-  \fitfig{stats-ccache-8G-8C.pdf}
+  \fitfig{stats-llvm-ccache-8G-8C.pdf}
 \end{frame}
 % - Conclusion -----------------------------------------------------------------
 \section{Conclusion}
@@ -788,6 +778,13 @@ SYNOPSIS
     \item Saving the SSDs from excessive wear.
     \item Not getting random reboots during development and building.
   \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{the {\em Moral} of the story}
+  \centering
+  \Huge
+	Buy more RAM!\footnote{if you can}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
@@ -972,6 +969,11 @@ SYNOPSIS
   atmost -l 20 -batt 12 -L 10 -batt 6 -- executable ...
   \end{verbatim}
 
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{atmost -n \$\{N\} clang-tidy "\$\{@\}"}}
+  \fitfig{stats-oglplus-tidy-8C.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \end{document}

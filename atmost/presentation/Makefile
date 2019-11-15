@@ -6,6 +6,7 @@ all: presentation.pdf
 	cp $< $@
 
 $(TMP)/%.pdf: $(TMP)/%.tex
+	pdflatex -shell-escape -output-directory=$(TMP) $< &&\
 	pdflatex -shell-escape -output-directory=$(TMP) $<
 
 $(TMP)/presentation.pdf: \
@@ -16,9 +17,7 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/reboot-llvm-16GB-ld-noccache-9j.pdf \
 	$(TMP)/resusage-llvm-16GB-gold-ccache-12j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-vs-ccache-1j.pdf \
-	$(TMP)/time-llvm-16GB-ld-noccache-1j-8j.pdf \
 	$(TMP)/time-llvm-16GB-ld-noccache-1j-16j.pdf \
-	$(TMP)/time-llvm-8GB-ld-noccache-1j-8j.pdf \
 	$(TMP)/time-llvm-8GB-ld-noccache-1j-16j.pdf \
 	$(TMP)/time-llvm-8GB-ld-ccache-1j-16j.pdf \
 	$(TMP)/scatter-llvm-buildtime-ramusage-ccache-8G-8C.pdf \
@@ -30,9 +29,10 @@ $(TMP)/presentation.pdf: \
 	$(TMP)/gantt-noccache-8G-10j.pdf \
 	$(TMP)/gantt-noccache-8G-20j.pdf \
 	$(TMP)/gantt-ccache-8G-20j.pdf \
-	$(TMP)/stats-noccache-16G-4C.pdf \
-	$(TMP)/stats-noccache-8G-8C.pdf \
-	$(TMP)/stats-ccache-8G-8C.pdf \
+	$(TMP)/stats-llvm-noccache-16G-4C.pdf \
+	$(TMP)/stats-llvm-noccache-8G-8C.pdf \
+	$(TMP)/stats-llvm-ccache-8G-8C.pdf \
+	$(TMP)/stats-oglplus-tidy-8C.pdf \
 	$(TMP)/diagram-components.pdf
 
 $(TMP)/%.tex: %.tex
@@ -152,18 +152,25 @@ $(TMP)/gantt-ccache-8G-%j.pdf: \
 		-j $* \
 		-o $@
 
-$(TMP)/stats-%-16G-4C.pdf: \
+$(TMP)/stats-llvm-%-16G-4C.pdf: \
 	data/llvm-gold-distcc-%-16G-4C.json.gz \
 	tools/plot-link-spdp-effi.py | $(TMP)
 	tools/plot-link-spdp-effi.py \
 		-i data/llvm-gold-distcc-$*-16G-4C.json.gz \
 		-o $@
 
-$(TMP)/stats-%-8G-8C.pdf: \
+$(TMP)/stats-llvm-%-8G-8C.pdf: \
 	data/llvm-gold-distcc-%-8G-8C.json.gz \
 	tools/plot-link-spdp-effi.py | $(TMP)
 	tools/plot-link-spdp-effi.py \
 		-i data/llvm-gold-distcc-$*-8G-8C.json.gz \
+		-o $@
+
+$(TMP)/stats-oglplus-tidy-8C.pdf: \
+	data/oglplus-clang-tidy-8C-times.json \
+	tools/plot-tidy-spdp-effi.py | $(TMP)
+	tools/plot-tidy-spdp-effi.py \
+		-i data/oglplus-clang-tidy-8C-times.json \
 		-o $@
 
 $(TMP)/diagram-%.pdf: images/%.dot
