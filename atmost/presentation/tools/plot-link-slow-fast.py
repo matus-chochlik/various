@@ -136,6 +136,19 @@ def do_plot(options):
     spl.plot(x, [ge(s) for s in yf], color="green", label=options.fast_label)
     spl.scatter(x, [ge(s) for s in yf], color="green")
 
+    ds = max(ge(s) for s in ys)
+    df = max(ge(s) for s in yf)
+    su = ds / df
+
+    spl.annotate(
+        "%.1f×\nfaster" % su,
+        xy=(x[-1], df),
+        xytext=(x[-1], df*0.1),
+        arrowprops=dict(facecolor="black", shrink=0.05),
+        horizontalalignment="center",
+        fontsize=14
+    )
+
     spl.xaxis.set_major_locator(pltckr.NullLocator())
     spl.yaxis.set_major_locator(pltckr.MultipleLocator(y_tick_maj))
     spl.yaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))

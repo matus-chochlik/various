@@ -119,11 +119,25 @@ def do_plot(options):
         spl.plot(x, [ge(s) for s in ys[j]], label="%d jobs" % j)
         spl.scatter(x, [ge(s) for s in ys[j]])
 
+    dur = [max(ge(s) for s in ys[j]) for j in jobs]
+    ds = max(dur)
+    df = min(dur)
+    su = ds / df
+
+    spl.annotate(
+        "%.1f×\nfaster" % su,
+        xy=(x[-1], df),
+        xytext=(x[-1], df*0.1),
+        arrowprops=dict(facecolor="black", shrink=0.05),
+        horizontalalignment="center",
+        fontsize=14
+    )
+
     spl.xaxis.set_major_locator(pltckr.NullLocator())
     spl.yaxis.set_major_locator(pltckr.MultipleLocator(y_tick_maj))
     spl.yaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))
-    spl.set_xlabel("Linked targets", fontsize=18)
-    spl.set_ylabel("Link finish time [HH:MM]", fontsize=18)
+    spl.set_xlabel("Linked targets")
+    spl.set_ylabel("Link finish time [HH:MM]")
     spl.legend()
     spl.grid(axis="y")
 

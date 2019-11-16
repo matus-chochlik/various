@@ -21,7 +21,7 @@ digraph AtmostComponents {
         gold_wrap -> gold_atmost [label="calls"]
         gold_atmost -> gold_real [label="executes"]
         gold_atmost -> gold_driver [label="AF_UNIX" dir="both" arrowhead="vee" arrowtail="vee"]
-        gold_driver -> gold_callbacks [label="imports" arrowtail="odiamond"]
+        gold_driver -> gold_callbacks [label="imports" dir="both" arrowtail="odiamond"]
     }
 
     subgraph cluster_tidy {
