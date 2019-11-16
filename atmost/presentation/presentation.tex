@@ -3,7 +3,7 @@
 \usetheme{Montpellier}
 \hypersetup{pdfstartview={Fit}}
 
-\usecolortheme{beaver}
+\usecolortheme{crane}
 \useoutertheme{smoothbars}
 
 \setbeamertemplate{bibliography item}[text]
@@ -30,21 +30,24 @@
   }%
 }
 
-\definecolor{light-gray}{gray}{0.95}
+\definecolor{craneorange}{RGB}{254,149,8}
+\definecolor{craneblue}{RGB}{2,3,38}
+\definecolor{light-gray}{RGB}{255,245,225}
 
 \newcommand{\shelltext}[1]{\texttt{\colorbox{light-gray}{#1}}}
 
 \usepackage{listings}
-\lstset{
+\lstdefinestyle{atmostcode}{
     basicstyle=\normalsize\ttfamily,
     backgroundcolor = \color{light-gray},
-    language=Python,
     breaklines=true,
+	prebreak=\textbackslash,
     showstringspaces=false,
     keywordstyle=\itshape\bfseries\color{red!65!black},
     tabsize=2,
     escapeinside={(*@}{@*)}
 }
+\lstset{style=atmostcode}
 
 
 \setlist[itemize,1]{label=$\bullet$}
@@ -88,7 +91,7 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{\shelltext{make}: system resource usage}
+  \frametitle{\shelltext{make} -- system resource usage}
   \fitfig{resusage-llvm-16GB-ld-noccache-1j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -127,12 +130,12 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{\shelltext{make}: uncached clean build vs. 100\% cached}
+  \frametitle{\shelltext{make} -- uncached clean build vs. 100\% cached}
   \fitfig{time-llvm-8GB-ld-noccache-vs-ccache-1j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{More jobs: \shelltext{make clean \&\& make -j 2}}
+  \frametitle{More jobs -- \shelltext{make clean \&\& make -j 2}}
   \fitfig{resusage-llvm-16GB-ld-noccache-2j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -147,7 +150,7 @@
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{Keep going: \shelltext{make clean \&\&  make -j 3}}
+  \frametitle{Keep going -- \shelltext{make clean \&\&  make -j 3}}
   \fitfig{resusage-llvm-16GB-ld-noccache-3j.pdf}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -333,6 +336,16 @@
   \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{\shelltext{atmost} -- description}
+  \Large
+    \say{The atmost utility allows to~{\LARGE limit concurrent execution}
+    of~a~single executable
+    or~a~set of~executables, depending on~various criteria like CPU load,
+    memory and~swap usage, thermal zone temperatures, current number
+    of~I/O~operations, etc., or just {\LARGE by a maximum number}.}
+\end{frame}
+% ------------------------------------------------------------------------------
 \begin{frame}[fragile]
   \frametitle{RTFM -- \shelltext{man atmost}}
 \scriptsize
@@ -341,7 +354,7 @@ ATMOST(1)                 General Commands Manual                ATMOST(1)
 
 NAME
        atmost  - tool for limiting the concurrent execution of a specified
-       executable(s).
+       executable.
 
 SYNOPSIS
        atmost [-v|--verbose] [-f|--file file-path]
@@ -358,16 +371,6 @@ SYNOPSIS
 
        atmost --help
 \end{verbatim}
-\end{frame}
-% ------------------------------------------------------------------------------
-\begin{frame}
-  \frametitle{\shelltext{atmost} -- description}
-  \Large
-    \say{The atmost utility allows to~{\LARGE limit concurrent execution}
-    of~a~single executable
-    or~a~set of~executables, depending on~various criteria like CPU load,
-    memory and~swap usage, thermal zone temperatures, current number
-    of~I/O~operations, etc., or just {\LARGE by a maximum number}.}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
@@ -389,7 +392,7 @@ SYNOPSIS
   \frametitle{Using \shelltext{atmost} -- wrapper scripts}
   \begin{itemize}
     \large
-    \item In order to synchronize a \shelltext{EXECUTABLE} with \shelltext{atmost}:
+    \item In order to synchronize an \shelltext{EXECUTABLE} with \shelltext{atmost}:
     \begin{itemize}
       \item Create a shell script with the name of \shelltext{EXECUTABLE}.
       \item From the script call \shelltext{atmost} with appropriate arguments.
@@ -397,10 +400,10 @@ SYNOPSIS
     \end{itemize}
   \end{itemize}
   \shelltext{\$ vim /opt/bin/ld}
-  \begin{verbatim}
+  \begin{lstlisting}
   #!/bin/bash
-  atmost -n 2 -- /usr/bin/x86_64-linux-gnu-gold "${@}"
-  \end{verbatim}
+  atmost -n 2 -- /usr/bin/gold "${@}"
+  \end{lstlisting}
   \shelltext{\$ chmod u+x /opt/bin/ld}
   \shelltext{\$ export PATH="/opt/bin:\$\{PATH\}"}\\
 \end{frame}
@@ -755,7 +758,7 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{the {\em Fun} part}
+  \frametitle{the {\em \Huge fun} part}
   \begin{itemize}
     \LARGE
     \item Learned new things:
@@ -771,7 +774,7 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{the {\em Profit} part}
+  \frametitle{the {\em \Huge profit} part}
   \begin{itemize}
     \LARGE
     \item Safe and relatively quick \shelltext{llvm}/\shelltext{clang} builds.
@@ -781,7 +784,7 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
-  \frametitle{the {\em Moral} of the story}
+  \frametitle{the {\em \LARGE moral} of the story}
   \centering
   \Huge
 	Buy more RAM!\footnote{if you can}
@@ -851,16 +854,16 @@ SYNOPSIS
   \large
   Start executing only if 1 minute average load is less than or equal 15\%:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -l 15 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 
   \large
   Start executing only if 5 minute average load is less than or equal 8.5\%:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -L 8.5 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}[fragile]
@@ -874,16 +877,16 @@ SYNOPSIS
   \large
   Start executing only if at least $20\%$ or RAM is available:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -m 20 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 
   \large
   Start executing only if at least $70\%$ or swap is free:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -S 70 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}[fragile]
@@ -895,9 +898,9 @@ SYNOPSIS
   \large
   Start executing only if the number of currently running processes is $\leq 1000$:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -p 1000 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}[fragile]
@@ -912,17 +915,17 @@ SYNOPSIS
   Start executing only if the CPU temperature is less than or equal
   to $70\degree C$:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -tc 70 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 
   \large
   Start executing only if the battery temperature is less than or equal
   to $55.5\degree C$:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -tb 55.5 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}[fragile]
@@ -947,12 +950,12 @@ SYNOPSIS
   \end{itemize}
 
   \large
-  When on A/C start only if 1 minute average load is less than or equal to $15\%$,\\
-  when on battery start only if average load is less than or equal to $5\% = (15-10)$:
+  When on A/C, start only if 1 minute average load is less than or equal to $15\%$,\\
+  when on battery, start only if average load is less than or equal to $5\% = (15-10)$:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -l 15 -batt 10 -- executable arguments...
-  \end{verbatim}
+  \end{lstlisting}
 
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -960,14 +963,14 @@ SYNOPSIS
   \frametitle{\shelltext{atmost} -- combining limits and modifiers}
 
   \large
-  When on A/C start only if 1 minute load is $\leq 20\%$ and
+  When on A/C, start only if 1 minute load is $\leq 20\%$ and
   5 minutes load is $\leq 10\%$,\\
-  when on battery start only if 1 minute load is $\leq 8\%$ and
+  when on battery, start only if 1 minute load is $\leq 8\%$ and
   5 minutes load is $\leq 4\%$:
   \normalsize
-  \begin{verbatim}
+  \begin{lstlisting}
   atmost -l 20 -batt 12 -L 10 -batt 6 -- executable ...
-  \end{verbatim}
+  \end{lstlisting}
 
 \end{frame}
 % ------------------------------------------------------------------------------
