@@ -95,7 +95,7 @@ class PresArgParser(argparse.ArgumentParser):
             # ------------------------------------------------------------------
             def initialize(self, plot, fig):
                 if self.output_path:
-                    fig.set_size_inches(9, 5.1)
+                    fig.set_size_inches(8, 4.5)
             # ------------------------------------------------------------------
             def finalize(self, plot):
                 if self.viewer:

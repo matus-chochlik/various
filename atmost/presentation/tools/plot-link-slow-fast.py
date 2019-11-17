@@ -139,14 +139,14 @@ def do_plot(options):
     ds = max(ge(s) for s in ys)
     df = max(ge(s) for s in yf)
     su = ds / df
+    yp = df*0.1 if (df > (ds-df)) else (ds+df)*0.5
 
     spl.annotate(
         "%.1f×\nfaster" % su,
         xy=(x[-1], df),
-        xytext=(x[-1], df*0.1),
+        xytext=(x[-1], yp),
         arrowprops=dict(facecolor="black", shrink=0.05),
-        horizontalalignment="center",
-        fontsize=14
+        horizontalalignment="center"
     )
 
     spl.xaxis.set_major_locator(pltckr.NullLocator())

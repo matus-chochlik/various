@@ -23,12 +23,6 @@ class ArgParser(PresArgParser):
 def make_argparser():
     return ArgParser(prog=os.path.basename(__file__))
 # ------------------------------------------------------------------------------
-def _format_hhmm(s, pos=None):
-    h = int(s/3600)
-    s -= h*3600
-    m = int(s/60)
-    return "%d:%02d" % (h, m)
-# ------------------------------------------------------------------------------
 def do_plot(options):
     def _age(t):
         try: return t.linked.age
@@ -52,6 +46,7 @@ def do_plot(options):
 
     margsup = spls[1]
     margsup.xaxis.set_ticks_position("top")
+    margsup.xaxis.set_major_formatter(pltckr.NullFormatter())
     margsup.yaxis.set_label_position("right")
     margsup.set_ylabel("Marginal speedup")
     margsup.grid()
