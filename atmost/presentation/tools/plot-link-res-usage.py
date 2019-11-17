@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------------
 import os
 import sys
+import math
 import matplotlib.pyplot as plt
 import matplotlib.ticker as pltckr
 import matplotlib.collections as collections
@@ -54,10 +55,9 @@ def do_plot(options):
         linker_count.append(ent.linker)
 
     x_interval = max(age)
-    y_interval = max(max(swap_used), max(mem_avail))
+    p_interval = max(max(linker_count),max(distcc_count))
 
-    tick_opts = [5,10,15,30,60]
-    for t in tick_opts:
+    for t in [5,10,15,30,60]:
         x_tick_maj = t*60
         if x_interval / x_tick_maj < 15:
             break
@@ -71,6 +71,11 @@ def do_plot(options):
     cpu_load_15 = reduce_by(cpu_load_15, red)
     distcc_count = reduce_by(distcc_count, red, max)
     linker_count = reduce_by(linker_count, red, max)
+
+    for p in [1,2,3,4,5]:
+        p_tick_maj = p
+        if p_interval / p_tick_maj < 4:
+            break
 
     fig, spls = plt.subplots(3, 1)
     options.initialize(plt, fig)
@@ -98,6 +103,7 @@ def do_plot(options):
 
     prc = spls[1]
     prc.set_ylabel("Process count")
+    prc.yaxis.set_major_locator(pltckr.MultipleLocator(p_tick_maj))
     prc.xaxis.set_major_locator(pltckr.MultipleLocator(x_tick_maj))
     prc.xaxis.set_major_formatter(pltckr.FuncFormatter(lambda x, p: ""))
     prc.yaxis.set_label_position("right")
