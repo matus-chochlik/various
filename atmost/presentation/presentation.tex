@@ -798,9 +798,11 @@ SYNOPSIS
     \item Try to improve the prediction of memory usage based on command-line
       arguments.
     \begin{itemize}
+      \large
       \item Examine the arguments more deeply.
       \item Use a different classifier.
       \item Develop a custom model.
+      \item Better fitting of waiting linker processes into memory.
       \item etc.
     \end{itemize}
     \item Allow to change environment variables for the synchronized process
@@ -974,6 +976,24 @@ SYNOPSIS
   atmost -l 20 -batt 12 -L 10 -batt 6 -- executable ...
   \end{lstlisting}
 
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}
+  \frametitle{Limiting concurrent instances of \shelltext{clang-tidy}}
+  \begin{itemize}
+    \Large
+    \item Is it useful to limit concurrent execution of \shelltext{clang-tidy}?
+    \begin{itemize}
+      \large
+      \item 8 core CPU,
+      \item 2 local cores for compiling,
+      \item 4 local cores for compiling,
+      \item 6 local cores for compiling,
+	  \item the rest used by \shelltext{clang-tidy}.
+    \end{itemize}
+    \item Measured on the test-suite of the
+		OGLplus\footnote{\url{http://oglplus.org/}} project.
+  \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}
