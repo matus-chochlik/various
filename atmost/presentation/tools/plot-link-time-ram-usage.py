@@ -15,11 +15,6 @@ def _format_hhmm(s, pos=None):
     m = int(s/60)
     return "%d:%02d" % (h, m)
 # ------------------------------------------------------------------------------
-def _format_mmss(s, pos=None):
-    m = int(s/60)
-    s -= m*60
-    return "%2d:%02d" % (m, s)
-# ------------------------------------------------------------------------------
 class ArgParser(PresArgParser):
     # --------------------------------------------------------------------------
     def __init__(self, **kw):
@@ -54,10 +49,9 @@ def do_plot(options):
                 data["mem_size"].append(tgt.linked.actual*64)
                 data["hash"].append(hash(tgt) % l)
 
-    y_interval = max(data["exec_time"])
     x_interval = max(data["age"])
 
-    fig, spls = plt.subplots(2, 1)
+    fig, trd = plt.subplots()
     options.initialize(plt, fig)
 
     tick_opts = [5,10,15,30,60]
@@ -67,35 +61,8 @@ def do_plot(options):
         x_tick_maj = t*60
         if x_interval / x_tick_maj < 15:
             break
-    y_tick_maj = tick_opts[0]
-    for t in tick_opts:
-        y_tick_min = y_tick_maj
-        y_tick_maj = t
-        if y_interval / y_tick_maj < 12:
-            break
 
 
-    tdr = spls[0]
-    tdr.set_ylabel("Link time [MM:SS]")
-    tdr.scatter(
-        x="age",
-        y="exec_time",
-        c="hash",
-        s="mem_size",
-        data=data,
-        label="Link memory usage"
-    )
-
-    tdr.xaxis.set_ticks_position("top")
-    tdr.xaxis.set_minor_locator(pltckr.MultipleLocator(x_tick_min))
-    tdr.xaxis.set_major_locator(pltckr.MultipleLocator(x_tick_maj))
-    tdr.xaxis.set_major_formatter(pltckr.FuncFormatter(_format_hhmm))
-    tdr.yaxis.set_major_locator(pltckr.MultipleLocator(y_tick_maj))
-    tdr.yaxis.set_major_formatter(pltckr.FuncFormatter(_format_mmss))
-    tdr.grid(which="both", axis="both")
-    tdr.legend()
-
-    trd = spls[1]
     trd.set_ylabel("Link RAM usage [GB]")
     trd.set_xlabel("Build progress time [HH:MM]")
     trd.scatter(

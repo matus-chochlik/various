@@ -271,11 +271,11 @@
       \Large
       \item Use GNU \shelltext{gold} instead of GNU \shelltext{ld}.
       \begin{itemize}
+	    \normalsize 
+		\item[$-$] {Can link only in ELF format.}
         \large
         \item[$+$] Faster than \shelltext{ld}.
         \item[$+$] {\Large Uses less memory} than \shelltext{ld}.
-	    \normalsize 
-		\item[$-$] {Can link only in ELF format.}
       \end{itemize}
       \item Use \shelltext{zram}.
       \begin{itemize}
@@ -323,7 +323,7 @@
   \frametitle{Let's synchronize the execution of \shelltext{ld}/\shelltext{gold}}
   \begin{itemize}
     \LARGE
-    \item \shelltext{atmost} FTW!
+    \item \shelltext{atmost} to the rescue!
     \begin{itemize}
 	  \large
       \item Simple utility written in C.
@@ -804,6 +804,7 @@ SYNOPSIS
     \end{itemize}
     \item Allow to change environment variables for the synchronized process
       from the \shelltext{atmost\_driver} callbacks.
+    \item \ldots
   \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
