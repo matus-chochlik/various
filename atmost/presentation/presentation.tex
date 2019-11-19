@@ -487,21 +487,6 @@ SYNOPSIS
 \end{frame}
 % ------------------------------------------------------------------------------
 \begin{frame}[fragile]
-  \frametitle{Callback -- \shelltext{save\_callback\_data}}
-  \begin{lstlisting}
-  def save_callback_data(resources):
-    do_cleanup_resources(resources)
-  \end{lstlisting}
-  \begin{itemize}
-    \Large
-    \item Called once, when the \shelltext{atmost\_driver} is being shutdown.
-    \item The \shelltext{resource} parameter is the return value from
-      \shelltext{load\_callback\_data}.
-    \item Can cleanup and/or save resources used and data generated during the run.
-  \end{itemize}
-\end{frame}
-% ------------------------------------------------------------------------------
-\begin{frame}[fragile]
   \frametitle{Callback -- \shelltext{process\_initialized}}
   \begin{lstlisting}
   def process_initialized(resources, proc):
@@ -555,6 +540,21 @@ SYNOPSIS
     \Large
     \item Called when a process handled by the driver has finished.
     \item The callback can retrieve its bookkeeping data from \shelltext{proc}.
+  \end{itemize}
+\end{frame}
+% ------------------------------------------------------------------------------
+\begin{frame}[fragile]
+  \frametitle{Callback -- \shelltext{save\_callback\_data}}
+  \begin{lstlisting}
+  def save_callback_data(resources):
+    do_cleanup_resources(resources)
+  \end{lstlisting}
+  \begin{itemize}
+    \Large
+    \item Called once, when the \shelltext{atmost\_driver} is being shutdown.
+    \item The \shelltext{resource} parameter is the return value from
+      \shelltext{load\_callback\_data}.
+    \item Can cleanup and/or save resources used and data generated during the run.
   \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------
@@ -655,7 +655,7 @@ SYNOPSIS
   \item \shelltext{let\_process\_go} -- only if predicted linker memory usage is
     less than current available memory.
   \item \shelltext{process\_finished} -- output actual memory usage that can be
-    stored and used for addtional model training.
+    stored and used for additional model training.
   \end{itemize}
 \end{frame}
 % ------------------------------------------------------------------------------

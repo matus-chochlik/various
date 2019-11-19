@@ -12,7 +12,7 @@ digraph AtmostComponents {
     node [style="filled" shape="box"]
 
     subgraph cluster_gold {
-        gold_wrap [label="gold (wrapper)" fillcolor="#E0E0A0"]
+        gold_wrap [label="ld (wrapper)" fillcolor="#E0E0A0"]
         gold_real [label="gold (actual)" fillcolor="#E0E0A0"]
         gold_atmost [label="atmost" fillcolor="#F0F0E0"]
         gold_driver [label="atmost_driver" fillcolor="#E0E0D0"]

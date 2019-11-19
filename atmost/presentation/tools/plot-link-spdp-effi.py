@@ -41,17 +41,20 @@ def do_plot(options):
 
     speedup = spls[0]
     speedup.xaxis.set_ticks_position("top")
+    speedup.xaxis.set_major_locator(pltckr.MultipleLocator(2))
     speedup.set_ylabel("Speedup")
     speedup.grid()
 
     margsup = spls[1]
     margsup.xaxis.set_ticks_position("top")
+    margsup.xaxis.set_major_locator(pltckr.MultipleLocator(2))
     margsup.xaxis.set_major_formatter(pltckr.NullFormatter())
     margsup.yaxis.set_label_position("right")
     margsup.set_ylabel("Marginal speedup")
     margsup.grid()
 
     effcncy = spls[2]
+    effcncy.xaxis.set_major_locator(pltckr.MultipleLocator(2))
     effcncy.set_xlabel("Number of jobs")
     effcncy.set_ylabel("Efficiency")
     effcncy.grid()
