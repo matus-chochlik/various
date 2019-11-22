@@ -1,0 +1,4 @@
+#!/bin/bash
+$(dirname ${0})/../atmost_driver \
+	-s /tmp/atmost.linker.socket \
+	-c $(dirname ${0})/callbacks.py
