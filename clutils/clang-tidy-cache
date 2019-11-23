@@ -36,6 +36,9 @@ class ClangTidyCacheOpts(object):
     def should_print_dir(self):
         return self._original_args[0] == "--cache-dir"
     # --------------------------------------------------------------------------
+    def should_remove_dir(self):
+        return self._original_args[0] == "--clean"
+    # --------------------------------------------------------------------------
     def original_args(self):
         return self._original_args
     # --------------------------------------------------------------------------
@@ -126,6 +129,9 @@ def main():
         opts = ClangTidyCacheOpts(log, sys.argv[1:])
         if opts.should_print_dir():
             print(opts.cache_dir())
+        elif opts.should_remove_dir():
+            import shutil
+            shutil.rmtree(opts.cache_dir())
         else:
             return run_clang_tidy_cached(log, opts)
         return 0
