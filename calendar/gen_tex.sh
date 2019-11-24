@@ -22,7 +22,7 @@ fi
 year=${2:-$(date +%Y -d '+1 year')}
 
 extradays=$(($(date +%u -d "${year}-01-01 -1 day") % 7))
-yearweeks=$(date +%W -d "${year}-12-31")
+yearweeks=$(($(date +%W -d "${year}-12-31")+1))
 
 language=${3:-sk}
 country=${4:-SK}
@@ -111,7 +111,8 @@ function cal_page_image()
 {
 	week=${1}
 	extradays=${2}
-	week_no=$(date +%W --date "${year}-01-01 +$((week-1)) weeks -${extradays} days")
+	week_id=$(printf "%02d" ${week})
+	week_no=$(date +%W --date "${year}-01-01 +$((week)) weeks -${extradays} days")
 	week_str="${week_no}. $(cal_translate week)"
 	month_name1=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks -${extradays} days"))
 	month_name2=$(cal_translate month$(date +%m --date "${year}-01-01 +$((week-1)) weeks +6 days -${extradays} days"))
@@ -135,14 +136,14 @@ function cal_page_image()
 	echo "  }"
 	echo "  \\mbox{"
 	echo "  \\begin{minipage}[c]{\\linewidth}"
-	echo "    \\includegraphics[width=16.6cm]{${imgdir}/${week_no}.png}"
+	echo "    \\includegraphics[width=16.6cm]{${imgdir}/${week_id}.png}"
 	echo "  \\end{minipage}"
 	echo "  }"
 	echo "  \\mbox{"
 	echo "  \\begin{minipage}[c]{\\linewidth}"
 	echo "  \\vspace{6mm}"
 	echo "	\\large{\\selectfont\\usefont{T1}{qag}{m}{sc}"
-	cat "${imgdir}/${week_no}.txt"
+	cat "${imgdir}/${week_id}.txt"
 	echo "  }"
 	echo "  \\end{minipage}"
 	echo "  }"
