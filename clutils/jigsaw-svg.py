@@ -7,6 +7,7 @@ import numpy
 import random
 from math import log10
 
+# ------------------------------------------------------------------------------
 def get_argument_parser():
 	import argparse
 
@@ -106,11 +107,14 @@ def get_argument_parser():
 
 	return argparser
  
-class options:
+# ------------------------------------------------------------------------------
+class Options:
+    # --------------------------------------------------------------------------
 	def grayscale_color_str(self, v):
 		c = "%02x" % int(255*v)
 		return "#"+3*c
 
+    # --------------------------------------------------------------------------
 	def get_rng0(self):
 		try:
 			return self.rng0
@@ -118,6 +122,7 @@ class options:
 			self.rng0 = random.Random(self.seed)
 			return self.rng0
 
+    # --------------------------------------------------------------------------
 	def get_rng(self):
 		import random
 
@@ -128,6 +133,7 @@ class options:
 		else:
 			return random.Random(self.get_rng0().randrange(0, sys.maxsize))
 
+    # --------------------------------------------------------------------------
 	def gen_random_values(self):
 
 		rc = self.get_rng()
@@ -140,17 +146,20 @@ class options:
 			cell_data.append(r)
 		return cell_data
 
+    # --------------------------------------------------------------------------
 	def cell_value(self, x, y):
 		cy = (y+self.ycells)%self.ycells
 		cx = (x+self.xcells)%self.xcells
 		return self.cell_values[cy][cx]
 
 
+    # --------------------------------------------------------------------------
 	def cell_grayscale_color(self, x, y):
 		cv = self.cell_value(x, y)
 		v = self.value_low + cv*(self.value_high-self.value_low)
 		return self.grayscale_color_str(v)
 
+    # --------------------------------------------------------------------------
 	def cell_coord_color(self, x, y):
 		x = (x + self.xcells) % self.xcells
 		y = (y + self.ycells) % self.ycells
@@ -161,6 +170,7 @@ class options:
 
 		return "#%02x%02x%02x" % (r, g, b)
 
+    # --------------------------------------------------------------------------
 	def full_cell_element_str(self, x, y):
 
 		val = self.cell_value(x, y)
@@ -205,6 +215,7 @@ class options:
 				"def": pathstr
 			}
 
+    # --------------------------------------------------------------------------
 	def __init__(self):
 
 		useropts = get_argument_parser().parse_args(sys.argv[1:])
@@ -252,9 +263,11 @@ class options:
 			int(log10(self.ycells)+1)
 		)
 
+# ------------------------------------------------------------------------------
 def cell_value(opts, x, y):
 	return opts.get_value(x, y)
 
+# ------------------------------------------------------------------------------
 def cell_color(opts, x, y):
 	return grayscalestr(
 		opts.value_low+
@@ -262,9 +275,11 @@ def cell_color(opts, x, y):
 		(opts.value_high-opts.value_low)
 	)
 
+# ------------------------------------------------------------------------------
 def print_cell(opts, x, y):
 	opts.output.write(opts.cell_element_str(x, y))
 
+# ------------------------------------------------------------------------------
 def make_cell(opts, x, y):
 
 	if opts.verbose:
@@ -272,8 +287,7 @@ def make_cell(opts, x, y):
 
 	print_cell(opts, x,y)
 
-	
-
+# ------------------------------------------------------------------------------
 def print_svg(opts):
 	opts.output.write("""<?xml version="1.0" encoding="utf8"?>\n""")
 	opts.output.write("""<svg xmlns="http://www.w3.org/2000/svg"
@@ -294,11 +308,12 @@ def print_svg(opts):
 	opts.output.write("""</g>\n""")
 	opts.output.write("""</svg>\n""")
 
+# ------------------------------------------------------------------------------
 def main():
-	opts = options()
+	opts = Options()
 
 	print_svg(opts)
 	
-
+# ------------------------------------------------------------------------------
 if __name__ == "__main__": main()
 
