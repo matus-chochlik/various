@@ -1,0 +1,140 @@
+#!/usr/bin/python3
+# coding: UTF-8
+#  Copyright (c) 2017-2019 Matus Chochlik
+
+import os
+import sys
+import stat
+import errno
+import argparse
+import subprocess
+import multiprocessing
+
+# ------------------------------------------------------------------------------
+class ParaExecArgumentParser(argparse.ArgumentParser):
+    # -------------------------------------------------------------------------
+    def _resolve_cmd_which(self, name):
+        search_dirs = os.environ.get("PATH", "").split(':')
+        search_dirs += os.path.dirname(__file__)
+        for dir_path in search_dirs:
+            cmd_path = os.path.join(dir_path, name)
+            if os.path.isfile(cmd_path):
+                if stat.S_IXUSR & os.stat(cmd_path)[stat.ST_MODE]:
+                    return cmd_path
+        return name
+    # --------------------------------------------------------------------------
+    def _nonnegative_int(self, x):
+        try:
+            i = int(x)
+            assert(i > 0)
+            return i
+        except:
+            self.error("`%s' is not a positive integer value" % str(x))
+    # --------------------------------------------------------------------------
+    def __init__(self, **kw):
+        argparse.ArgumentParser.__init__(self, **kw)
+
+        self.add_argument(
+            '--interpreter', '-I',
+            dest="interpreter",
+            type=self._resolve_cmd_which,
+            action="store",
+            default=os.getenv("SHELL", self._resolve_cmd_which("bash"))
+        )
+
+        self.add_argument(
+            '--jobs', '-j',
+            dest="job_count",
+            type=self._nonnegative_int,
+            action="store",
+            default=multiprocessing.cpu_count()
+        )
+    # --------------------------------------------------------------------------
+    def process_parsed_options(self, options):
+        options.inputs = [sys.stdin] #TODO
+
+        options.interpreter_args = lambda: [options.interpreter]
+        return options
+    # --------------------------------------------------------------------------
+    def parse_args(self):
+        return self.process_parsed_options(
+            argparse.ArgumentParser.parse_args(self)
+        )
+
+# ------------------------------------------------------------------------------
+def make_argument_parser():
+    return ParaExecArgumentParser(
+            prog="os.path.basename(__file__)",
+            description="""
+            Executes commands from command-line in parallel.
+        """
+    )
+# ------------------------------------------------------------------------------
+def interpret_input(job, options, input_queue, output_lock):
+    line = input_queue.get()
+    while line:
+        try:
+            out, err = subprocess.Popen(
+                options.interpreter_args(),
+                stdin = subprocess.PIPE
+            ).communicate(line.encode("utf-8"))
+            if out or err:
+                try:
+                    output_lock.acquire()
+                    if out: sys.stdout.write(out)
+                    if err: sys.stderr.write(err)
+                finally:
+                    output_lock.release()
+        except IOError as ioe:
+            if ioe.errno in [errno.EPIPE, error.EINVAL]:
+                break
+            else: raise
+        except KeyboardInterrupt:
+            break
+        line = input_queue.get()
+
+# ------------------------------------------------------------------------------
+def main():
+    """ The main entry point.
+    """
+
+    arg_parser = make_argument_parser()
+    options = arg_parser.parse_args()
+    input_queue = multiprocessing.Queue()
+    output_lock = multiprocessing.Lock()
+
+    try:
+        tasks = []
+        for job in range(options.job_count):
+            t = multiprocessing.Process(
+                target=interpret_input,
+                args=(job, options, input_queue, output_lock)
+            )
+            t.start()
+            tasks.append(t)
+
+        for inp in options.inputs:
+            while True:
+                line = inp.readline()
+                if not line:
+                    break;
+                input_queue.put(line)
+
+        for t in tasks:
+            input_queue.put(None)
+            
+
+        input_queue.close()
+        input_queue.join_thread()
+
+        for t in tasks:
+            t.join()
+    except KeyboardInterrupt:
+        pass
+
+    return 0
+
+# ------------------------------------------------------------------------------
+if __name__ == "__main__":
+    sys.exit(main())
+
