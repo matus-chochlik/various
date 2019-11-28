@@ -34,10 +34,12 @@ class ClangTidyCacheOpts(object):
 
     # --------------------------------------------------------------------------
     def should_print_dir(self):
-        return self._original_args[0] == "--cache-dir"
+        try: return self._original_args[0] == "--cache-dir"
+        except IndexError: return False
     # --------------------------------------------------------------------------
     def should_remove_dir(self):
-        return self._original_args[0] == "--clean"
+        try: return self._original_args[0] == "--clean"
+        except IndexError: return False
     # --------------------------------------------------------------------------
     def original_args(self):
         return self._original_args
@@ -97,7 +99,11 @@ def make_path(opts, digest):
     )
 # ------------------------------------------------------------------------------
 def is_cached(opts, digest):
-    return os.path.isfile(make_path(opts, digest))
+    path = make_path(opts, digest)
+    if os.path.isfile(path):
+        os.utime(path, None)
+        return True
+    return False
 # ------------------------------------------------------------------------------
 def store_in_cache(opts, digest):
     p = make_path(opts, digest)
