@@ -11,6 +11,9 @@ import argparse
 import multiprocessing
 
 # ------------------------------------------------------------------------------
+def mix(b, i, f):
+    return (1.0-f)*b + f*i
+# ------------------------------------------------------------------------------
 def inverse_logistic(x):
     eps = 0.001
     return math.log(max(x, eps)) - math.log(max(1.0 - x, eps ))
@@ -190,7 +193,6 @@ class RandomCellOffsets(Randomized):
 class ImageContourCellOffsets(object):
     # --------------------------------------------------------------------------
     def _gen_offsets(self, im, bg, w, h):
-        _mix = lambda b, i, f: (1.0-f)*b + f*i
 
         def _distmod(x, y):
             d = abs(x - y)
@@ -251,7 +253,7 @@ class ImageContourCellOffsets(object):
                 nx = 0.5 + 0.5*nx
                 ny = 0.5 + 0.5*ny
                 bx, by = bg.get(x, y)
-                row.append((_mix(bx, nx, dispw), _mix(by, ny, dispw)))
+                row.append((mix(bx, nx, dispw), mix(by, ny, dispw)))
 
             cell_data.append(row)
         return cell_data
@@ -266,6 +268,30 @@ class ImageContourCellOffsets(object):
     def get(self, x, y):
         return self._offsets[y][x]
 
+# ------------------------------------------------------------------------------
+class HoneycombXCellOffsets(object):
+    # --------------------------------------------------------------------------
+    def __init__(self, options, bg, w, h):
+        self._fact_x = 0.8
+        self._fact_y = 0.9
+        self._bg = bg
+    # --------------------------------------------------------------------------
+    def get(self, x, y):
+        hx, hy = (0.5, 0.0 if x % 2 == 0 else 0.5)
+        bx, by = self._bg.get(x, y)
+        return (mix(bx, hx, self._fact_x), mix(by, hy, self._fact_y))
+# ------------------------------------------------------------------------------
+class HoneycombYCellOffsets(object):
+    # --------------------------------------------------------------------------
+    def __init__(self, options, bg, w, h):
+        self._fact_x = 0.9
+        self._fact_y = 0.8
+        self._bg = bg
+    # --------------------------------------------------------------------------
+    def get(self, x, y):
+        hx, hy = (0.0 if y % 2 == 0 else 0.5, 0.5)
+        bx, by = self._bg.get(x, y)
+        return (mix(bx, hx, self._fact_x), mix(by, hy, self._fact_y))
 # ------------------------------------------------------------------------------
 class VoronoiArgumentParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
@@ -391,6 +417,14 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
             choices=["full", "scaled", "flagstone","pebble"],
             action="store",
             default="full"
+        )
+
+        self.add_argument(
+            '--offs-mode', '-O',
+            type=str,
+            choices=["default", "honeycomb-x", "honeycomb-y"],
+            action="store",
+            default="default"
         )
 
         self.add_argument(
@@ -558,18 +592,37 @@ class Renderer(Randomized):
         self.cell_values = RandomCellValues(
             self,
             self.x_cells,
-            self.y_cells)
+            self.y_cells
+        )
 
-        self.cell_offsets = ImageContourCellOffsets(
+        rco = RandomCellOffsets(
             self,
-            RandomCellOffsets(
-                self,
-                self.x_cells,
-                self.y_cells
-            ),
             self.x_cells,
             self.y_cells
         )
+
+
+        if self.offs_mode == "honeycomb-x":
+            self.cell_offsets = HoneycombXCellOffsets(
+                self,
+                rco,
+                self.x_cells,
+                self.y_cells
+            )
+        elif self.offs_mode == "honeycomb-y":
+            self.cell_offsets = HoneycombYCellOffsets(
+                self,
+                rco,
+                self.x_cells,
+                self.y_cells
+            )
+        else:
+            self.cell_offsets = ImageContourCellOffsets(
+                self,
+                rco,
+                self.x_cells,
+                self.y_cells
+            )
 
         self.values = dict()
         self.values["width"] = self.width
