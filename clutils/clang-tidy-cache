@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # coding: UTF-8
-#  Copyright (c) 2019 Matus Chochlik
+#  Copyright (c) 2019-2020 Matus Chochlik
 
 import os
 import sys
@@ -9,6 +9,7 @@ import shutil
 import getpass
 import logging
 import hashlib
+import requests
 import tempfile
 import subprocess
 
@@ -19,6 +20,8 @@ class ClangTidyCacheOpts(object):
         self._original_args = args
         self._clang_tidy_args = None
         self._compiler_args = None
+
+        self._strip_list = os.getenv("CTCACHE_STRIP", "").split(':')
 
         for i in range(len(args)):
             if args[i] == "--":
@@ -58,6 +61,18 @@ class ClangTidyCacheOpts(object):
                 "ctcache-"+getpass.getuser()
             )
         )
+    # --------------------------------------------------------------------------
+    def adjust_chunk(self, x):
+        for item in self._strip_list:
+            x = x.replace(item, '')
+        return x.encode("utf8")
+    # --------------------------------------------------------------------------
+    def rest_host(self):
+        return os.getenv("CTCACHE_HOST", "localhost")
+
+    # --------------------------------------------------------------------------
+    def rest_port(self):
+        return int(os.getenv("CTCACHE_PORT", 5000))
 
 # ------------------------------------------------------------------------------
 def hash_inputs(opts):
@@ -79,9 +94,11 @@ def hash_inputs(opts):
     result.update(stdout)
 
     for arg in co_args:
-        result.update(arg.encode("utf8"))
+        chunk = opts.adjust_chunk(arg)
+        result.update(chunk)
     for arg in ct_args:
-        result.update(arg.encode("utf8"))
+        chunk = opts.adjust_chunk(arg)
+        result.update(chunk)
 
     return result.hexdigest()
 # ------------------------------------------------------------------------------
@@ -98,14 +115,39 @@ def make_path(opts, digest):
         digest[2:]
     )
 # ------------------------------------------------------------------------------
+def make_query_url(opts, digest):
+    return "http://%(host)s:%(port)d/is_cached/%(digest)s" % {
+        "host": opts.rest_host(),
+        "port": opts.rest_port(),
+        "digest": digest
+    }
+# ------------------------------------------------------------------------------
+def make_store_url(opts, digest):
+    return "http://%(host)s:%(port)d/cache/%(digest)s" % {
+        "host": opts.rest_host(),
+        "port": opts.rest_port(),
+        "digest": digest
+    }
+# ------------------------------------------------------------------------------
 def is_cached(opts, digest):
     path = make_path(opts, digest)
     if os.path.isfile(path):
         os.utime(path, None)
         return True
+    try:
+        query = requests.get(make_query_url(opts, digest), timeout=2)
+        if query.status_code == 200:
+            if query.json() == True:
+                return True
+    except: pass
     return False
 # ------------------------------------------------------------------------------
 def store_in_cache(opts, digest):
+    try:
+        query = requests.get(make_store_url(opts, digest), timeout=2)
+        if query.status_code == 200:
+            return
+    except: pass
     p = make_path(opts, digest)
     mkdir_p(os.path.dirname(p))
     open(p, "w").close()
