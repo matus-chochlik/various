@@ -8,7 +8,7 @@ import json
 import time
 import gzip
 import flask
-import argparse 
+import argparse
 
 # ------------------------------------------------------------------------------
 class ArgumentParser(argparse.ArgumentParser):
@@ -24,6 +24,15 @@ class ArgumentParser(argparse.ArgumentParser):
                 self.error("'%f' is not a valid save interval" % (p))
             except TypeError:
                 self.error("save interval must be a numeric value" )
+
+        def cleanup_interval(x):
+            try:
+                p = float(x)
+                if (p > 1.0):
+                    return p
+                self.error("'%f' is not a valid cleanup interval" % (p))
+            except TypeError:
+                self.error("cleanup interval must be a numeric value" )
 
         def port_number(x):
             try:
@@ -42,7 +51,7 @@ class ArgumentParser(argparse.ArgumentParser):
             default=None,
             help="""
             Specifies the port number (5000) by default.
-            """ 
+            """
         )
 
         self.add_argument(
@@ -53,7 +62,7 @@ class ArgumentParser(argparse.ArgumentParser):
             default=os.path.join(os.path.expanduser("~"), ".ctcache_db"),
             help="""
             Specifies the path to the persistent save file.
-            """ 
+            """
         )
 
         self.add_argument(
@@ -63,8 +72,19 @@ class ArgumentParser(argparse.ArgumentParser):
             type=save_interval,
             default=600,
             help="""
-            Specifies the save time interval.
-            """ 
+            Specifies the save time interval in seconds.
+            """
+        )
+
+        self.add_argument(
+            "--cleanup-interval", "-C",
+            dest="cleanup_interval",
+            metavar="NUMBER",
+            type=cleanup_interval,
+            default=60,
+            help="""
+            Specifies the cleanup time interval in seconds.
+            """
         )
 
     # -------------------------------------------------------------------------
@@ -87,12 +107,16 @@ def get_argument_parser():
 class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def __init__(self, options):
+        self._cleanup_count = 0
         self._hits_count = 0
         self._miss_count = 0
         self._cached = dict()
         self._save_path = options.save_path
         self._save_interval = options.save_interval
+        self._cleanup_interval = options.cleanup_interval
+        #
         self._save_time = time.time()
+        self._cleanup_time = time.time()
         #
         self._hash_re = re.compile(r'^[0-9a-fA-F]{40}$')
         #
@@ -103,6 +127,30 @@ class ClangTidyCache(object):
         if self.saved_seconds_ago() > self._save_interval:
             self.do_save()
             self._save_time = time.time()
+        if self.cleaned_seconds_ago() > self._cleanup_interval:
+            self.do_cleanup()
+            self._cleanup_time = time.time()
+
+    # --------------------------------------------------------------------------
+    def keep_cached(self, hashstr, info):
+        hit_count = info["hits"]
+        kept_days = (time.time() - info["insert_time"]) / (24*3600)
+        unused_days = (time.time() - info["access_time"]) / (24*3600)
+        #
+        if (kept_days > 30) or (kept_days > hit_count*3):
+            return False
+        if (unused_days > 7) or (unused_days > hit_count*2):
+            return False
+        return True
+
+    # --------------------------------------------------------------------------
+    def do_cleanup(self):
+        self._cached = {
+            hashstr: info
+            for hashstr, info\
+            in self._cached.items()\
+            if self.keep_cached(hashstr, info)
+        }
 
     # --------------------------------------------------------------------------
     def do_load(self):
@@ -151,6 +199,7 @@ class ClangTidyCache(object):
         try:
             self._cached[hashstr]["hits"] += 1
             self._hits_count += 1
+            self.maintain()
             return True
         except KeyError:
             self._miss_count += 1
@@ -159,6 +208,14 @@ class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def saved_seconds_ago(self):
         return time.time() - self._save_time
+
+    # --------------------------------------------------------------------------
+    def cleaned_seconds_ago(self):
+        return time.time() - self._cleanup_time
+
+    # --------------------------------------------------------------------------
+    def save_path(self):
+        return self._save_path
 
     # --------------------------------------------------------------------------
     def cached_count(self):
@@ -226,6 +283,8 @@ def ctc_status_miss_rate():
 def ctc_status():
     stat_getters = {
         "saved_seconds_ago": clang_tidy_cache.saved_seconds_ago,
+        "cleaned_seconds_ago": clang_tidy_cache.cleaned_seconds_ago,
+        "save_path": clang_tidy_cache.save_path,
         "hit_count": clang_tidy_cache.hit_count,
         "hit_rate": clang_tidy_cache.hit_rate,
         "miss_count": clang_tidy_cache.miss_count,
@@ -248,5 +307,9 @@ if __name__ == "__main__":
     argparser = get_argument_parser()
     options = argparser.parse_args()
     clang_tidy_cache = ClangTidyCache(options)
-    ctcache_app.run(debug=False, port=options.port_number)
+    ctcache_app.run(
+        debug=False,
+        host="0.0.0.0",
+        port=options.port_number
+    )
 # ------------------------------------------------------------------------------
