@@ -19,20 +19,20 @@ class ArgumentParser(argparse.ArgumentParser):
         def save_interval(x):
             try:
                 p = float(x)
-                if (p > 10.0):
+                if (p >= 10.0):
                     return p
                 self.error("'%f' is not a valid save interval" % (p))
             except TypeError:
-                self.error("save interval must be a numeric value" )
+                self.error("save interval must be a numeric value not less than 10")
 
         def cleanup_interval(x):
             try:
                 p = float(x)
-                if (p > 1.0):
+                if (p >= 1.0):
                     return p
                 self.error("'%f' is not a valid cleanup interval" % (p))
             except TypeError:
-                self.error("cleanup interval must be a numeric value" )
+                self.error("cleanup interval must be a numeric value not less than 1")
 
         def port_number(x):
             try:
@@ -59,7 +59,7 @@ class ArgumentParser(argparse.ArgumentParser):
             dest="save_path",
             metavar="NUMBER",
             type=os.path.realpath,
-            default=os.path.join(os.path.expanduser("~"), ".ctcache_db"),
+            default=os.path.join(os.path.expanduser("~"), ".cache", "ctcache.json.gz"),
             help="""
             Specifies the path to the persistent save file.
             """
@@ -84,6 +84,16 @@ class ArgumentParser(argparse.ArgumentParser):
             default=60,
             help="""
             Specifies the cleanup time interval in seconds.
+            """
+        )
+
+        self.add_argument(
+            "--debug", "-D",
+            dest="debug_mode",
+            action="store_true",
+            default=False,
+            help="""
+            Starts the service in debug mode.
             """
         )
 
@@ -137,9 +147,9 @@ class ClangTidyCache(object):
         kept_days = (time.time() - info["insert_time"]) / (24*3600)
         unused_days = (time.time() - info["access_time"]) / (24*3600)
         #
-        if (kept_days > 30) or (kept_days > hit_count*3):
+        if (kept_days > 30) or (kept_days > hit_count*5):
             return False
-        if (unused_days > 7) or (unused_days > hit_count*2):
+        if (unused_days > 7) or (unused_days > hit_count*3):
             return False
         return True
 
@@ -243,6 +253,34 @@ class ClangTidyCache(object):
         except ZeroDivisionError:
             return None
 
+    # --------------------------------------------------------------------------
+    def hit_count_histogram(self):
+        result = dict()
+        for hashstr, info in self._cached.items():
+            try:
+                hit_count = info["hits"]
+                try:
+                    result[hit_count] += 1
+                except KeyError:
+                    result[hit_count] = 1
+            except: pass
+
+        return result
+
+    # --------------------------------------------------------------------------
+    def age_days_histogram(self):
+        result = dict()
+        for hashstr, info in self._cached.items():
+            try:
+                age_days = round((time.time() - info["insert_time"]) / (24*3600))
+                try:
+                    result[age_days] += 1
+                except KeyError:
+                    result[age_days] = 1
+            except: pass
+
+        return result
+
 # ------------------------------------------------------------------------------
 clang_tidy_cache = None
 ctcache_app = flask.Flask("clang-tidy-cache")
@@ -289,7 +327,9 @@ def ctc_status():
         "hit_rate": clang_tidy_cache.hit_rate,
         "miss_count": clang_tidy_cache.miss_count,
         "miss_rate": clang_tidy_cache.miss_rate,
-        "cached_count": clang_tidy_cache.cached_count
+        "cached_count": clang_tidy_cache.cached_count,
+        "age_days_histogram": clang_tidy_cache.age_days_histogram,
+        "hit_count_histogram": clang_tidy_cache.hit_count_histogram
     }
     stat_values = {}
     for key, getter in stat_getters.items():
@@ -299,7 +339,10 @@ def ctc_status():
         if value is None:
             stat_values[key] = "N/A"
         else:
-            stat_values[key] = value
+            if type(value) is float:
+                stat_values[key] = round(value, 2)
+            else:
+                stat_values[key] = value
 
     return json.dumps(stat_values)
 # ------------------------------------------------------------------------------
@@ -308,7 +351,7 @@ if __name__ == "__main__":
     options = argparser.parse_args()
     clang_tidy_cache = ClangTidyCache(options)
     ctcache_app.run(
-        debug=False,
+        debug=options.debug_mode,
         host="0.0.0.0",
         port=options.port_number
     )
