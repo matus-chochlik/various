@@ -4,11 +4,15 @@
 
 import os
 import re
+import io
+import math
 import json
 import time
 import gzip
 import flask
 import argparse
+import matplotlib.pyplot as plt
+import matplotlib.ticker as pltckr
 
 # ------------------------------------------------------------------------------
 class ArgumentParser(argparse.ArgumentParser):
@@ -117,7 +121,7 @@ def get_argument_parser():
 class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def __init__(self, options):
-        self._cleanup_count = 0
+        self._cleaned_count = 0
         self._hits_count = 0
         self._miss_count = 0
         self._cached = dict()
@@ -155,12 +159,15 @@ class ClangTidyCache(object):
 
     # --------------------------------------------------------------------------
     def do_cleanup(self):
+        before = len(self._cached)
         self._cached = {
             hashstr: info
             for hashstr, info\
             in self._cached.items()\
             if self.keep_cached(hashstr, info)
         }
+        after = len(self._cached)
+        self._cleaned_count += (before - after)
 
     # --------------------------------------------------------------------------
     def do_load(self):
@@ -207,7 +214,9 @@ class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def is_cached(self, hashstr):
         try:
-            self._cached[hashstr]["hits"] += 1
+            info = self._cached[hashstr]
+            info["access_time"] = time.time()
+            info["hits"] += 1
             self._hits_count += 1
             self.maintain()
             return True
@@ -230,6 +239,10 @@ class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def cached_count(self):
         return len(self._cached)
+
+    # --------------------------------------------------------------------------
+    def cleaned_count(self):
+        return self._cleaned_count
 
     # --------------------------------------------------------------------------
     def hit_count(self):
@@ -281,6 +294,75 @@ class ClangTidyCache(object):
 
         return result
 
+    # --------------------------------------------------------------------------
+    def _format_time(self, s, pos=None):
+        if s < 60:
+            return "%ds" % (s)
+        if s < 3600:
+            return "%dm %ds" % (s / 60, s % 60)
+        if s < 86400:
+            return "%dh %dm" % (s / 3600, (s / 60) % 60)
+        if s < 604800:
+            return "%dd %dh" % (s / 86400, (s / 3600) % 24)
+        return "%d [wk]" % (s / 604800)
+
+    # --------------------------------------------------------------------------
+    def age_hits_scatter_svg(self):
+
+        data = {
+            "insert": [],
+            "access": [],
+            "color": [],
+            "alpha": [],
+            "hits": []
+        }
+
+        now = time.time()
+        l = len(self._cached)
+        for hashstr, info in self._cached.items():
+            try:
+                if (now - info["access_time"]) >= 30:
+                    data["insert"].append((now - info["insert_time"]))
+                    data["access"].append((now - info["access_time"]))
+                    data["color"].append(hash(hashstr) % l)
+                    data["hits"].append(math.sqrt(info["hits"]*2.0))
+            except: pass
+
+        fig, spl = plt.subplots()
+        fig.set_size_inches(10, 10)
+        spl.set_xscale("log")
+        spl.set_yscale("log")
+        spl.xaxis.set_minor_formatter(pltckr.NullFormatter())
+        spl.xaxis.set_major_formatter(pltckr.FuncFormatter(self._format_time))
+        spl.yaxis.set_major_formatter(pltckr.NullFormatter())
+        spl.yaxis.set_minor_formatter(pltckr.FuncFormatter(self._format_time))
+        spl.xaxis.set_tick_params(labelrotation=90)
+        spl.set_ylabel("last access ago")
+        spl.set_xlabel("inserted ago")
+        spl.grid(which="both", axis="both", alpha=0.2)
+        spl.scatter(
+            x="insert",
+            y="access",
+            c="color",
+            s="hits",
+            data=data,
+            label="Hit count"
+        )
+        spl.legend()
+        del data
+
+        output = io.BytesIO()
+        plt.savefig(
+            output,
+            transparent=True,
+            format="svg"
+        )
+        fig.clear()
+        plt.close(fig)
+        output.seek(0)
+
+        return output
+
 # ------------------------------------------------------------------------------
 clang_tidy_cache = None
 ctcache_app = flask.Flask("clang-tidy-cache")
@@ -300,6 +382,10 @@ def ctc_is_cached(hashstr):
 @ctcache_app.route("/stats/cached_count")
 def ctc_status_cached_count():
     return str(clang_tidy_cache.cached_count())
+# ------------------------------------------------------------------------------
+@ctcache_app.route("/stats/cleaned_count")
+def ctc_status_cleaned_count():
+    return str(clang_tidy_cache.cleaned_count())
 # ------------------------------------------------------------------------------
 @ctcache_app.route("/stats/hit_count")
 def ctc_status_hit_count():
@@ -328,6 +414,7 @@ def ctc_status():
         "miss_count": clang_tidy_cache.miss_count,
         "miss_rate": clang_tidy_cache.miss_rate,
         "cached_count": clang_tidy_cache.cached_count,
+        "cleaned_count": clang_tidy_cache.cleaned_count,
         "age_days_histogram": clang_tidy_cache.age_days_histogram,
         "hit_count_histogram": clang_tidy_cache.hit_count_histogram
     }
@@ -345,6 +432,16 @@ def ctc_status():
                 stat_values[key] = value
 
     return json.dumps(stat_values)
+# ------------------------------------------------------------------------------
+@ctcache_app.route("/image/age_hits_scatter.svg")
+def ctc_image_age_hits_scatter():
+    try:
+        return flask.send_file(
+            clang_tidy_cache.age_hits_scatter_svg(),
+            mimetype="image/svg+xml"
+        )
+    except Exception as error:
+        return str(error)
 # ------------------------------------------------------------------------------
 if __name__ == "__main__":
     argparser = get_argument_parser()
