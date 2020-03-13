@@ -285,7 +285,7 @@ class ClangTidyCache(object):
         result = dict()
         for hashstr, info in self._cached.items():
             try:
-                age_days = round((time.time() - info["insert_time"]) / (24*3600))
+                age_days = int(round((time.time() - info["insert_time"]) / (24*3600)))
                 try:
                     result[age_days] += 1
                 except KeyError:
@@ -325,7 +325,7 @@ class ClangTidyCache(object):
                     data["insert"].append((now - info["insert_time"]))
                     data["access"].append((now - info["access_time"]))
                     data["color"].append(hash(hashstr) % l)
-                    data["hits"].append(math.sqrt(info["hits"]*2.0))
+                    data["hits"].append((info["hits"]*10.0))
             except: pass
 
         fig, spl = plt.subplots()
@@ -350,6 +350,66 @@ class ClangTidyCache(object):
         )
         spl.legend()
         del data
+
+        output = io.BytesIO()
+        plt.savefig(
+            output,
+            transparent=True,
+            format="svg"
+        )
+        fig.clear()
+        plt.close(fig)
+        output.seek(0)
+
+        return output
+
+    # --------------------------------------------------------------------------
+    def hits_histogram_svg(self):
+
+        fig, spl = plt.subplots()
+        fig.set_size_inches(10, 10)
+
+        x = []
+        y = []
+
+        for hits, count in self.hit_count_histogram().items():
+            x.append(hits)
+            y.append(count)
+
+        spl.set_ylabel("number of hashes")
+        spl.set_xlabel("number of hits")
+        spl.grid(which="major", axis="y", alpha=0.2)
+        spl.bar(x, y)
+
+        output = io.BytesIO()
+        plt.savefig(
+            output,
+            transparent=True,
+            format="svg"
+        )
+        fig.clear()
+        plt.close(fig)
+        output.seek(0)
+
+        return output
+
+    # --------------------------------------------------------------------------
+    def age_histogram_svg(self):
+
+        fig, spl = plt.subplots()
+        fig.set_size_inches(10, 10)
+
+        x = []
+        y = []
+
+        for hits, count in self.age_days_histogram().items():
+            x.append(hits)
+            y.append(count)
+
+        spl.set_ylabel("number of days")
+        spl.set_xlabel("number of hits")
+        spl.grid(which="major", axis="y", alpha=0.2)
+        spl.bar(x, y)
 
         output = io.BytesIO()
         plt.savefig(
@@ -438,6 +498,26 @@ def ctc_image_age_hits_scatter():
     try:
         return flask.send_file(
             clang_tidy_cache.age_hits_scatter_svg(),
+            mimetype="image/svg+xml"
+        )
+    except Exception as error:
+        return str(error)
+# ------------------------------------------------------------------------------
+@ctcache_app.route("/image/hits_histogram.svg")
+def ctc_image_hits_histogram():
+    try:
+        return flask.send_file(
+            clang_tidy_cache.hits_histogram_svg(),
+            mimetype="image/svg+xml"
+        )
+    except Exception as error:
+        return str(error)
+# ------------------------------------------------------------------------------
+@ctcache_app.route("/image/age_histogram.svg")
+def ctc_image_age_histogram():
+    try:
+        return flask.send_file(
+            clang_tidy_cache.age_histogram_svg(),
             mimetype="image/svg+xml"
         )
     except Exception as error:
