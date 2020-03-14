@@ -135,7 +135,7 @@ def is_cached(opts, digest):
         os.utime(path, None)
         return True
     try:
-        query = requests.get(make_query_url(opts, digest), timeout=2)
+        query = requests.get(make_query_url(opts, digest), timeout=3)
         if query.status_code == 200:
             if query.json() == True:
                 return True
@@ -144,7 +144,7 @@ def is_cached(opts, digest):
 # ------------------------------------------------------------------------------
 def store_in_cache(opts, digest):
     try:
-        query = requests.get(make_store_url(opts, digest), timeout=2)
+        query = requests.get(make_store_url(opts, digest), timeout=3)
         if query.status_code == 200:
             return
     except: pass

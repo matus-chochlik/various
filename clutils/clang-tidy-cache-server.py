@@ -253,6 +253,15 @@ class ClangTidyCache(object):
         return self._miss_count
 
     # --------------------------------------------------------------------------
+    def total_hit_rate(self):
+        try:
+            hits = sum(i["hits"] - 1 for h, i in self._cached.items())
+            total = sum(i["hits"] for h, i in self._cached.items())
+            return hits / total
+        except ZeroDivisionError:
+            return None
+
+    # --------------------------------------------------------------------------
     def hit_rate(self):
         try:
             return self._hits_count / (self._hits_count + self._miss_count)
@@ -328,18 +337,27 @@ class ClangTidyCache(object):
                     data["hits"].append((info["hits"]*10.0))
             except: pass
 
+        tick_maj_loc = pltckr.LogLocator(base=60.0)
+        tick_min_loc = pltckr.MultipleLocator(base=3600.0)
+        tick_maj_fmt = pltckr.FuncFormatter(self._format_time)
+        tick_min_fmt = pltckr.NullFormatter()
+
         fig, spl = plt.subplots()
         fig.set_size_inches(10, 10)
         spl.set_xscale("log")
         spl.set_yscale("log")
-        spl.xaxis.set_minor_formatter(pltckr.NullFormatter())
-        spl.xaxis.set_major_formatter(pltckr.FuncFormatter(self._format_time))
-        spl.yaxis.set_major_formatter(pltckr.NullFormatter())
-        spl.yaxis.set_minor_formatter(pltckr.FuncFormatter(self._format_time))
+        spl.xaxis.set_minor_locator(tick_min_loc)
+        spl.xaxis.set_major_locator(tick_maj_loc)
+        spl.yaxis.set_minor_locator(tick_min_loc)
+        spl.yaxis.set_major_locator(tick_maj_loc)
+        spl.xaxis.set_minor_formatter(tick_min_fmt)
+        spl.xaxis.set_major_formatter(tick_maj_fmt)
+        spl.yaxis.set_minor_formatter(tick_min_fmt)
+        spl.yaxis.set_major_formatter(tick_maj_fmt)
         spl.xaxis.set_tick_params(labelrotation=90)
         spl.set_ylabel("last access ago")
         spl.set_xlabel("inserted ago")
-        spl.grid(which="both", axis="both", alpha=0.2)
+        spl.grid(which="both", axis="both", alpha=0.3)
         spl.scatter(
             x="insert",
             y="access",
@@ -469,6 +487,7 @@ def ctc_status():
         "saved_seconds_ago": clang_tidy_cache.saved_seconds_ago,
         "cleaned_seconds_ago": clang_tidy_cache.cleaned_seconds_ago,
         "save_path": clang_tidy_cache.save_path,
+        "total_hit_rate": clang_tidy_cache.total_hit_rate,
         "hit_count": clang_tidy_cache.hit_count,
         "hit_rate": clang_tidy_cache.hit_rate,
         "miss_count": clang_tidy_cache.miss_count,
@@ -481,7 +500,7 @@ def ctc_status():
     stat_values = {}
     for key, getter in stat_getters.items():
         try: value = getter()
-        except: value = None
+        except Exception as error: value = str(error)
 
         if value is None:
             stat_values[key] = "N/A"
