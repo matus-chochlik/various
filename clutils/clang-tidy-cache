@@ -61,11 +61,15 @@ class ClangTidyCacheOpts(object):
                 "ctcache-"+getpass.getuser()
             )
         )
+
     # --------------------------------------------------------------------------
     def adjust_chunk(self, x):
+        if os.path.exists(x):
+            x = os.path.realpath(x)
         for item in self._strip_list:
             x = x.replace(item, '')
         return x.encode("utf8")
+
     # --------------------------------------------------------------------------
     def rest_host(self):
         return os.getenv("CTCACHE_HOST", "localhost")
@@ -75,13 +79,27 @@ class ClangTidyCacheOpts(object):
         return int(os.getenv("CTCACHE_PORT", 5000))
 
 # ------------------------------------------------------------------------------
+class ClangTidyCacheHash(object):
+    # --------------------------------------------------------------------------
+    def __init__(self):
+        self._hash = hashlib.sha1()
+
+    # --------------------------------------------------------------------------
+    def update(self, content):
+        self._hash.update(content)
+
+    # --------------------------------------------------------------------------
+    def hexdigest(self):
+        return self._hash.hexdigest()
+
+# ------------------------------------------------------------------------------
 def hash_inputs(opts):
     co_args = opts.compiler_args()
     ct_args = opts.compiler_args()
     if not co_args and not ct_args:
         return None
 
-    result = hashlib.sha1()
+    result = ClangTidyCacheHash()
 
     proc = subprocess.Popen(
         co_args,
@@ -91,13 +109,13 @@ def hash_inputs(opts):
     stdout, stderr = proc.communicate()
     if stderr: return None
 
-    result.update(stdout)
-
-    for arg in co_args:
-        chunk = opts.adjust_chunk(arg)
+    for line in stdout.splitlines():
+        chunk = opts.adjust_chunk(line.decode("ascii"))
         result.update(chunk)
-    for arg in ct_args:
-        chunk = opts.adjust_chunk(arg)
+
+    for chunk in set([opts.adjust_chunk(arg) for arg in co_args]):
+        result.update(chunk)
+    for chunk in set([opts.adjust_chunk(arg) for arg in ct_args]):
         result.update(chunk)
 
     return result.hexdigest()
