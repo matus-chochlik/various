@@ -126,9 +126,9 @@ def hash_inputs(opts):
         chunk = opts.adjust_chunk(line.decode("ascii"))
         result.update(chunk)
 
-    for chunk in set([opts.adjust_chunk(arg) for arg in co_args]):
+    for chunk in sorted(set([opts.adjust_chunk(arg) for arg in co_args])):
         result.update(chunk)
-    for chunk in set([opts.adjust_chunk(arg) for arg in ct_args]):
+    for chunk in sorted(set([opts.adjust_chunk(arg) for arg in ct_args])):
         result.update(chunk)
 
     return result.hexdigest()
