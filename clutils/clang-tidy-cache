@@ -68,7 +68,9 @@ class ClangTidyCacheOpts(object):
             x = os.path.realpath(x)
         for item in self._strip_list:
             x = x.replace(item, '')
-        return x.encode("utf8")
+        x.strip()
+        if x:
+            return x.encode("utf8")
 
     # --------------------------------------------------------------------------
     def rest_host(self):
@@ -83,10 +85,21 @@ class ClangTidyCacheHash(object):
     # --------------------------------------------------------------------------
     def __init__(self):
         self._hash = hashlib.sha1()
+        # self._dump = open("/tmp/ctc.log", "w+")
+        self._dump = None
+
+    # --------------------------------------------------------------------------
+    def __del__(self):
+        if self._dump:
+            self._dump.close()
 
     # --------------------------------------------------------------------------
     def update(self, content):
-        self._hash.update(content)
+        if content:
+            self._hash.update(content)
+            if self._dump:
+                self._dump.write(content.decode("ascii"))
+                self._dump.write("\n")
 
     # --------------------------------------------------------------------------
     def hexdigest(self):
