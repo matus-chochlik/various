@@ -107,8 +107,8 @@ class ClangTidyCacheHash(object):
 
 # ------------------------------------------------------------------------------
 def hash_inputs(opts):
-    co_args = opts.compiler_args()[1:]
-    ct_args = opts.compiler_args()[1:]
+    co_args = opts.compiler_args()
+    ct_args = opts.compiler_args()
     if not co_args and not ct_args:
         return None
 
@@ -126,9 +126,9 @@ def hash_inputs(opts):
         chunk = opts.adjust_chunk(line.decode("ascii"))
         result.update(chunk)
 
-    for chunk in sorted(set([opts.adjust_chunk(arg) for arg in co_args])):
+    for chunk in sorted(set([opts.adjust_chunk(arg) for arg in co_args[1:]])):
         result.update(chunk)
-    for chunk in sorted(set([opts.adjust_chunk(arg) for arg in ct_args])):
+    for chunk in sorted(set([opts.adjust_chunk(arg) for arg in ct_args[1:]])):
         result.update(chunk)
 
     return result.hexdigest()
