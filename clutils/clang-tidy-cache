@@ -107,8 +107,8 @@ class ClangTidyCacheHash(object):
 
 # ------------------------------------------------------------------------------
 def hash_inputs(opts):
-    co_args = opts.compiler_args()
-    ct_args = opts.compiler_args()
+    co_args = opts.compiler_args()[1:]
+    ct_args = opts.compiler_args()[1:]
     if not co_args and not ct_args:
         return None
 
