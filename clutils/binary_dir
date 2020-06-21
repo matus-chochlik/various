@@ -2,7 +2,7 @@
 # coding=utf-8
 #
 """
-Command returning paths to build directories corresponding to directories
+Command returning paths to build directories correspondind to directories
 in source code repositories with a BINARY_DIR file containing directory path.
 """
 import sys
