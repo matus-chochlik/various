@@ -52,7 +52,7 @@ class ArgumentParser(argparse.ArgumentParser):
             dest="port_number",
             metavar="NUMBER",
             type=port_number,
-            default=None,
+            default=5000,
             help="""
             Specifies the port number (5000) by default.
             """
@@ -334,7 +334,7 @@ class ClangTidyCache(object):
                     data["insert"].append((now - info["insert_time"]))
                     data["access"].append((now - info["access_time"]))
                     data["color"].append(hash(hashstr) % l)
-                    data["hits"].append((info["hits"]*10.0))
+                    data["hits"].append(math.log(info["hits"])*10.0)
             except: pass
 
         tick_maj_loc = pltckr.LogLocator(base=60.0)
@@ -546,9 +546,16 @@ if __name__ == "__main__":
     argparser = get_argument_parser()
     options = argparser.parse_args()
     clang_tidy_cache = ClangTidyCache(options)
-    ctcache_app.run(
-        debug=options.debug_mode,
-        host="0.0.0.0",
-        port=options.port_number
-    )
+    if options.debug_mode:
+        ctcache_app.run(
+            debug=True,
+            host="0.0.0.0",
+            port=options.port_number
+        )
+    else:
+        from gevent.pywsgi import WSGIServer
+        srvr = WSGIServer(("0.0.0.0", options.port_number), ctcache_app)
+        try: srvr.serve_forever()
+        except KeyboardInterrupt:
+            pass
 # ------------------------------------------------------------------------------
