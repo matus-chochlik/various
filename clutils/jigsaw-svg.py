@@ -51,6 +51,12 @@ def get_argument_parser():
     )
 
     argparser.add_argument(
+        '--border', '-B',
+        action="store_true",
+        default=False
+    )
+
+    argparser.add_argument(
         '--units', '-U',
         action="store",
         default="px"
@@ -171,14 +177,29 @@ class Options:
         return "#%02x%02x%02x" % (r, g, b)
 
     # --------------------------------------------------------------------------
-    def full_cell_element_str(self, x, y):
+    def outside_border(self, opts, x, y):
+        if opts.border:
+            return x < 0 or y < 0 or x >= self.xcells or y >= self.ycells
+        return False
+
+    # --------------------------------------------------------------------------
+    def full_cell_element_str(self, opts, x, y):
+        if self.outside_border(opts, x, y):
+            return
 
         val = self.cell_value(x, y)
 
-        sig_n = 1 if self.cell_value(x+0, y-1)>val else -1
-        sig_e = 1 if self.cell_value(x+1, y+0)>val else -1
-        sig_s = 1 if self.cell_value(x+0, y+1)>val else -1
-        sig_w = 1 if self.cell_value(x-1, y+0)>val else -1
+        if self.outside_border(opts, x+0, y-1): sig_n = 0
+        else: sig_n = 1 if self.cell_value(x+0, y-1)>val else -1
+
+        if self.outside_border(opts, x+1, y+0): sig_e = 0
+        else: sig_e = 1 if self.cell_value(x+1, y+0)>val else -1
+
+        if self.outside_border(opts, x+0, y+1): sig_s = 0
+        else: sig_s = 1 if self.cell_value(x+0, y+1)>val else -1
+
+        if self.outside_border(opts, x-1, y+0): sig_w = 0
+        else: sig_w = 1 if self.cell_value(x-1, y+0)>val else -1
 
         pathstr = "M%(x)d,%(y)d " % {"x": x, "y": y}
 
@@ -195,13 +216,17 @@ class Options:
             ]
 
         def get_curve_str(get_coord, s):
-            scaled = [(0.01*x, 0.01*y) for x,y in get_curve(get_coord, s)]
-            return " ".join(["%0.2f,%0.2f" % sc for sc in scaled])
+            if s == 0:
+                scaled = [get_coord(1, 0)]
+                return "l " + " ".join(["%0.2f,%0.2f" % sc for sc in scaled])
+            else:
+                scaled = [(0.01*x, 0.01*y) for x,y in get_curve(get_coord, s)]
+                return "c " + " ".join(["%0.2f,%0.2f" % sc for sc in scaled])
 
-        pathstr+= "c " + get_curve_str(lambda x, y: ( x, y), sig_n)
-        pathstr+= "c " + get_curve_str(lambda x, y: (-y, x), sig_e)
-        pathstr+= "c " + get_curve_str(lambda x, y: (-x,-y), sig_s)
-        pathstr+= "c " + get_curve_str(lambda x, y: ( y,-x), sig_w)
+        pathstr+= get_curve_str(lambda x, y: ( x, y), sig_n)
+        pathstr+= get_curve_str(lambda x, y: (-y, x), sig_e)
+        pathstr+= get_curve_str(lambda x, y: (-x,-y), sig_s)
+        pathstr+= get_curve_str(lambda x, y: ( y,-x), sig_w)
 
         pathstr+=" Z"
 
@@ -232,6 +257,8 @@ class Options:
 
         self.width = useropts.width
         self.height = useropts.height
+
+        self.border= useropts.border
 
         self.value_low = useropts.value_low
         self.value_high = useropts.value_high
@@ -277,7 +304,9 @@ def cell_color(opts, x, y):
 
 # ------------------------------------------------------------------------------
 def print_cell(opts, x, y):
-    opts.output.write(opts.cell_element_str(x, y))
+    svgpath = opts.cell_element_str(opts, x, y)
+    if svgpath:
+        opts.output.write(svgpath)
 
 # ------------------------------------------------------------------------------
 def make_cell(opts, x, y):
