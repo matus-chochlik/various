@@ -51,7 +51,7 @@ def get_argument_parser():
     )
 
     argparser.add_argument(
-        '--border', '-B',
+        '--repeated', '-R',
         action="store_true",
         default=False
     )
@@ -178,7 +178,7 @@ class Options:
 
     # --------------------------------------------------------------------------
     def outside_border(self, opts, x, y):
-        if opts.border:
+        if not opts.repeated:
             return x < 0 or y < 0 or x >= self.xcells or y >= self.ycells
         return False
 
@@ -258,7 +258,7 @@ class Options:
         self.width = useropts.width
         self.height = useropts.height
 
-        self.border= useropts.border
+        self.repeated= useropts.repeated
 
         self.value_low = useropts.value_low
         self.value_high = useropts.value_high
