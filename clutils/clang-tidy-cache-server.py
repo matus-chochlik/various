@@ -10,6 +10,7 @@ import json
 import time
 import gzip
 import flask
+import shutil
 import argparse
 import matplotlib.pyplot as plt
 import matplotlib.ticker as pltckr
@@ -61,7 +62,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.add_argument(
             "--save-path", "-S",
             dest="save_path",
-            metavar="NUMBER",
+            metavar="FILE-PATH.gz",
             type=os.path.realpath,
             default=os.path.join(os.path.expanduser("~"), ".cache", "ctcache.json.gz"),
             help="""
@@ -88,6 +89,17 @@ class ArgumentParser(argparse.ArgumentParser):
             default=60,
             help="""
             Specifies the cleanup time interval in seconds.
+            """
+        )
+
+        self.add_argument(
+            "--chart-path", "-G",
+            dest="chart_path",
+            metavar="DIR-PATH",
+            type=os.path.realpath,
+            default=None,
+            help="""
+            Specifies the path to a directory where charts should be stored.
             """
         )
 
@@ -128,6 +140,7 @@ class ClangTidyCache(object):
         self._save_path = options.save_path
         self._save_interval = options.save_interval
         self._cleanup_interval = options.cleanup_interval
+        self._chart_path = options.chart_path
         #
         self._save_time = time.time()
         self._cleanup_time = time.time()
@@ -143,6 +156,7 @@ class ClangTidyCache(object):
             self._save_time = time.time()
         if self.cleaned_seconds_ago() > self._cleanup_interval:
             self.do_cleanup()
+            self.do_save_charts()
             self._cleanup_time = time.time()
 
     # --------------------------------------------------------------------------
@@ -192,6 +206,20 @@ class ClangTidyCache(object):
                 json.dump(self._cached, dbf)
         except:
             pass
+
+    # --------------------------------------------------------------------------
+    def do_save_charts(self):
+        if self._chart_path is not None and os.path.isdir(self._chart_path):
+            try:
+                with self.hits_histogram_img("png") as imgb:
+                    path = os.path.join(
+                        self._chart_path,
+                        "ctcache-hits-%012d.png" % time.time()
+                    )
+                    with open(path, 'wb') as imgf:
+                        shutil.copyfileobj(imgb, imgf)
+            except Exception as err:
+                pass
 
     # --------------------------------------------------------------------------
     def is_valid_hash(self, hashstr):
@@ -316,7 +344,7 @@ class ClangTidyCache(object):
         return "%d [wk]" % (s / 604800)
 
     # --------------------------------------------------------------------------
-    def age_hits_scatter_svg(self):
+    def age_hits_scatter_img(self, imgfmt="svg"):
 
         data = {
             "insert": [],
@@ -373,7 +401,7 @@ class ClangTidyCache(object):
         plt.savefig(
             output,
             transparent=True,
-            format="svg"
+            format=imgfmt
         )
         fig.clear()
         plt.close(fig)
@@ -382,7 +410,7 @@ class ClangTidyCache(object):
         return output
 
     # --------------------------------------------------------------------------
-    def hits_histogram_svg(self):
+    def hits_histogram_img(self, imgfmt="svg"):
 
         fig, spl = plt.subplots()
         fig.set_size_inches(10, 10)
@@ -403,7 +431,7 @@ class ClangTidyCache(object):
         plt.savefig(
             output,
             transparent=True,
-            format="svg"
+            format=imgfmt
         )
         fig.clear()
         plt.close(fig)
@@ -412,7 +440,7 @@ class ClangTidyCache(object):
         return output
 
     # --------------------------------------------------------------------------
-    def age_histogram_svg(self):
+    def age_histogram_img(self, imgfmt="svg"):
 
         fig, spl = plt.subplots()
         fig.set_size_inches(10, 10)
@@ -433,7 +461,7 @@ class ClangTidyCache(object):
         plt.savefig(
             output,
             transparent=True,
-            format="svg"
+            format=imgfmt
         )
         fig.clear()
         plt.close(fig)
@@ -516,7 +544,7 @@ def ctc_status():
 def ctc_image_age_hits_scatter():
     try:
         return flask.send_file(
-            clang_tidy_cache.age_hits_scatter_svg(),
+            clang_tidy_cache.age_hits_scatter_img(),
             mimetype="image/svg+xml"
         )
     except Exception as error:
@@ -526,7 +554,7 @@ def ctc_image_age_hits_scatter():
 def ctc_image_hits_histogram():
     try:
         return flask.send_file(
-            clang_tidy_cache.hits_histogram_svg(),
+            clang_tidy_cache.hits_histogram_img(),
             mimetype="image/svg+xml"
         )
     except Exception as error:
@@ -536,7 +564,7 @@ def ctc_image_hits_histogram():
 def ctc_image_age_histogram():
     try:
         return flask.send_file(
-            clang_tidy_cache.age_histogram_svg(),
+            clang_tidy_cache.age_histogram_img(),
             mimetype="image/svg+xml"
         )
     except Exception as error:
