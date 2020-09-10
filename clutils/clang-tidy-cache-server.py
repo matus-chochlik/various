@@ -172,6 +172,12 @@ class ClangTidyCache(object):
         return True
 
     # --------------------------------------------------------------------------
+    def do_purge(self):
+        self._cached = dict()
+        self.do_save()
+        return "success"
+
+    # --------------------------------------------------------------------------
     def do_cleanup(self):
         before = len(self._cached)
         self._cached = {
@@ -484,6 +490,10 @@ def ctc_cache(hashstr):
 @ctcache_app.route("/is_cached/<hashstr>")
 def ctc_is_cached(hashstr):
     return "true" if clang_tidy_cache.is_cached(hashstr) else "false"
+# ------------------------------------------------------------------------------
+@ctcache_app.route("/purge_cache")
+def ctc_purge_cache():
+    return str(clang_tidy_cache.do_purge())
 # ------------------------------------------------------------------------------
 @ctcache_app.route("/stats/cached_count")
 def ctc_status_cached_count():
