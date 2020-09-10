@@ -159,7 +159,7 @@ def hash_inputs(opts):
         chunk = opts.adjust_chunk(line)
         result.update(chunk)
 
-    for ct_config_path in ct_config_paths:
+    for ct_config_path in sorted(ct_config_paths):
         with open(ct_config_path, "rt") as ct_config:
             for line in ct_config.readlines():
                 chunk = opts.adjust_chunk(line)
