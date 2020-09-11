@@ -77,7 +77,18 @@ class ArgumentParser(argparse.ArgumentParser):
             type=save_interval,
             default=600,
             help="""
-            Specifies the save time interval in seconds.
+            Specifies the cache-data save time interval in seconds.
+            """
+        )
+
+        self.add_argument(
+            "--stats-save-interval", "-Z",
+            dest="stats_save_interval",
+            metavar="NUMBER",
+            type=save_interval,
+            default=3600,
+            help="""
+            Specifies the statistics save time interval in seconds.
             """
         )
 
@@ -89,6 +100,17 @@ class ArgumentParser(argparse.ArgumentParser):
             default=60,
             help="""
             Specifies the cleanup time interval in seconds.
+            """
+        )
+
+        self.add_argument(
+            "--stats-path", "-U",
+            dest="stats_path",
+            metavar="DIR-PATH",
+            type=os.path.realpath,
+            default=None,
+            help="""
+            Specifies the path to a directory where statistics should be stored.
             """
         )
 
@@ -133,15 +155,38 @@ def get_argument_parser():
 class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def __init__(self, options):
+        self._start_time = time.time()
         self._cleaned_count = 0
         self._hits_count = 0
         self._miss_count = 0
         self._cached = dict()
+        self._stats = list()
         self._save_path = options.save_path
         self._save_interval = options.save_interval
         self._cleanup_interval = options.cleanup_interval
+        self._stats_save_interval = options.stats_save_interval
+        self._stats_path = options.stats_path
         self._chart_path = options.chart_path
         #
+        self._info_getters = {
+            "save_path": self.save_path
+        }
+        self._stat_getters = {
+            "uptime_seconds": self.uptime_seconds,
+            "saved_seconds_ago": self.saved_seconds_ago,
+            "cleaned_seconds_ago": self.cleaned_seconds_ago,
+            "total_hit_rate": self.total_hit_rate,
+            "hit_count": self.hit_count,
+            "hit_rate": self.hit_rate,
+            "miss_count": self.miss_count,
+            "miss_rate": self.miss_rate,
+            "cached_count": self.cached_count,
+            "cleaned_count": self.cleaned_count,
+            "age_days_histogram": self.age_days_histogram,
+            "hit_count_histogram": self.hit_count_histogram
+        }
+        #
+        self._stats_save_time = time.time()
         self._save_time = time.time()
         self._cleanup_time = time.time()
         #
@@ -151,6 +196,9 @@ class ClangTidyCache(object):
 
     # --------------------------------------------------------------------------
     def maintain(self):
+        if self.saved_stats_seconds_ago() > self._stats_save_interval:
+            self.do_save_stats()
+            self._stats_save_time = time.time()
         if self.saved_seconds_ago() > self._save_interval:
             self.do_save()
             self._save_time = time.time()
@@ -179,6 +227,9 @@ class ClangTidyCache(object):
 
     # --------------------------------------------------------------------------
     def do_cleanup(self):
+        stats = self.get_stats()
+        stats["timestamp"] = time.time()
+        self._stats.append(stats)
         before = len(self._cached)
         self._cached = {
             hashstr: info
@@ -212,6 +263,20 @@ class ClangTidyCache(object):
                 json.dump(self._cached, dbf)
         except:
             pass
+
+    # --------------------------------------------------------------------------
+    def do_save_stats(self):
+        if self._stats_path is not None and os.path.isdir(self._stats_path):
+            try:
+                    path = os.path.join(
+                        self._stats_path,
+                        "ctcache-stats-%012d.json.tar.gz" % time.time()
+                    )
+                    with gzip.open(path, 'wt', encoding="utf8") as statf:
+                        json.dump(self._stats, statf)
+                    self._stats = list()
+            except Exception as err:
+                pass
 
     # --------------------------------------------------------------------------
     def do_save_charts(self):
@@ -257,6 +322,38 @@ class ClangTidyCache(object):
         except KeyError:
             self._miss_count += 1
             return False
+
+    # --------------------------------------------------------------------------
+    def _gather_values(self, getters):
+        values = {}
+        for key, getter in getters.items():
+            try: value = getter()
+            except Exception as error: value = str(error)
+
+            if value is None:
+                values[key] = "N/A"
+            else:
+                if type(value) is float:
+                    values[key] = round(value, 2)
+                else:
+                    values[key] = value
+        return values
+
+    # --------------------------------------------------------------------------
+    def get_info(self):
+        return self._gather_values(self._info_getters)
+
+    # --------------------------------------------------------------------------
+    def get_stats(self):
+        return self._gather_values(self._stat_getters)
+
+    # --------------------------------------------------------------------------
+    def uptime_seconds(self):
+        return time.time() - self._start_time
+
+    # --------------------------------------------------------------------------
+    def saved_stats_seconds_ago(self):
+        return time.time() - self._stats_save_time
 
     # --------------------------------------------------------------------------
     def saved_seconds_ago(self):
@@ -519,36 +616,13 @@ def ctc_status_hit_rate():
 def ctc_status_miss_rate():
     return str(clang_tidy_cache.miss_rate())
 # ------------------------------------------------------------------------------
+@ctcache_app.route("/info")
+def ctc_info():
+    return json.dumps(clang_tidy_cache.get_info())
+# ------------------------------------------------------------------------------
 @ctcache_app.route("/stats")
 def ctc_status():
-    stat_getters = {
-        "saved_seconds_ago": clang_tidy_cache.saved_seconds_ago,
-        "cleaned_seconds_ago": clang_tidy_cache.cleaned_seconds_ago,
-        "save_path": clang_tidy_cache.save_path,
-        "total_hit_rate": clang_tidy_cache.total_hit_rate,
-        "hit_count": clang_tidy_cache.hit_count,
-        "hit_rate": clang_tidy_cache.hit_rate,
-        "miss_count": clang_tidy_cache.miss_count,
-        "miss_rate": clang_tidy_cache.miss_rate,
-        "cached_count": clang_tidy_cache.cached_count,
-        "cleaned_count": clang_tidy_cache.cleaned_count,
-        "age_days_histogram": clang_tidy_cache.age_days_histogram,
-        "hit_count_histogram": clang_tidy_cache.hit_count_histogram
-    }
-    stat_values = {}
-    for key, getter in stat_getters.items():
-        try: value = getter()
-        except Exception as error: value = str(error)
-
-        if value is None:
-            stat_values[key] = "N/A"
-        else:
-            if type(value) is float:
-                stat_values[key] = round(value, 2)
-            else:
-                stat_values[key] = value
-
-    return json.dumps(stat_values)
+    return json.dumps(clang_tidy_cache.get_stats())
 # ------------------------------------------------------------------------------
 @ctcache_app.route("/image/age_hits_scatter.svg")
 def ctc_image_age_hits_scatter():
