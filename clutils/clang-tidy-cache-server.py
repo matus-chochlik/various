@@ -267,7 +267,8 @@ class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def do_save_stats(self):
         if self._stats_path is not None and os.path.isdir(self._stats_path):
-            try:
+            if len(self._stats) > 0:
+                try:
                     path = os.path.join(
                         self._stats_path,
                         "ctcache-stats-%012d.json.tar.gz" % time.time()
@@ -275,8 +276,10 @@ class ClangTidyCache(object):
                     with gzip.open(path, 'wt', encoding="utf8") as statf:
                         json.dump(self._stats, statf)
                     self._stats = list()
-            except Exception as err:
-                pass
+                except Exception as err:
+                    pass
+        else:
+            self._stats = list()
 
     # --------------------------------------------------------------------------
     def do_save_charts(self):
