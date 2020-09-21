@@ -351,6 +351,22 @@ class ClangTidyCache(object):
         return self._gather_values(self._stat_getters)
 
     # --------------------------------------------------------------------------
+    def stream_saved_stats(self):
+        first = True
+        if os.path.isdir(self._save_path):
+            for entry in sorted(os.scandir(self._save_path), key=lambda e: e.name):
+                with gzip.open(entry.path, 'rt', encoding="utf8") as statf:
+                    stats = json.load(statf)
+                    for stat in stats:
+                        if first:
+                            yield '['
+                            first = False
+                        else:
+                            yield ','
+                        yield json.dumps(stat)
+        yield ']'
+
+    # --------------------------------------------------------------------------
     def uptime_seconds(self):
         return time.time() - self._start_time
 
@@ -624,8 +640,18 @@ def ctc_info():
     return json.dumps(clang_tidy_cache.get_info())
 # ------------------------------------------------------------------------------
 @ctcache_app.route("/stats")
-def ctc_status():
+def ctc_stats():
     return json.dumps(clang_tidy_cache.get_stats())
+# ------------------------------------------------------------------------------
+@ctcache_app.route("/stats/ctcache.json")
+def ctc_saved_stats():
+    try:
+        return flask.Response(
+            clang_tidy_cache.stream_saved_stats(),
+            mimetype="application/json"
+        )
+    except Exception as error:
+        return str(error)
 # ------------------------------------------------------------------------------
 @ctcache_app.route("/image/age_hits_scatter.svg")
 def ctc_image_age_hits_scatter():
