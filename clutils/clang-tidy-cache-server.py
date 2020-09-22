@@ -353,7 +353,7 @@ class ClangTidyCache(object):
     # --------------------------------------------------------------------------
     def stream_saved_stats(self):
         first = True
-        if os.path.isdir(self._save_path):
+        if self._stats_path is not None and os.path.isdir(self._stats_path):
             for entry in sorted(os.scandir(self._save_path), key=lambda e: e.name):
                 with gzip.open(entry.path, 'rt', encoding="utf8") as statf:
                     stats = json.load(statf)
