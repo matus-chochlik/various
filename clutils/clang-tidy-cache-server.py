@@ -364,6 +364,8 @@ class ClangTidyCache(object):
                         else:
                             yield ','
                         yield json.dumps(stat)
+        if first:
+            yield '['
         yield ']'
 
     # --------------------------------------------------------------------------
