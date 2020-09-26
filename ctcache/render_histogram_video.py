@@ -16,9 +16,18 @@ import matplotlib.pyplot as plt
 # ------------------------------------------------------------------------------
 class ArgParser(argparse.ArgumentParser):
     # --------------------------------------------------------------------------
+    def _valid_pixdim(self, x):
+        try:
+            i = int(x)
+            assert i > 16
+            return i
+        except:
+            self.error("`%s' is not a valid frame size" % str(x))
+
+    # --------------------------------------------------------------------------
     def _valid_fps(self, x):
         try:
-            f = int(x)
+            f = float(x)
             assert f > 0
             return f
         except:
@@ -55,6 +64,24 @@ class ArgParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
+            '-W', '--width',
+            metavar='NUMBER',
+            dest='width',
+            nargs='?',
+            type=self._valid_pixdim,
+            default=1200
+        )
+
+        self.add_argument(
+            '-H', '--height',
+            metavar='NUMBER',
+            dest='height',
+            nargs='?',
+            type=self._valid_pixdim,
+            default=800
+        )
+
+        self.add_argument(
             '-f', '--fps',
             metavar='NUMBER',
             dest='fps',
@@ -77,69 +104,73 @@ class ArgParser(argparse.ArgumentParser):
 # ------------------------------------------------------------------------------
 def make_argparser():
     return ArgParser(prog=os.path.basename(__file__))
+
 # ------------------------------------------------------------------------------
-def render_video(options):
+def generate_frames(options):
     stats = json.load(open(options.input_path, "rt", encoding="utf8"))
+    clamp = lambda t : tuple(max(min(x, 1), 0) for x in t)
     get_hch = lambda s: s.get("hit_count_histogram", {})
     max_hits = int(max(max(int(k) for k in get_hch(s).keys()) for s in stats)*0.5)
     max_srcs = int(max(max(int(k)*v for k,v in get_hch(s).items()) for s in stats))
     get_fac = lambda i, y: (float(i) / float(max_hits), math.sqrt(3.0*y / float(max_srcs)))
     num_stats = len(stats)
     prog_norm = 100.0/num_stats if num_stats else 0.0
-    clamp = lambda t : tuple(max(min(x, 1), 0) for x in t)
+
     imgbuf = io.BytesIO()
 
-    width = 12
-    height = 8
+    plt.style.use('dark_background')
+    x = range(1, max_hits+1)
 
-    try:
-        plt.style.use('dark_background')
+    row = 0
+    for stat in stats:
+        hch = get_hch(stat)
+        g = [(i, hch.get(str(i), 0)) for i in x]
+        y = [i*v for i, v in g]
+        c = [clamp((1.0-f+e, f+e, e)) for f, e in (get_fac(i,v) for i,v in g)]
+
         fig, spl = plt.subplots()
-        fig.set_size_inches(width, height)
+        w_dpi = options.width/float(fig.dpi)
+        h_dpi = options.height/float(fig.dpi)
+        fig.set_size_inches(w_dpi, h_dpi)
+        spl.bar(x, y, color=c)
 
-        video = cv2.VideoWriter(
-            options.output_path,
-            cv2.VideoWriter_fourcc(*options.fourcc) if options.fourcc else -1,
-            options.fps,
-            tuple(int(c) for c in fig.get_size_inches()*fig.dpi),
-            True
-        )
+        spl.set_xlabel("Number of hits")
+        spl.set_xlim(0, max_hits)
+
+        spl.set_ylabel("Number of sources")
+        spl.set_ylim(1, max_srcs)
+        spl.set_yscale("log")
+        spl.grid(axis="y")
+
+        imgbuf.seek(0)
+        plt.savefig(imgbuf, format="png")
         plt.close(fig)
 
-        x = range(1, max_hits+1)
+        imgbuf.seek(0)
+        img = cv2.imdecode(
+            numpy.frombuffer(imgbuf.getbuffer(), dtype=numpy.uint8),
+            cv2.IMREAD_COLOR
+        )
 
-        row = 0
-        for stat in stats:
-            hch = get_hch(stat)
-            g = [(i, hch.get(str(i), 0)) for i in x]
-            y = [i*v for i, v in g]
-            c = [clamp((1.0-f+e, f+e, e)) for f, e in (get_fac(i,v) for i,v in g)]
+        yield img
+        row += 1
+        print("%5d/%d: %3.1f%% done" % (row, num_stats, row*prog_norm))
 
-            fig, spl = plt.subplots()
-            fig.set_size_inches(width, height)
-            spl.bar(x, y, color=c)
+# ------------------------------------------------------------------------------
+def render_video(options):
 
-            spl.set_xlabel("Number of hits")
-            spl.set_xlim(0, max_hits)
+    try:
+        codec = cv2.VideoWriter_fourcc(*options.fourcc) if options.fourcc else -1
+        video = cv2.VideoWriter(
+            options.output_path,
+            codec,
+            options.fps,
+            (options.width, options.height),
+            True
+        )
 
-            spl.set_ylabel("Number of sources")
-            spl.set_ylim(1, max_srcs)
-            spl.set_yscale("log")
-            spl.grid(axis="y")
-
-            imgbuf.seek(0)
-            plt.savefig(imgbuf, format="png")
-            plt.close(fig)
-
-            imgbuf.seek(0)
-            img = cv2.imdecode(
-                numpy.frombuffer(imgbuf.getbuffer(), dtype=numpy.uint8),
-                cv2.IMREAD_COLOR
-            )
-
+        for img in generate_frames(options):
             video.write(img)
-            row += 1
-            print("%5d/%d: %3.1f%% done" % (row, num_stats, row*prog_norm))
 
     except KeyboardInterrupt:
         pass
