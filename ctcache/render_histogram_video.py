@@ -97,6 +97,13 @@ class ArgParser(argparse.ArgumentParser):
             nargs='?',
             default="FMP4"
         )
+
+        self.add_argument(
+            '-l', '--log-yscale',
+            dest='log_yscale',
+            action='store_true',
+            default=False
+        )
     # --------------------------------------------------------------------------
     def make_options(self):
         return self.parse_args()
@@ -137,9 +144,10 @@ def generate_frames(options):
         spl.set_xlabel("Number of hits")
         spl.set_xlim(0, max_hits)
 
-        spl.set_ylabel("Number of sources")
+        spl.set_ylabel("Total number of hits")
         spl.set_ylim(1, max_srcs)
-        spl.set_yscale("log")
+        if options.log_yscale:
+            spl.set_yscale("log")
         spl.grid(axis="y")
 
         imgbuf.seek(0)
