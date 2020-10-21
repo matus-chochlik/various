@@ -89,7 +89,7 @@ def make_argparser():
 def render_chart(options):
     stats = json.load(open(options.input_path, "rt", encoding="utf8"))
     get_hist = lambda s: {int(k): v for k, v in s.get("hit_count_histogram", {}).items()}
-    max_hits = int(max(max(get_hist(s).keys()) for s in stats)*0.5)
+    max_hits = int(max(max(get_hist(s).keys()) for s in stats))
     mh_norm = 1.0 / max_hits
     clamp = lambda t : tuple(max(min(x, 1), 0) for x in t)
     make_color = lambda a,b: clamp((math.sqrt(1.0-a)*b, math.sqrt(a)*b, 0.0))
@@ -126,7 +126,7 @@ def render_chart(options):
     spl.set_xlabel("Time (non-linear)")
     spl.set_ylabel("Hit ratios")
 
-    spl.stackplot(x, y, colors=c, edgecolors=(0.0, 0.0, 0.0), linewidth=0.05)
+    spl.stackplot(x, y, colors=c, edgecolors=(0.5, 0.5, 0.5), linewidth=0.0)
     
     plt.show()
 
