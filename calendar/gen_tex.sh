@@ -73,15 +73,18 @@ echo "\\usetikzlibrary{calendar}"
 
 echo "\\usepackage[pages=all]{background}"
 
-echo "\\backgroundsetup{"
-echo "scale=1.0,"
-echo "color=white,"
-echo "opacity=1,"
-echo "angle=0,"
-echo "contents={"
-echo "  \\includegraphics[width=\\textwidth,height=\\textheight]{${imgdir}/background.pdf}"
-echo "  }"
-echo "}"
+if [[ -f ${imgdir}/background.pdf ]]
+then
+	echo "\\backgroundsetup{"
+	echo "scale=1.0,"
+	echo "color=white,"
+	echo "opacity=1,"
+	echo "angle=0,"
+	echo "contents={"
+	echo "  \\includegraphics[width=\\textwidth,height=\\textheight]{${imgdir}/background.pdf}"
+	echo "  }"
+	echo "}"
+fi
 
 echo
 echo "\\begin{document}"
@@ -322,7 +325,9 @@ function cal_page_table()
 	done
 
 	echo "  \\vspace{0.5cm}"
-	echo "  \\includegraphics[height=0.8cm]{${imgdir}/side_decor_h.pdf}"
+	if [[ -f ${imgdir}/side_decor_h.pdf ]]
+	then echo "  \\includegraphics[height=0.8cm]{${imgdir}/side_decor_h.pdf}"
+	fi
 	echo "\\end{minipage}"
 	echo "}"
 }
@@ -331,7 +336,9 @@ function cal_page_decor()
 {
 	echo "\\mbox{"
 	echo "\\begin{minipage}[c]{1.0cm}"
-	echo "  \\includegraphics[width=0.8cm]{${imgdir}/side_decor_v.pdf}"
+	if [[ -f ${imgdir}/side_decor_v.pdf ]]
+	then echo "  \\includegraphics[width=0.8cm]{${imgdir}/side_decor_v.pdf}"
+	fi
 	echo "\\end{minipage}"
 	echo "}"
 }

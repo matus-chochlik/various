@@ -5,7 +5,14 @@ BUILD_DIR = ./_build
 all: $(BUILD_DIR)/foto.pdf
 
 $(BUILD_DIR)/%.pdf: $(BUILD_DIR)/%.tex
-	cd $(BUILD_DIR) && pdflatex $*.tex && cd ..
+	cd $(BUILD_DIR) && \
+	pdflatex \
+		-shell-escape \
+		-interaction batchmode \
+		-halt-on-error \
+		-jobname $* \
+		$*.tex && \
+	cd ..
 
 $(BUILD_DIR)/%.tex: $(BUILD_DIR)/call_gen_tex.sh | $(BUILD_DIR)
 	cd $(BUILD_DIR) && ./call_gen_tex.sh "$*" > $*.tex && cd ..
@@ -25,10 +32,10 @@ $(BUILD_DIR)/YEAR: | $(BUILD_DIR)
 	date --date='+1 year' +%Y > $@
 
 $(BUILD_DIR)/LANGUAGE: | $(BUILD_DIR)
-	locale | grep LANGUAGE | cut -d'=' -f2 | cut -d'_' -f1 > $@
+	./get_language.sh > $@
 
 $(BUILD_DIR)/COUNTRY: | $(BUILD_DIR)
-	locale | grep LANGUAGE | cut -d'=' -f2 | cut -d'_' -f2 > $@
+	./get_country.sh > $@
 
 $(BUILD_DIR):
 	mkdir -p $@
