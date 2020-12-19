@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # coding: UTF-8
-#  Copyright (c) 2016-2019 Matus Chochlik
+#  Copyright (c) 2016-2020 Matus Chochlik
 
 import os
 import sys
@@ -117,29 +117,57 @@ class NoImageSampler(object):
         return self
 
 # ------------------------------------------------------------------------------
+class RandomGenerator(object):
+
+    # --------------------------------------------------------------------------
+    def __init__(self, mrg, rrg):
+        self._mrg = mrg
+        self._rrg = rrg
+
+    # --------------------------------------------------------------------------
+    def get(self, rim):
+        if rim:
+            try:
+                return self._rrg.random()
+            except:
+                pass
+        return self._mrg.random()
+
+# ------------------------------------------------------------------------------
 class Randomized(object):
     # --------------------------------------------------------------------------
-    def get_rng0(self):
+    def _get_rng0(self):
         try:
             return self.rng0
         except:
-            self.rng0 = random.Random(self.seed)
+            self.rng0 = random.Random(self._mid_seed)
             return self.rng0
 
     # --------------------------------------------------------------------------
-    def get_rng(self):
+    def _mid_rng(self):
         import random
 
-        if self.seed is None:
+        if self._mid_seed is None:
             import time
             try: return random.SystemRandom()
             except: return random.Random(time.time())
         else:
-            return random.Random(self.get_rng0().randrange(0, sys.maxsize))
+            return random.Random(self._get_rng0().randrange(0, sys.maxsize))
 
     # --------------------------------------------------------------------------
-    def __init__(self, seed):
-        self.seed = seed
+    def _rim_rng(self):
+        if self._rim_seed is not None:
+            return random.Random(self._rim_seed)
+        return None
+
+    # --------------------------------------------------------------------------
+    def get_rng(self):
+        return RandomGenerator(self._mid_rng(), self._rim_rng())
+
+    # --------------------------------------------------------------------------
+    def __init__(self, options):
+        self._mid_seed = options.seed
+        self._rim_seed = options.rim_seed
 
 # ------------------------------------------------------------------------------
 class RandomCellValues(Randomized):
@@ -152,13 +180,14 @@ class RandomCellValues(Randomized):
         for y in range(h):
             r = list()
             for x in range(w):
-                r.append(rc.random())
+                rim = x <= 0 or y <= 0 or x+1 >= w or y+1 >= h
+                r.append(rc.get(rim))
             cell_data.append(r)
         return cell_data
 
     # --------------------------------------------------------------------------
     def __init__(self, options, w, h):
-        Randomized.__init__(self, options.seed)
+        Randomized.__init__(self, options)
         self._values = self._gen_values(w, h)
 
     # --------------------------------------------------------------------------
@@ -177,7 +206,8 @@ class RandomCellOffsets(Randomized):
         for y in range(h+1):
             row = list()
             for x in range(w+1):
-                row.append((rx.random(), ry.random()))
+                rim = x <= 0 or y <= 0 or x+1 >= w or y+1 >= h
+                row.append((rx.get(rim), ry.get(rim)))
             cell_data.append(row)
         return cell_data
     # --------------------------------------------------------------------------
@@ -404,6 +434,13 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
+            '--rim-seed', '-Rs',
+            type=float,
+            action="store",
+            default=None
+        )
+
+        self.add_argument(
             '--color-mode', '-M',
             type=str,
             choices=["grayscale", "cell-coord", "image-rgb"],
@@ -477,7 +514,7 @@ def make_argument_parser():
     )
 
 # ------------------------------------------------------------------------------
-class Renderer(Randomized):
+class Renderer(object):
     # --------------------------------------------------------------------------
     def grayscale_color_str(self, v):
         c = "%02x" % int(255*v)
@@ -567,8 +604,6 @@ class Renderer(Randomized):
     def __init__(self):
 
         useropts = make_argument_parser().parse_args()
-
-        Randomized.__init__(self, useropts.seed)
 
         for k, v in useropts.__dict__.items():
             self.__dict__[k] = v
