@@ -451,7 +451,7 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
         self.add_argument(
             '--cell-mode', '-C',
             type=str,
-            choices=["full", "scaled", "flagstone","pebble"],
+            choices=["full", "scaled", "flagstone","pebble", "gradient"],
             action="store",
             default="full"
         )
@@ -559,7 +559,7 @@ class Renderer(object):
     def full_cell_element_str(self, x, y, unused, corners):
         clist = ["%.3f %.3f" % (c[0], c[1]) for c in corners]
         pathstr = "M"+" L".join(clist)+" Z"
-        return """
+        yield """
         <path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
             "def": pathstr,
             "color": self.cell_color(x, y)
@@ -569,14 +569,14 @@ class Renderer(object):
     def scaled_cell_element_str(self, x, y, center, corners):
         m = set_center(corners)
         newcorners = [segment_point(m, c, self.scale) for c in corners]
-        return self.full_cell_element_str(x, y, center, newcorners);
+        yield self.full_cell_element_str(x, y, center, newcorners);
 
     # --------------------------------------------------------------------------
     def flagstone_cell_element_str(self, x, y, center, corners):
         zcorners = zip(corners, corners[1:] + [corners[0]])
         c = self.cell_value(x, y)
         newcorners = [segment_point(a, b, c) for (a, b) in zcorners]
-        return self.scaled_cell_element_str(x, y, center, newcorners);
+        yield self.scaled_cell_element_str(x, y, center, newcorners);
 
     # --------------------------------------------------------------------------
     def pebble_cell_element_str(self, x, y, center, corners):
@@ -594,11 +594,25 @@ class Renderer(object):
 
         clist = ["%s, %s" % (cfmt(b), cfmt(d)) for (b, d) in zpoints]
         pathstr = "M%s Q" % cfmt(cpoints[0])+" Q".join(clist)+" Z"
-        return """
+        yield """
         <path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
             "def": pathstr,
             "color": self.cell_color(x, y)
         }
+
+    # --------------------------------------------------------------------------
+    def gradient_cell_element_str(self, x, y, center, corners):
+        l = len(corners)
+        print('\n', x, y)
+        for i in range(l+1):
+            verts = (center, corners[i], corners[(i+1)%l])
+            clist = ["%.3f %.3f" % (v[0], v[1]) for v in verts]
+            pathstr = "M"+" L".join(clist)+" Z"
+            yield """
+            <path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
+                "def": pathstr,
+                "color": self.cell_color(x, y)
+            }
 
     # --------------------------------------------------------------------------
     def __init__(self):
@@ -623,6 +637,8 @@ class Renderer(object):
             self.cell_element_str = self.flagstone_cell_element_str
         elif self.cell_mode == "pebble":
             self.cell_element_str = self.pebble_cell_element_str
+        elif self.cell_mode == "gradient":
+            self.cell_element_str = self.gradient_cell_element_str
 
         self.cell_values = RandomCellValues(
             self,
@@ -778,7 +794,8 @@ def do_make_cell(renderer, job, output_lock):
             x = int(k % w) - 1
 
             center, corners = make_cell(renderer, x, y)
-            res.append(renderer.cell_element_str(x, y, center, corners))
+            for svg_str in renderer.cell_element_str(x, y, center, corners):
+                res.append(svg_str)
             if renderer.verbose:
                 log.append(renderer.cell_fmt % (x, y))
             else:
