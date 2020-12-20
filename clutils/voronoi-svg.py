@@ -56,8 +56,9 @@ def line_intersect_param(l1, l2):
     num = numpy.dot(d2p, dp)
     den = numpy.dot(d2p, d1)
 
-    if abs(den) > 0.00001: return num / den
-    else: return None
+    if abs(den) > 0.00001:
+        return num / den
+    return None
 
 # ------------------------------------------------------------------------------
 class ImageSampler(object):
@@ -328,7 +329,7 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
     def _nonnegative_int(self, x):
         try:
             i = int(x)
-            assert(i > 0)
+            assert i > 0
             return i
         except:
             self.error("`%s' is not a positive integer value" % str(x))
@@ -496,8 +497,6 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
                 options.x_cells = 32
             if options.y_cells is None:
                 options.y_cells = 32
-
-        options.needs_neighbors = options.cell_mode in ["worley"]
 
         return options
     # --------------------------------------------------------------------------
@@ -731,6 +730,7 @@ def make_cell(renderer, x, y):
             if j != 0 or i != 0:
                 offsets.append((i, j))
 
+    loffs = len(offsets)
     cuts = []
 
     for o in offsets:
@@ -740,50 +740,63 @@ def make_cell(renderer, x, y):
         sn = segment_normal(owc, cwc)
         cuts.append((sm, sn))
 
+    assert loffs == len(cuts)
+
     intersections = []
 
-    for cj in range(len(cuts)):
-        for ci in range(cj+1, len(cuts)):
+    for cj in range(loffs):
+        for ci in range(cj+1, loffs):
             t = line_intersect_param(cuts[cj], cuts[ci])
             if t is not None:
-                intersections.append(cuts[cj][0]+cuts[cj][1]*t)
+                intersections.append((cuts[cj][0]+cuts[cj][1]*t, set([ci, cj])))
 
-    corners = []
+    corners_and_cuts = []
 
-    for isc in intersections:
+    for isc, cus  in intersections:
         seg = (owc, isc-owc)
         eps = 0.001
         skip = False
 
         for cut in cuts:
             t = line_intersect_param(seg, cut)
-            if t is not None and t > 0 and t < 1-eps:
+            if t is not None and t >= 0 and t < 1-eps:
                 skip = True
                 break
 
         if not skip:
-            corners.append(isc)
+            v = isc - owc
+            corners_and_cuts.append((math.atan2(v[1], v[0]), isc, cus))
 
     def corner_angle(p):
-        v = p - owc
-        return math.atan2(v[1], v[0])
-    
-    corners = sorted(corners, key=corner_angle)
+        return p[0]
 
+    corners_and_cuts = sorted(corners_and_cuts, key=corner_angle)
+    caclen = len(corners_and_cuts)
+    sorted_corners_and_cuts = []
+
+    c = 0
+    while c < caclen:
+        a0, co0, cu0 = corners_and_cuts[c]
+        a1, co1, cu1 = corners_and_cuts[(c+1)%caclen]
+        if abs(a0-a1) < 0.01:
+            sorted_corners_and_cuts.append(((co0+co1)*0.5, cu0.union(cu1)))
+        else:
+            sorted_corners_and_cuts.append((co0, cu0))
+        c += 1
+
+    corners = []
     neighbors = []
 
-    if renderer.needs_neighbors:
-        for i in range(len(corners)):
-            edgv = corners[(i+1)%len(corners)] - corners[i]
-            mind = numpy.dot(edgv, edgv)
-            for o in offsets:
-                conv = offs_cell_world_coord(renderer, x, y, o) - owc
-                d = abs(numpy.dot(edgv, conv))
-                if mind > d:
-                    mind = d;
-                    ofs = o
+    caclen = len(sorted_corners_and_cuts)
+    for c in range(caclen):
+        co0, cu0 = sorted_corners_and_cuts[c]
+        co1, cu1 = sorted_corners_and_cuts[(c+1)%caclen]
+        cu = cu0.intersection(cu1)
 
-            neighbors.append(ofs)
+        corners.append(co0)
+        neighbors.append(offsets[cu.pop()])
+
+    assert len(corners) == len(neighbors)
 
     return owc, corners, neighbors
     
@@ -852,6 +865,8 @@ def make_gradients(renderer):
             for i, j in offsets:
                 cwc = cell_world_coord(renderer, x, y)
                 owc = cell_world_coord(renderer, x+i, y+j)
+                vec = cwc - owc
+
                 renderer.output.write(grad_fmt % {
                         "gref": renderer.cell_gradient_id(x, y, i, j),
                         "x1": cwc[0],
@@ -861,11 +876,11 @@ def make_gradients(renderer):
                 })
                 if renderer.cell_mode == "worley":
                     renderer.output.write(stop_fmt %  {
-                        "soffs": 0,
+                        "soffs": 0.0,
                         "color": "white"
                     })
                     renderer.output.write(stop_fmt %  {
-                        "soffs": 50,
+                        "soffs": 50.0,
                         "color": "black"
                     })
                 renderer.output.write("""</linearGradient>\n""")
@@ -903,6 +918,9 @@ def print_svg(renderer):
 
         for t in tasks:
             t.join()
+        for t in tasks:
+            if t.exitcode is not None and t.exitcode != 0:
+                raise multiprocessing.ProcessError()
     except KeyboardInterrupt:
         pass
 
