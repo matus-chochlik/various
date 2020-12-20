@@ -497,6 +497,8 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
             if options.y_cells is None:
                 options.y_cells = 32
 
+        options.needs_neighbors = options.cell_mode in ["worley"]
+
         return options
     # --------------------------------------------------------------------------
     def parse_args(self):
@@ -770,17 +772,18 @@ def make_cell(renderer, x, y):
 
     neighbors = []
 
-    for i in range(len(corners)):
-        edgv = corners[(i+1)%len(corners)] - corners[i]
-        mind = numpy.dot(edgv, edgv)
-        for o in offsets:
-            conv = offs_cell_world_coord(renderer, x, y, o) - owc
-            d = abs(numpy.dot(edgv, conv))
-            if mind > d:
-                mind = d;
-                ofs = o
+    if renderer.needs_neighbors:
+        for i in range(len(corners)):
+            edgv = corners[(i+1)%len(corners)] - corners[i]
+            mind = numpy.dot(edgv, edgv)
+            for o in offsets:
+                conv = offs_cell_world_coord(renderer, x, y, o) - owc
+                d = abs(numpy.dot(edgv, conv))
+                if mind > d:
+                    mind = d;
+                    ofs = o
 
-        neighbors.append(ofs)
+            neighbors.append(ofs)
 
     return owc, corners, neighbors
     
