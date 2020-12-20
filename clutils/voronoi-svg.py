@@ -451,7 +451,7 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
         self.add_argument(
             '--cell-mode', '-C',
             type=str,
-            choices=["full", "scaled", "flagstone","pebble", "gradient"],
+            choices=["full", "scaled", "flagstone","pebble", "worley"],
             action="store",
             default="full"
         )
@@ -556,30 +556,38 @@ class Renderer(object):
         return "#%02x%02x%02x" % (int(r*255), int(g*255), int(b*255))
 
     # --------------------------------------------------------------------------
-    def full_cell_element_str(self, x, y, unused, corners):
+    def cell_gradient_id(self, x, y, i, j):
+        s = "grad%d_%d" % (
+            (y+3) * (self.x_cells + 6) + (x+3),
+            (y+j+3) * (self.x_cells + 6) + (x+i+3)
+        )
+        return s
+
+    # --------------------------------------------------------------------------
+    def full_cell_element_str(self, x, y, unused, corners, offs):
         clist = ["%.3f %.3f" % (c[0], c[1]) for c in corners]
         pathstr = "M"+" L".join(clist)+" Z"
         yield """
-        <path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
+        <path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>\n""" % {
             "def": pathstr,
             "color": self.cell_color(x, y)
         }
 
     # --------------------------------------------------------------------------
-    def scaled_cell_element_str(self, x, y, center, corners):
+    def scaled_cell_element_str(self, x, y, center, corners, offs):
         m = set_center(corners)
         newcorners = [segment_point(m, c, self.scale) for c in corners]
         yield self.full_cell_element_str(x, y, center, newcorners);
 
     # --------------------------------------------------------------------------
-    def flagstone_cell_element_str(self, x, y, center, corners):
+    def flagstone_cell_element_str(self, x, y, center, corners, offs):
         zcorners = zip(corners, corners[1:] + [corners[0]])
         c = self.cell_value(x, y)
         newcorners = [segment_point(a, b, c) for (a, b) in zcorners]
         yield self.scaled_cell_element_str(x, y, center, newcorners);
 
     # --------------------------------------------------------------------------
-    def pebble_cell_element_str(self, x, y, center, corners):
+    def pebble_cell_element_str(self, x, y, center, corners, offs):
         m = set_center(corners)
         apoints = [segment_point(m, c, self.scale) for c in corners]
         bpoints = apoints[1:] + [apoints[0]]
@@ -594,24 +602,22 @@ class Renderer(object):
 
         clist = ["%s, %s" % (cfmt(b), cfmt(d)) for (b, d) in zpoints]
         pathstr = "M%s Q" % cfmt(cpoints[0])+" Q".join(clist)+" Z"
-        yield """
-        <path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
+        yield """<path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>\n""" % {
             "def": pathstr,
             "color": self.cell_color(x, y)
         }
 
     # --------------------------------------------------------------------------
-    def gradient_cell_element_str(self, x, y, center, corners):
-        l = len(corners)
-        print('\n', x, y)
-        for i in range(l+1):
-            verts = (center, corners[i], corners[(i+1)%l])
+    def worley_cell_element_str(self, x, y, center, corners, offs):
+        n = len(corners)
+        for t in range(n):
+            i, j = offs[t]
+            verts = (center, corners[t], corners[(t+1)%n])
             clist = ["%.3f %.3f" % (v[0], v[1]) for v in verts]
             pathstr = "M"+" L".join(clist)+" Z"
-            yield """
-            <path d="%(def)s" stroke="%(color)s" fill="%(color)s"/>""" % {
+            yield """<path d="%(def)s" stroke="url(#%(gref)s)" fill="url(#%(gref)s)"/>\n""" % {
                 "def": pathstr,
-                "color": self.cell_color(x, y)
+                "gref": self.cell_gradient_id(x, y, i, j)
             }
 
     # --------------------------------------------------------------------------
@@ -637,8 +643,8 @@ class Renderer(object):
             self.cell_element_str = self.flagstone_cell_element_str
         elif self.cell_mode == "pebble":
             self.cell_element_str = self.pebble_cell_element_str
-        elif self.cell_mode == "gradient":
-            self.cell_element_str = self.gradient_cell_element_str
+        elif self.cell_mode == "worley":
+            self.cell_element_str = self.worley_cell_element_str
 
         self.cell_values = RandomCellValues(
             self,
@@ -690,10 +696,10 @@ class Renderer(object):
 def cell_world_coord(renderer, x, y):
 
     c = renderer.cell_offset(x, y)
-    return numpy.array([
+    return numpy.array((
         (x+c[0])*(renderer.width/renderer.x_cells),
         (y+c[1])*(renderer.height/renderer.y_cells)
-    ])
+    ))
 
 # ------------------------------------------------------------------------------
 def cell_value(renderer, x, y):
@@ -718,8 +724,8 @@ def make_cell(renderer, x, y):
 
     offsets = []
 
-    for j in range(-3, 3):
-        for i in range(-3, 3):
+    for j in range(-2, 3):
+        for i in range(-2, 3):
             if j != 0 or i != 0:
                 offsets.append((i, j))
 
@@ -731,9 +737,6 @@ def make_cell(renderer, x, y):
         sm = segment_midpoint(owc, cwc)
         sn = segment_normal(owc, cwc)
         cuts.append((sm, sn))
-
-        p1 = sm-sn*100
-        p2 = sm+sn*100
 
     intersections = []
 
@@ -762,8 +765,24 @@ def make_cell(renderer, x, y):
     def corner_angle(p):
         v = p - owc
         return math.atan2(v[1], v[0])
+    
+    corners = sorted(corners, key=corner_angle)
 
-    return owc, sorted(corners, key=corner_angle)
+    neighbors = []
+
+    for i in range(len(corners)):
+        edgv = corners[(i+1)%len(corners)] - corners[i]
+        mind = numpy.dot(edgv, edgv)
+        for o in offsets:
+            conv = offs_cell_world_coord(renderer, x, y, o) - owc
+            d = abs(numpy.dot(edgv, conv))
+            if mind > d:
+                mind = d;
+                ofs = o
+
+        neighbors.append(ofs)
+
+    return owc, corners, neighbors
     
 # ------------------------------------------------------------------------------
 def do_make_cell(renderer, job, output_lock):
@@ -793,8 +812,8 @@ def do_make_cell(renderer, job, output_lock):
             y = int(k / w) - 1
             x = int(k % w) - 1
 
-            center, corners = make_cell(renderer, x, y)
-            for svg_str in renderer.cell_element_str(x, y, center, corners):
+            center, corners, offs = make_cell(renderer, x, y)
+            for svg_str in renderer.cell_element_str(x, y, center, corners, offs):
                 res.append(svg_str)
             if renderer.verbose:
                 log.append(renderer.cell_fmt % (x, y))
@@ -811,6 +830,43 @@ def do_make_cell(renderer, job, output_lock):
     _flush(res, log)
 
 # ------------------------------------------------------------------------------
+def make_gradients(renderer):
+    w = renderer.x_cells + 1
+    h = renderer.y_cells + 1
+
+    grad_fmt = """<linearGradient gradientUnits="userSpaceOnUse" id="%(gref)s" """+\
+                """x1="%(x1)f" y1="%(y1)f" x2="%(x2)f" y2="%(y2)f">\n"""
+    stop_fmt = """<stop offset="%(soffs)d%%" style="stop-color:%(color)s"/>\n"""
+
+    offsets = []
+    for j in range(-2, 3):
+        for i in range(-2, 3):
+            if j != 0 or i != 0:
+                offsets.append((i, j))
+
+    for y in range(-1, h+1):
+        for x in range(-1, w+1):
+            for i, j in offsets:
+                cwc = cell_world_coord(renderer, x, y)
+                owc = cell_world_coord(renderer, x+i, y+j)
+                renderer.output.write(grad_fmt % {
+                        "gref": renderer.cell_gradient_id(x, y, i, j),
+                        "x1": cwc[0],
+                        "y1": cwc[1],
+                        "x2": owc[0],
+                        "y2": owc[1] 
+                })
+                if renderer.cell_mode == "worley":
+                    renderer.output.write(stop_fmt %  {
+                        "soffs": 0,
+                        "color": "white"
+                    })
+                    renderer.output.write(stop_fmt %  {
+                        "soffs": 50,
+                        "color": "black"
+                    })
+                renderer.output.write("""</linearGradient>\n""")
+# ------------------------------------------------------------------------------
 def print_svg(renderer):
     renderer.output.write("""<?xml version="1.0" encoding="utf8"?>\n""")
     renderer.output.write("""<svg xmlns="http://www.w3.org/2000/svg"
@@ -825,6 +881,11 @@ def print_svg(renderer):
             "stroke_width": renderer.stroke_width
         }
     )
+
+    renderer.output.write("<defs>\n")
+    if renderer.cell_mode in ["worley"]:
+        make_gradients(renderer)
+    renderer.output.write("</defs>\n")
 
     try:
         output_lock = multiprocessing.Lock()
