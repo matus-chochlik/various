@@ -840,8 +840,8 @@ def do_make_cell(renderer, job, output_lock):
 
 # ------------------------------------------------------------------------------
 def make_gradients(renderer):
-    w = renderer.x_cells + 1
-    h = renderer.y_cells + 1
+    w = renderer.x_cells
+    h = renderer.y_cells
 
     grad_fmt = """<linearGradient gradientUnits="userSpaceOnUse" id="%(gref)s" """+\
                 """x1="%(x1)f" y1="%(y1)f" x2="%(x2)f" y2="%(y2)f">\n"""
@@ -853,8 +853,8 @@ def make_gradients(renderer):
             if j != 0 or i != 0:
                 offsets.append((i, j))
 
-    for y in range(-1, h+1):
-        for x in range(-1, w+1):
+    for y in range(-1, h+2):
+        for x in range(-1, w+2):
             for i, j in offsets:
                 cwc = cell_world_coord(renderer, x, y)
                 owc = cell_world_coord(renderer, x+i, y+j)
@@ -868,13 +868,23 @@ def make_gradients(renderer):
                         "y2": owc[1] 
                 })
                 if renderer.cell_mode == "worley":
-                    renderer.output.write(stop_fmt %  {
+                    renderer.output.write(stop_fmt % {
                         "soffs": 0.0,
-                        "color": "white"
+                        "color": "#%(r)02x%(g)02x%(b)02x%(a)02x" % {
+                            "r": int(255*float((x+w) % w)/w),
+                            "g": int(255*float((y+h) % h)/h),
+                            "a": int(255*renderer.cell_value(x, y)),
+                            "b": 255
+                        }
                     })
-                    renderer.output.write(stop_fmt %  {
+                    renderer.output.write(stop_fmt % {
                         "soffs": 50.0,
-                        "color": "black"
+                        "color": "#%(r)02x%(g)02x%(b)02x%(a)02x" % {
+                            "r": int(255*float((x+w) % w)/w),
+                            "g": int(255*float((y+h) % h)/h),
+                            "a": int(255*renderer.cell_value(x, y)),
+                            "b": 0
+                        }
                     })
                 renderer.output.write("""</linearGradient>\n""")
 # ------------------------------------------------------------------------------
