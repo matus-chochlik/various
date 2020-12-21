@@ -498,6 +498,8 @@ class VoronoiArgumentParser(argparse.ArgumentParser):
             if options.y_cells is None:
                 options.y_cells = 32
 
+        options.need_neighbors = options.cell_mode in ["worley"]
+
         return options
     # --------------------------------------------------------------------------
     def parse_args(self):
@@ -764,25 +766,13 @@ def make_cell(renderer, x, y):
                 break
 
         if not skip:
-            v = isc - owc
-            corners_and_cuts.append((math.atan2(v[1], v[0]), isc, cus))
+            corners_and_cuts.append((isc, cus))
 
     def corner_angle(p):
-        return p[0]
+        v = p[0] - owc
+        return math.atan2(v[1], v[0])
 
-    corners_and_cuts = sorted(corners_and_cuts, key=corner_angle)
-    caclen = len(corners_and_cuts)
-    sorted_corners_and_cuts = []
-
-    c = 0
-    while c < caclen:
-        a0, co0, cu0 = corners_and_cuts[c]
-        a1, co1, cu1 = corners_and_cuts[(c+1)%caclen]
-        if abs(a0-a1) < 0.01:
-            sorted_corners_and_cuts.append(((co0+co1)*0.5, cu0.union(cu1)))
-        else:
-            sorted_corners_and_cuts.append((co0, cu0))
-        c += 1
+    sorted_corners_and_cuts = sorted(corners_and_cuts, key=corner_angle)
 
     corners = []
     neighbors = []
@@ -794,9 +784,12 @@ def make_cell(renderer, x, y):
         cu = cu0.intersection(cu1)
 
         corners.append(co0)
-        neighbors.append(offsets[cu.pop()])
+        if renderer.need_neighbors:
+            assert len(cu) == 1
+            neighbors.append(offsets[cu.pop()])
 
-    assert len(corners) == len(neighbors)
+    if renderer.need_neighbors:
+        assert len(corners) == len(neighbors)
 
     return owc, corners, neighbors
     
@@ -907,10 +900,18 @@ def print_svg(renderer):
 
     try:
         output_lock = multiprocessing.Lock()
+
+        def call_do_make_cell(renderer, job, output_lock):
+            try:
+                do_make_cell(renderer, job, output_lock)
+            except Exception:
+                sys.stderr.write("failed to generate SVG, please retry\n")
+                raise SystemExit
+
         tasks = []
         for job in range(renderer.job_count):
             t = multiprocessing.Process(
-                target=do_make_cell,
+                target=call_do_make_cell,
                 args=(renderer, job, output_lock)
             )
             t.start()
@@ -918,9 +919,8 @@ def print_svg(renderer):
 
         for t in tasks:
             t.join()
-        for t in tasks:
             if t.exitcode is not None and t.exitcode != 0:
-                raise multiprocessing.ProcessError()
+                return 1
     except KeyboardInterrupt:
         pass
 
@@ -928,11 +928,12 @@ def print_svg(renderer):
 
     renderer.output.write("""</g>\n""")
     renderer.output.write("""</svg>\n""")
+    return 0
 
 # ------------------------------------------------------------------------------
 def main():
     renderer = Renderer()
-    print_svg(renderer)
+    sys.exit(print_svg(renderer))
     
 # ------------------------------------------------------------------------------
 if __name__ == "__main__": main()
