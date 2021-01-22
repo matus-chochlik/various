@@ -69,6 +69,9 @@ class AnnotateArgumentParser(argparse.ArgumentParser):
         options.getter = getter
         if options.json_format:
             options.format_str = getter.make_json_format(options)
+        elif not options.format_str:
+            options.format_str = "%(age)s:%(line)s"
+            options.format_args = ["age", "line"]
         options.format_args = [f[1] for f in re.findall(
             "%(\.[0-9]+)?\(((\w|[_/:.-])+)\)",
             options.format_str if options.format_str else ""
