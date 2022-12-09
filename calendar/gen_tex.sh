@@ -48,6 +48,7 @@ function cal_begin_document()
 echo "\\documentclass{article}"
 echo "\\usepackage[utf8]{inputenc}"
 echo "\\usepackage[$(babel_lang_name)]{babel}"
+echo "\\usepackage{nopageno}"
 echo "\\usepackage{geometry}"
 echo "\\geometry{"
 echo "	paperwidth=29.7cm,"
