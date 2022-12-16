@@ -72,10 +72,10 @@ echo "\\usepackage{transparent}"
 echo "\\usepackage{tikz}"
 echo "\\usetikzlibrary{calendar}"
 
-echo "\\usepackage[pages=all]{background}"
 
 if [[ -f ${imgdir}/background.pdf ]]
 then
+	echo "\\usepackage[pages=all]{background}"
 	echo "\\backgroundsetup{"
 	echo "scale=1.0,"
 	echo "color=white,"
@@ -146,7 +146,7 @@ function cal_page_image()
 	echo "  \\mbox{"
 	echo "  \\begin{minipage}[c]{\\linewidth}"
 	echo "  \\vspace{6mm}"
-	echo "	\\large{\\selectfont\\usefont{T1}{qag}{m}{sc}"
+	echo "	\\normalsize{\\selectfont\\usefont{T1}{qag}{m}{sc}"
 	cat "${imgdir}/${week_id}.txt"
 	echo "  }"
 	echo "  \\end{minipage}"
