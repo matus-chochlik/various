@@ -56,6 +56,27 @@ class ArgumentParser(argparse.ArgumentParser):
         )
 
         self.add_argument(
+            "--saturated-x", "-x",
+            dest='saturated_x',
+            default=None,
+            type=int
+        )
+
+        self.add_argument(
+            "--saturated-y", "-y",
+            dest='saturated_y',
+            default=None,
+            type=int
+        )
+
+        self.add_argument(
+            "--flip-y", "-Y",
+            dest='flip_y',
+            default=False,
+            action='store_true'
+        )
+
+        self.add_argument(
             "--saturation-factor", "-S",
             dest='saturation_factor',
             default=24.0,
@@ -103,12 +124,20 @@ def do_desaturate_rgb(options, img, channels):
     sr = options.saturated_red
     sg = options.saturated_green
     sb = options.saturated_blue
-    sh, ss, sv = colorsys.rgb_to_hsv(sr, sg, sb)
 
     huedist = lambda x, y: min(math.fabs(x - y), math.fabs(1 + x - y))
     blend = lambda x, y, a: x * (1.0 - a) + y * a
 
     pixs = img.load()
+    if options.saturated_x is not None and options.saturated_y is not None:
+        x = options.saturated_x
+        y = options.saturated_y
+        if options.flip_y:
+            y = img.height - y
+        sr, sg, sb = pixs[x, y]
+
+    sh, ss, sv = colorsys.rgb_to_hsv(sr, sg, sb)
+
     for y in range(img.height):
         for x in range(img.width):
             r, g, b = pixs[x, y]
