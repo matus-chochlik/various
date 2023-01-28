@@ -13,6 +13,21 @@ import argparse
 # ------------------------------------------------------------------------------
 class ArgumentParser(argparse.ArgumentParser):
     # -------------------------------------------------------------------------
+    def _positive_float(self, x):
+        try:
+            value = float(x)
+            assert value > 0.0
+            return value
+        except:
+            self.error("`%s' is not a valid positive number" % str(x))
+    # -------------------------------------------------------------------------
+    def _positive_int(self, x):
+        try:
+            assert(int(x) > 0)
+            return int(x)
+        except:
+            self.error("`%s' is not a positive integer value" % str(x))
+    # -------------------------------------------------------------------------
     def __init__(self, **kw):
         argparse.ArgumentParser.__init__(self, **kw)
 
@@ -38,35 +53,35 @@ class ArgumentParser(argparse.ArgumentParser):
             "--saturated-red", "-r",
             dest='saturated_red',
             default=64.0,
-            type=float
+            type=self._positive_float
         )
 
         self.add_argument(
             "--saturated-green", "-g",
             dest='saturated_green',
             default=8.0,
-            type=float
+            type=self._positive_float
         )
 
         self.add_argument(
             "--saturated-blue", "-b",
             dest='saturated_blue',
             default=8.0,
-            type=float
+            type=self._positive_float
         )
 
         self.add_argument(
             "--saturated-x", "-x",
             dest='saturated_x',
             default=None,
-            type=int
+            type=self._positive_int
         )
 
         self.add_argument(
             "--saturated-y", "-y",
             dest='saturated_y',
             default=None,
-            type=int
+            type=self._positive_int
         )
 
         self.add_argument(
@@ -80,7 +95,7 @@ class ArgumentParser(argparse.ArgumentParser):
             "--saturation-factor", "-S",
             dest='saturation_factor',
             default=24.0,
-            type=float
+            type=self._positive_float
         )
 
         self.add_argument(
